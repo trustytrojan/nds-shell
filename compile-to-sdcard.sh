@@ -1,5 +1,6 @@
 set -e
-source .env
+export DEVKITARM=/opt/devkitpro/devkitARM
+export DEVKITPRO=/opt/devkitpro
 make
 rm *.elf
 usermount /dev/mmcblk0p1 /mnt/sdcard

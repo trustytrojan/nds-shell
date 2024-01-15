@@ -7,12 +7,7 @@
 				"${workspaceFolder}/**",
 				"/opt/devkitpro/libnds/include"
 			],
-			"compilerPath": "/opt/devkitpro/devkitARM/bin/arm-none-eabi-gcc",
-			"compilerArgs": [
-				"-g", "-Wall", "-O2",
-				"-march=armv5te", "-mtune=arm946e-s", "-fomit-frame-pointer",
-				"-ffast-math", "-mthumb", "-mthumb-interwork", "-lnds9", "-ldswifi9"
-			]
+			"compilerPath": "/opt/devkitpro/devkitARM/bin/arm-none-eabi-g++"
 		}
 	],
 	"version": 4
