@@ -1,6 +1,6 @@
 set -e
 export DEVKITARM=/opt/devkitpro/devkitARM
 export DEVKITPRO=/opt/devkitpro
+clear
 make
-rm *.elf
 desmume *.nds

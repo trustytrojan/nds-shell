@@ -1,1 +1,0 @@
-These programs are from [devkitpro/nds-examples](https://github.com/devkitpro/nds-examples).
