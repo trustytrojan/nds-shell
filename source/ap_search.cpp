@@ -1,4 +1,4 @@
-#include "deps.h"
+#include "everything.h"
 
 Wifi_AccessPoint *findAP(void)
 {
