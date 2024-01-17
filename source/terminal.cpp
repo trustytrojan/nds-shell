@@ -1,5 +1,16 @@
 #include "everything.h"
 
+Keyboard *keyboard;
+
+void resetKeyHandler(void)
+{
+	keyboard->OnKeyPressed = [](const auto key)
+	{
+		if (key > 0)
+			std::cout << (char)key;
+	};
+}
+
 void createTerminal(void)
 {
 	videoSetMode(MODE_0_2D);
@@ -8,8 +19,8 @@ void createTerminal(void)
 	vramSetBankC(VRAM_C_SUB_BG);
 	static PrintConsole console;
 	consoleInit(&console, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
-	keyboardDemoInit()->OnKeyPressed = [](const auto key)
-	{ if (key > 0) std::cout << (char)key; };
+	keyboard = keyboardDemoInit();
+	resetKeyHandler();
 	keyboardShow();
 	swiWaitForVBlank();
 }

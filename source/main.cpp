@@ -1,9 +1,16 @@
 #include "everything.h"
 
+
+
+
 int main(void)
 {
+	// resource initialization
 	createTerminal();
 	Wifi_InitDefault(false);
+	irqInit();
+
+	// start shell prompt
 	std::string line;
 	while (1)
 	{
@@ -51,7 +58,7 @@ int main(void)
 				continue;
 			}
 
-			const auto sain = parseIpAddress(args[1]);
+			const auto sain = parseAddress(args[1], -1);
 			if (!sain)
 			{
 				std::cout << "Parse error\n";
@@ -64,14 +71,7 @@ int main(void)
 			delete sain;
 			std::cout << "Connected to " << args[1] << '\n';
 
-			std::string sendString;
-			char receiveString[100];
-
-			while (1)
-			{
-				// need either nonblocking i/o or multithreading but libnds has neither :(
-				break;
-			}
+			tcpClient(sock);
 
 			close(sock);
 			std::cout << "Closed socket\n";
