@@ -2,7 +2,9 @@
 #include <string>
 #include <iostream>
 
-void ProcessLine(const std::string &line)
+#define FLASH_INTERVAL 30
+
+auto ProcessLine(const std::string &line)
 {
 	std::cout << "Line processed: '" << line << "'\n";
 	std::cout << "Line length: " << line.size() << '\n';
@@ -15,12 +17,12 @@ namespace Cursor
 {
 	const auto CHARACTER = '_';
 
-	const auto moveLeft(const int numColumns = 1)
+	auto moveLeft(const int numColumns)
 	{
 		return ESC_SEQ_BASE + std::to_string(numColumns) + 'D';
 	}
 
-	const auto moveRight(const int numColumns = 1)
+	auto moveRight(const int numColumns)
 	{
 		return ESC_SEQ_BASE + std::to_string(numColumns) + 'C';
 	}
@@ -50,17 +52,37 @@ int main(void)
 	std::cout << prompt;
 
 	// Variables
-	unsigned char c;
+	signed char c;
 	std::string line;
 	unsigned cursorPos = 0;
+
+	bool flashState = false;	  // Flag to track the flashing state
+	unsigned char flashTimer = 0; // Timer to control the flashing interval
 
 	while (1)
 	{
 		switch (c = keyboardUpdate())
 		{
-		// obviously ignore null bytes, and 255 is returned when nothing is pressed
+		// when no keys are being pressed
 		case 0:
-		case 255:
+		case -1:
+			// if cursorPos isn't the end of line, flash the current character between '_' and itself every half a second
+			if (cursorPos == line.size())
+				break;
+
+			++flashTimer;
+
+			if (flashTimer >= FLASH_INTERVAL)
+			{
+				flashTimer = 0;
+				flashState = !flashState;
+			}
+
+			if (flashState)
+				std::cout << Cursor::CHARACTER << Cursor::moveLeftOne;
+			else
+				std::cout << line[cursorPos] << Cursor::moveLeftOne;
+
 			break;
 
 		// enter, newline, '\n', 10
@@ -82,22 +104,33 @@ int main(void)
 
 		// left arrow
 		case DVK_LEFT:
-			if (cursorPos > 0)
-				--cursorPos;
+			if (cursorPos <= 0)
+				break;
+			if (flashState)
+				std::cout << line[cursorPos] << Cursor::moveLeftOne;
 			std::cout << Cursor::moveLeftOne;
+			--cursorPos;
 			break;
 
 		// right arrow
 		case DVK_RIGHT:
-			if (cursorPos < line.size())
-				++cursorPos;
-			std::cout << Cursor::moveRightOne;
+			if (cursorPos >= line.size())
+				break;
+			if (flashState)
+				std::cout << line[cursorPos];
+			else
+				std::cout << Cursor::moveRightOne;
+			++cursorPos;
 			break;
 
 		// any other valid character
 		default:
+			if (cursorPos == line.size())
+				std::cout << c << Cursor::CHARACTER << Cursor::moveLeftOne;
+			else
+				std::cout << c;
 			line += c;
-			std::cout << c << Cursor::CHARACTER << Cursor::moveLeftOne;
+			++cursorPos;
 		}
 
 		// Stay synchronized with the screen's refresh rate (60Hz)
