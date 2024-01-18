@@ -2,21 +2,23 @@ const { createServer } = require('net');
 const { createInterface } = require('readline');
 
 const clients = new Set();
+const port = 3000;
 
 createServer((socket) => {
+	console.log(`[${socket.remoteAddress}] connected`);
 	clients.add(socket);
 
 	socket.on('data', (data) => {
 		const message = data.toString().trim();
-		console.log(`Received message from ${socket.remoteAddress}: ${message}`);
+		process.stdout.write(`\x1b[0G[${socket.remoteAddress}] ${message}\n> `);
 	});
 
 	socket.on('end', () => {
 		clients.delete(socket);
-		console.log(`Client disconnected: ${socket.remoteAddress}`);
+		console.log(`[${socket.remoteAddress}] disconnected`);
 	});
-}).listen(3000, () => {
-	console.log('TCP server started on port 3000');
+}).listen(port, () => {
+	console.log(`Listening on port ${port}`);
 
 	const rl = createInterface({
 		input: process.stdin,
@@ -27,7 +29,7 @@ createServer((socket) => {
 
 	rl.on('line', (input) => {
 		for (const client of clients)
-			client.write(input + '\n');
+			client.write(input);
 		process.stdout.write('> ');
 	});
 });

@@ -12,25 +12,34 @@ void irqNetworkHandler(void)
 		perror("recv");
 		break;
 	case 0:
+		std::cout << "server disconnected\n";
 		sendLoop = false;
 		break;
 	}
 	receiveString[bytesReceived + 1] = 0;
-	std::cout << "server: " << receiveString << '\n';
+	std::cout << "\033[server>> " << receiveString << "\ntcp> ";
 }
 
 void tcpClient(const int _sock)
 {
+	irqInit();
+	irqEnable(IRQ_NETWORK);
+	irqEnable(IRQ_WIFI);
 	irqSet(IRQ_NETWORK, irqNetworkHandler);
+	irqSet(IRQ_WIFI, irqNetworkHandler);
 	keyboard->OnKeyPressed = [](const auto key)
 	{
-		if (key == DVK_MENU)
+		if (key == DVK_FOLD)
+		{
+			std::cout << "\nclient disconnected\n";
 			sendLoop = false;
+		}
 		else if (key > 0)
 			std::cout << (char)key;
 	};
 	sock = _sock;
 	std::string sendString;
+	sendLoop = true;
 	while (sendLoop)
 	{
 		std::cout << "tcp> ";
@@ -39,7 +48,7 @@ void tcpClient(const int _sock)
 			continue;
 		send(sock, sendString.c_str(), sendString.length(), 0);
 	}
-	std::cout << "disconnected\n";
 	resetKeyHandler();
 	irqClear(IRQ_NETWORK);
+	irqClear(IRQ_WIFI);
 }

@@ -28,8 +28,14 @@ void printWifiStatus(void);
 void createTerminal(void);
 void tcpClient(const int sock);
 void resetKeyHandler(void);
+void npPrintError(void);
 
 // globals
 extern Keyboard *keyboard;
+extern int netparseError;
+
+// macros
+#define NP_PORT_REQUIRED 1
+#define NP_PARSE_ERROR 2
 
 #endif

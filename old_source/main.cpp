@@ -1,14 +1,10 @@
 #include "everything.h"
 
-
-
-
-int main(void)
+int main2(void)
 {
 	// resource initialization
 	createTerminal();
 	Wifi_InitDefault(false);
-	irqInit();
 
 	// start shell prompt
 	std::string line;
@@ -61,13 +57,25 @@ int main(void)
 			const auto sain = parseAddress(args[1], -1);
 			if (!sain)
 			{
-				std::cout << "Parse error\n";
+				npPrintError();
 				continue;
 			}
 
 			const auto sock = socket(AF_INET, SOCK_STREAM, 0);
+			if (sock == -1)
+			{
+				perror("socket");
+				continue;
+			}
+
 			std::cout << "Created socket\n";
-			connect(sock, (sockaddr *)sain, sizeof(sockaddr_in));
+			
+			if (connect(sock, (sockaddr *)sain, sizeof(sockaddr_in)) == -1)
+			{
+				perror("connect");
+				continue;
+			}
+
 			delete sain;
 			std::cout << "Connected to " << args[1] << '\n';
 

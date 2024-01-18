@@ -1,9 +1,18 @@
 #include "everything.h"
 
-#define NP_PORT_REQUIRED 1
-#define NP_PARSE_ERROR 2
-
 int netparseError;
+
+void npPrintError(void)
+{
+	switch (netparseError)
+	{
+	case NP_PARSE_ERROR:
+		std::cout << "Parse error\n";
+		break;
+	case NP_PORT_REQUIRED:
+		std::cout << "Port required\n";
+	}
+}
 
 sockaddr_in *parseIpAddress(const std::string &addr)
 {
