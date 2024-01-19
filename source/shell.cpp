@@ -30,7 +30,6 @@ namespace Cursor
 
 	const auto moveLeftOne = moveLeft(1);
 	const auto moveRightOne = moveRight(1);
-	const auto moveLeftTwo = moveLeft(2);
 }
 
 int main(void)
@@ -50,7 +49,7 @@ int main(void)
 	keyboardShow();
 
 	// Create the shell prompt
-	const auto prompt = std::string("$ ") + Cursor::CHARACTER + Cursor::moveLeftOne;
+	const auto prompt = std::string("> ") + Cursor::CHARACTER + Cursor::moveLeftOne;
 	std::cout << prompt;
 
 	// Variables
@@ -59,36 +58,34 @@ int main(void)
 	unsigned cursorPos = 0;
 	bool flashState = false;	  // Flag to track the flashing state
 	unsigned char flashTimer = 0; // Timer to control the flashing interval
-	std::vector<std::string> commandHistory;
 
 	while (1)
 	{
 		switch (c = keyboardUpdate())
 		{
-		// when no keys are being pressed
+		// no keys pressed, or ignored keys
 		case 0:
 		case -1:
-			// if cursorPos isn't the end of line, flash the current character between '_' and itself every half a second
+		case DVK_CTRL:
+		case DVK_ALT:
+		case DVK_CAPS:
+		case DVK_DOWN:
+		case DVK_UP:
+		case DVK_FOLD:
+		case DVK_MENU:
+		case DVK_SHIFT:
+			// if cursorPos isn't the end of line, flash the current character between '_' and itself every (1 / FLASH_INTERVAL) seconds
 			if (cursorPos == line.size())
 			{
 				flashTimer = 0;
 				flashState = false;
 				break;
 			}
-
-			++flashTimer;
-
-			if (flashTimer >= FLASH_INTERVAL)
+			if (++flashTimer >= FLASH_INTERVAL)
 			{
 				flashTimer = 0;
-				flashState = !flashState;
+				((flashState = !flashState) ? (std::cout << Cursor::CHARACTER) : (std::cout << line[cursorPos])) << Cursor::moveLeftOne;
 			}
-
-			if (flashState)
-				std::cout << Cursor::CHARACTER << Cursor::moveLeftOne;
-			else
-				std::cout << line[cursorPos] << Cursor::moveLeftOne;
-
 			break;
 
 		// enter, newline, '\n', 10
@@ -97,9 +94,7 @@ int main(void)
 				std::cout << ' ';
 			else
 				std::cout << line[cursorPos] << '\r';
-
 			std::cout << '\n';
-			commandHistory.push_back(line);
 			ProcessLine(line);
 			line.clear();
 			cursorPos = 0;
@@ -118,46 +113,31 @@ int main(void)
 		case DVK_LEFT:
 			if (cursorPos == 0)
 				break;
-
 			if (cursorPos == line.size())
 				std::cout << " \b";
-
 			if (flashState)
 				std::cout << line[cursorPos] << Cursor::moveLeftOne;
-
 			std::cout << Cursor::moveLeftOne;
 			--cursorPos;
-
 			break;
 
 		// right arrow
 		case DVK_RIGHT:
 			if (cursorPos == line.size())
 				break;
-
 			std::cout << line[cursorPos];
-
 			if (++cursorPos == line.size())
 				std::cout << Cursor::CHARACTER << Cursor::moveLeftOne;
-
 			break;
 
 		// any other valid character
 		default:
 			if (cursorPos == line.size())
-			{
-				std::cout << c << Cursor::CHARACTER << Cursor::moveLeftOne;
 				line += c;
-			}
 			else
-			{
-				std::cout << c;
 				line[cursorPos] = c;
-			}
-
-			++cursorPos;
-
-			if (cursorPos == line.size())
+			std::cout << c;
+			if (++cursorPos == line.size())
 				std::cout << Cursor::CHARACTER << Cursor::moveLeftOne;
 		}
 
@@ -165,7 +145,7 @@ int main(void)
 		// This isn't necessary, but probably better to not run this loop 100% of the time
 		swiWaitForVBlank();
 
-		// For consistency
+		// For testing
 		assert(cursorPos >= 0 && cursorPos <= line.size());
 	}
 }
