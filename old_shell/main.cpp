@@ -139,16 +139,16 @@ int main2(void)
 				while (curr != ASSOCSTATUS_ASSOCIATED && curr != ASSOCSTATUS_CANNOTCONNECT)
 				{
 					if (curr != prev)
-						printWifiStatus();
+						PrintWifiStatus();
 					prev = curr;
 					curr = Wifi_AssocStatus();
 				}
-				printWifiStatus();
+				PrintWifiStatus();
 			}
 
 			else if (subcommand == "status")
 			{
-				printWifiStatus();
+				PrintWifiStatus();
 			}
 		}
 

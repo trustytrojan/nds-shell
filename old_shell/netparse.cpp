@@ -14,26 +14,6 @@ void npPrintError(void)
 	}
 }
 
-sockaddr_in *parseIpAddress(const std::string &addr)
-{
-	const auto colonIndex = addr.find(':');
-
-	if (colonIndex == std::string::npos)
-		return NULL;
-
-	auto sain = new sockaddr_in;
-	sain->sin_family = AF_INET;
-	sain->sin_port = htons(std::stoi(addr.substr(colonIndex + 1)));
-
-	if (inet_aton(addr.substr(0, colonIndex).c_str(), &(sain->sin_addr)) <= 0)
-	{
-		delete sain;
-		return NULL;
-	}
-
-	return sain;
-}
-
 sockaddr_in *parseAddress(const std::string &addr, const int defaultPort)
 {
 	const auto colonIndex = addr.find(':');
@@ -61,11 +41,11 @@ sockaddr_in *parseAddress(const std::string &addr, const int defaultPort)
 		ipOrHostname = addr.substr(0, colonIndex);
 	}
 
-	if (inet_aton(ipOrHostname.c_str(), &sain->sin_addr) <= 0)
+	if (inet_aton(ipOrHostname.c_str(), &sain->sin_addr) <= 0) // string is an ip address
 	{
-		const auto host = gethostbyname(ipOrHostname.c_str());
+		const auto host = gethostbyname(ipOrHostname.c_str()); // string is a domain name
 
-		if (!host)
+		if (!host) // string is neither
 		{
 			delete sain;
 			netparseError = NP_PARSE_ERROR;

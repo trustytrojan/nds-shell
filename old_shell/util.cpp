@@ -12,7 +12,7 @@ std::vector<std::string> strsplit(const std::string &str, const char delim)
 	return tokens;
 }
 
-void printWifiStatus(void)
+void PrintWifiStatus(void)
 {
 	switch (Wifi_AssocStatus())
 	{

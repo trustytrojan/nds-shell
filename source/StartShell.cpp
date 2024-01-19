@@ -1,56 +1,18 @@
-#include <nds.h>
-#include <string>
-#include <iostream>
-#include <vector>
+#include "everything.hpp"
+#include "Cursor.hpp"
 
 #define FLASH_INTERVAL 20
 
-auto ProcessLine(const std::string &line)
+void StartShell(std::string prompt, const char cursorCharacter, const ShellLineProcessor lineProcessor)
 {
-	std::cout << "Line processed: '" << line << "'\n";
-	std::cout << "Line length: " << line.size() << '\n';
-}
-
-// Base string for an ANSI escape sequence
-const auto ESC_SEQ_BASE = "\e[";
-
-namespace Cursor
-{
-	const auto CHARACTER = '_';
-
-	auto moveLeft(const int numColumns)
+	if (!lineProcessor)
 	{
-		return ESC_SEQ_BASE + std::to_string(numColumns) + 'D';
+		std::cerr << "lineProcessor is null\n";
+		return;
 	}
 
-	auto moveRight(const int numColumns)
-	{
-		return ESC_SEQ_BASE + std::to_string(numColumns) + 'C';
-	}
-
-	const auto moveLeftOne = moveLeft(1);
-	const auto moveRightOne = moveRight(1);
-}
-
-int main(void)
-{
-	// Video initialization - We want to use both screens
-	videoSetMode(MODE_0_2D);
-	videoSetModeSub(MODE_0_2D);
-	vramSetBankA(VRAM_A_MAIN_BG);
-	vramSetBankC(VRAM_C_SUB_BG);
-
-	// Show the console on the top screen
-	PrintConsole console;
-	consoleInit(&console, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
-
-	// Initialize and show the keyboard on the bottom screen
-	keyboardDemoInit();
-	keyboardShow();
-
-	// Create the shell prompt
-	const auto prompt = std::string("> ") + Cursor::CHARACTER + Cursor::moveLeftOne;
-	std::cout << prompt;
+	// Create and print the empty-line shell prompt
+	std::cout << (prompt += (cursorCharacter + Cursor::moveLeftOne));
 
 	// Variables
 	signed char c;
@@ -84,7 +46,7 @@ int main(void)
 			if (++flashTimer >= FLASH_INTERVAL)
 			{
 				flashTimer = 0;
-				((flashState = !flashState) ? (std::cout << Cursor::CHARACTER) : (std::cout << line[cursorPos])) << Cursor::moveLeftOne;
+				((flashState = !flashState) ? (std::cout << cursorCharacter) : (std::cout << line[cursorPos])) << Cursor::moveLeftOne;
 			}
 			break;
 
@@ -95,7 +57,7 @@ int main(void)
 			else
 				std::cout << line[cursorPos] << '\r';
 			std::cout << '\n';
-			ProcessLine(line);
+			lineProcessor(line);
 			line.clear();
 			cursorPos = 0;
 			std::cout << prompt;
@@ -106,7 +68,7 @@ int main(void)
 			if (!line.empty())
 				line.erase(--cursorPos, 1);
 			// space overwrites the cursor character, then backspace the space and the desired character
-			std::cout << " \b\b" << Cursor::CHARACTER << Cursor::moveLeftOne;
+			std::cout << " \b\b" << cursorCharacter << Cursor::moveLeftOne;
 			break;
 
 		// left arrow
@@ -127,7 +89,7 @@ int main(void)
 				break;
 			std::cout << line[cursorPos];
 			if (++cursorPos == line.size())
-				std::cout << Cursor::CHARACTER << Cursor::moveLeftOne;
+				std::cout << cursorCharacter << Cursor::moveLeftOne;
 			break;
 
 		// any other valid character
@@ -138,11 +100,11 @@ int main(void)
 				line[cursorPos] = c;
 			std::cout << c;
 			if (++cursorPos == line.size())
-				std::cout << Cursor::CHARACTER << Cursor::moveLeftOne;
+				std::cout << cursorCharacter << Cursor::moveLeftOne;
 		}
 
 		// Stay synchronized with the screen's refresh rate (60Hz)
-		// This isn't necessary, but probably better to not run this loop 100% of the time
+		// This is necessary for cursor flashing
 		swiWaitForVBlank();
 
 		// For testing

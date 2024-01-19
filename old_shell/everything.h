@@ -24,7 +24,7 @@ Wifi_AccessPoint *findAP(void);
 sockaddr_in *parseIpAddress(const std::string &addr);
 sockaddr_in *parseAddress(const std::string &addr, const int defaultPort);
 std::vector<std::string> strsplit(const std::string &str, const char delim);
-void printWifiStatus(void);
+void PrintWifiStatus(void);
 void createTerminal(void);
 void tcpClient(const int sock);
 void resetKeyHandler(void);
