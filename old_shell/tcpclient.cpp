@@ -17,7 +17,7 @@ void irqNetworkHandler(void)
 		break;
 	}
 	receiveString[bytesReceived + 1] = 0;
-	std::cout << "\033[server>> " << receiveString << "\ntcp> ";
+	std::cout << "\e[server>> " << receiveString << "\ntcp> ";
 }
 
 void tcpClient(const int _sock)

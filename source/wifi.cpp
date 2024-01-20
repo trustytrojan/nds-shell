@@ -34,7 +34,7 @@ void wifi(const Args &args)
 {
 	if (args.size() == 1)
 	{
-		std::cout << "usage: wifi <subcommand>\nsubcommands: connect, status\n";
+		std::cerr << "subcommands: connect, status\n";
 		return;
 	}
 

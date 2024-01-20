@@ -32,7 +32,7 @@ void npPrintError(void);
 
 // globals
 extern Keyboard *keyboard;
-extern int netparseError;
+extern int pa_errno;
 
 // macros
 #define NP_PORT_REQUIRED 1

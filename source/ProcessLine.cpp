@@ -62,7 +62,7 @@ void ProcessLine(const std::string &line)
 
 			if (itr == line.cend())
 			{
-				std::cout << "Parse error: closing '\"' not found\n";
+				std::cerr << "\e[31mparse error: closing '\"' not found\e[39m\n";
 				return;
 			}
 

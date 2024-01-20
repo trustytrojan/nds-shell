@@ -1,9 +1,11 @@
 #include "everything.hpp"
-#include "Cursor.hpp"
+#include "EscapeSequences.hpp"
 
 #define FLASH_INTERVAL 10
 
-void StartShell(std::string prompt, const char cursorCharacter, const ShellLineProcessor lineProcessor)
+using namespace EscapeSequences;
+
+void StartShell(std::string prompt, const char cursorCharacter, const ShellLineProcessor lineProcessor, std::ostream &ostr)
 {
 	if (!lineProcessor)
 	{
@@ -12,7 +14,7 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 	}
 
 	// Create and print the empty-line shell prompt
-	std::cout << prompt << cursorCharacter << Cursor::moveLeftOne;
+	ostr << prompt << cursorCharacter << Cursor::moveLeftOne;
 
 	// Variables
 	signed char c;
@@ -44,21 +46,21 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 			else if (++flashTimer >= FLASH_INTERVAL)
 			{
 				flashTimer = 0;
-				((flashState = !flashState) ? (std::cout << cursorCharacter) : (std::cout << line[cursorPos])) << Cursor::moveLeftOne;
+				((flashState = !flashState) ? (ostr << cursorCharacter) : (ostr << line[cursorPos])) << Cursor::moveLeftOne;
 			}
 			break;
 
 		// enter, newline, '\n', 10
 		case DVK_ENTER:
 			if (cursorPos == line.size())
-				std::cout << ' ';
+				ostr << ' ';
 			else
-				std::cout << line[cursorPos] << '\r';
-			std::cout << '\n';
+				ostr << line[cursorPos] << '\r';
+			ostr << '\n';
 			lineProcessor(line);
 			line.clear();
 			cursorPos = 0;
-			std::cout << prompt << cursorCharacter << Cursor::moveLeftOne;
+			ostr << prompt << cursorCharacter << Cursor::moveLeftOne;
 			break;
 
 		// backspace, '\b', 8
@@ -68,12 +70,12 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 			if (cursorPos == line.size())
 			{
 				line.erase(--cursorPos, 1);
-				std::cout << " \b\b" << cursorCharacter << Cursor::moveLeftOne;
+				ostr << " \b\b" << cursorCharacter << Cursor::moveLeftOne;
 			}
 			else
 			{
 				line.erase(--cursorPos, 1);
-				std::cout << "\b\033[0K" << line.substr(cursorPos) << Cursor::move(Cursor::LEFT, line.size() - cursorPos);
+				ostr << "\b\e[0K" << line.substr(cursorPos) << Cursor::move(Cursor::MoveDirection::LEFT, line.size() - cursorPos);
 			}
 			break;
 
@@ -82,10 +84,10 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 			if (cursorPos == 0)
 				break;
 			if (cursorPos == line.size())
-				std::cout << " \b";
+				ostr << " \b";
 			if (flashState)
-				std::cout << line[cursorPos] << Cursor::moveLeftOne;
-			std::cout << Cursor::moveLeftOne;
+				ostr << line[cursorPos] << Cursor::moveLeftOne;
+			ostr << Cursor::moveLeftOne;
 			--cursorPos;
 			break;
 
@@ -93,9 +95,9 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 		case DVK_RIGHT:
 			if (cursorPos == line.size())
 				break;
-			std::cout << line[cursorPos];
+			ostr << line[cursorPos];
 			if (++cursorPos == line.size())
-				std::cout << cursorCharacter << Cursor::moveLeftOne;
+				ostr << cursorCharacter << Cursor::moveLeftOne;
 			break;
 
 		// any other valid character
@@ -104,9 +106,9 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 				line += c;
 			else
 				line[cursorPos] = c;
-			std::cout << c;
+			ostr << c;
 			if (++cursorPos == line.size())
-				std::cout << cursorCharacter << Cursor::moveLeftOne;
+				ostr << cursorCharacter << Cursor::moveLeftOne;
 		}
 
 		// Stay synchronized with the screen's refresh rate (60Hz)
