@@ -1,7 +1,7 @@
 #include "everything.hpp"
 #include "Cursor.hpp"
 
-#define FLASH_INTERVAL 20
+#define FLASH_INTERVAL 10
 
 void StartShell(std::string prompt, const char cursorCharacter, const ShellLineProcessor lineProcessor)
 {
@@ -12,7 +12,7 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 	}
 
 	// Create and print the empty-line shell prompt
-	std::cout << (prompt += (cursorCharacter + Cursor::moveLeftOne));
+	std::cout << prompt << cursorCharacter << Cursor::moveLeftOne;
 
 	// Variables
 	signed char c;
@@ -36,14 +36,12 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 		case DVK_FOLD:
 		case DVK_MENU:
 		case DVK_SHIFT:
-			// if cursorPos isn't the end of line, flash the current character between '_' and itself every (1 / FLASH_INTERVAL) seconds
 			if (cursorPos == line.size())
 			{
 				flashTimer = 0;
 				flashState = false;
-				break;
 			}
-			if (++flashTimer >= FLASH_INTERVAL)
+			else if (++flashTimer >= FLASH_INTERVAL)
 			{
 				flashTimer = 0;
 				((flashState = !flashState) ? (std::cout << cursorCharacter) : (std::cout << line[cursorPos])) << Cursor::moveLeftOne;
@@ -60,15 +58,23 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 			lineProcessor(line);
 			line.clear();
 			cursorPos = 0;
-			std::cout << prompt;
+			std::cout << prompt << cursorCharacter << Cursor::moveLeftOne;
 			break;
 
 		// backspace, '\b', 8
 		case DVK_BACKSPACE:
-			if (!line.empty())
+			if (line.empty() || cursorPos == 0)
+				break;
+			if (cursorPos == line.size())
+			{
 				line.erase(--cursorPos, 1);
-			// space overwrites the cursor character, then backspace the space and the desired character
-			std::cout << " \b\b" << cursorCharacter << Cursor::moveLeftOne;
+				std::cout << " \b\b" << cursorCharacter << Cursor::moveLeftOne;
+			}
+			else
+			{
+				line.erase(--cursorPos, 1);
+				std::cout << "\b\033[0K" << line.substr(cursorPos) << Cursor::move(Cursor::LEFT, line.size() - cursorPos);
+			}
 			break;
 
 		// left arrow
@@ -107,7 +113,7 @@ void StartShell(std::string prompt, const char cursorCharacter, const ShellLineP
 		// This is necessary for cursor flashing
 		swiWaitForVBlank();
 
-		// For testing
+		// cursorPos must be in [0, line.size()]
 		assert(cursorPos >= 0 && cursorPos <= line.size());
 	}
 }

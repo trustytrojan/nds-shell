@@ -16,6 +16,8 @@ typedef std::vector<std::string> Args;
 typedef void (*CommandFunction)(const Args &);
 typedef std::function<void(const std::string &)> ShellLineProcessor;
 
+extern Keyboard *keyboard;
+
 /**
  * Start a shell prompt with a visible cursor and cursor controls.
  * \param prompt The text to print before the cursor. For example `prompt = "> "` and 

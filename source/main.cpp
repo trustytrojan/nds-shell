@@ -1,5 +1,7 @@
 #include "everything.hpp"
 
+Keyboard *keyboard;
+
 void InitializeResources(void)
 {
 	// Video initialization - We want to use both screens
@@ -13,7 +15,7 @@ void InitializeResources(void)
 	consoleInit(&console, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
 
 	// Initialize and show the keyboard on the bottom screen
-	keyboardDemoInit();
+	keyboard = keyboardDemoInit();
 	keyboardShow();
 
 	// Mount the sdcard using libfat

@@ -12,11 +12,9 @@ const std::unordered_map<std::string, CommandFunction> commands = {
 	{"ls", ls}
 };
 
-const auto commandsEnd = commands.cend();
-
 void help(const Args &args)
 {
-	std::cout << "commands:\n";
+	std::cout << "commands: ";
 	auto itr = commands.cbegin();
 	for (; itr != commands.cend(); ++itr)
 		std::cout << itr->first << ' ';
@@ -35,6 +33,8 @@ void ls(const Args &args)
 		std::cout << entry.path().filename() << '\n';
 	}
 }
+
+const auto commandsEnd = commands.cend();
 
 void RunCommand(const Args &args)
 {

@@ -52,7 +52,8 @@ void wifi(const Args &args)
 		{
 			std::cout << "Password: ";
 			std::string password;
-			std::getline(std::cin, password);
+			// Thinking of replacing std::getline with code from StartShell, but for password input, this is fine.
+			std::getline(std::cin, password); // characters are not shown since keyboard->OnKeyPressed is NULL
 			WEPMODES wepmode;
 
 			switch (password.size())
