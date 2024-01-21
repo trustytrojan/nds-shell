@@ -10,41 +10,22 @@ void ProcessLine(const std::string &line)
 	Args args;
 	std::string currentArg;
 
-	for (auto itr = line.cbegin(); itr != lineEnd; ++itr)
+	StandardStreams stdio;
+
+	for (auto itr = line.cbegin(); itr < lineEnd; ++itr)
 		switch (*itr)
 		{
 		case ' ':
 		case '\t':
 		case '\n':
+			if (currentArg.empty())
+				break;
 			args.push_back(currentArg);
 			currentArg.clear();
 			break;
 
-		case '\\':
-		{
-			const char c = *(++itr);
-			switch (c)
-			{
-			case '"':
-			case '\n':
-			case '\t':
-			case '\\':
-				currentArg += c;
-				break;
-			default:
-				--itr;
-			}
-			break;
-		}
-
 		case '"':
-			if (!currentArg.empty())
-			{
-				currentArg += '"';
-				break;
-			}
-
-			for (++itr; *itr != '"' && itr != lineEnd; ++itr)
+			for (++itr; *itr != '"' && itr < lineEnd; ++itr)
 				switch (*itr)
 				{
 				case '\\':
@@ -59,17 +40,117 @@ void ProcessLine(const std::string &line)
 				default:
 					currentArg += *itr;
 				}
-
-			if (itr == line.cend())
+			if (itr == lineEnd)
 			{
-				std::cerr << "\e[31mparse error: closing '\"' not found\e[39m\n";
+				std::cerr << "\e[41mshell: closing '\"' not found\e[39m\n";
+				return;
+			}
+			args.push_back(currentArg);
+			currentArg.clear();
+			break;
+
+		case '<':
+		{
+			if (stdio.in != &std::cin)
+			{
+				std::cerr << "\e[41mshell: stdin is already reading from a file\e[39m\n";
 				return;
 			}
 
-			args.push_back(currentArg);
-			currentArg.clear();
+			std::string filepath;
+
+			for (++itr; !isspace(*itr) && itr < lineEnd; ++itr)
+			{
+				filepath += *itr;
+			}
+
+			if (filepath.empty())
+			{
+				std::cerr << "\e[41mshell: expected filepath after '<'\e[39m\n";
+				return;
+			}
+
+			if (!std::filesystem::exists(filepath))
+			{
+				std::cerr << "\e[41mshell: '" << filepath << "' does not exist\e[39m\n";
+				return;
+			}
+
+			if (!*(stdio.in = new std::ifstream(filepath)))
+			{
+				std::cerr << "\e[41mshell: failed to open:\e[39m " << filepath << '\n';
+				return;
+			}
 
 			break;
+		}
+
+		case '>':
+		{
+			if (stdio.out != &std::cout)
+			{
+				std::cerr << "\e[41mshell: stdout is already being redirected\e[39m\n";
+				return;
+			}
+
+			std::string filepath;
+
+			for (++itr; !isspace(*itr) && itr < lineEnd; ++itr)
+			{
+				filepath += *itr;
+			}
+
+			if (filepath.empty())
+			{
+				std::cerr << "\e[41mshell: expected filepath after '>'\e[39m\n";
+				return;
+			}
+
+			if (!*(stdio.out = new std::ofstream(filepath)))
+			{
+				std::cerr << "\e[41mshell: failed to open:\e[39m " << filepath << '\n';
+				return;
+			}
+
+			break;
+		}
+
+		case '2':
+		{
+			// if the next character isnt '>', then break
+			if (*(++itr) != '>')
+			{
+				--itr;
+				break;
+			}
+
+			if (stdio.err != &std::cerr)
+			{
+				std::cerr << "\e[41mshell: stderr is already being redirected\e[39m\n";
+				return;
+			}
+
+			std::string filepath;
+
+			for (++itr; !isspace(*itr) && itr < lineEnd; ++itr)
+			{
+				filepath += *itr;
+			}
+
+			if (filepath.empty())
+			{
+				std::cerr << "\e[41mshell: expected filepath after '>'\e[39m\n";
+				return;
+			}
+
+			if (!*(stdio.err = new std::ofstream(filepath)))
+			{
+				std::cerr << "\e[41mshell: failed to open:\e[39m " << filepath << '\n';
+				return;
+			}
+
+			break;
+		}
 
 		default:
 			currentArg += *itr;
@@ -79,5 +160,5 @@ void ProcessLine(const std::string &line)
 	if (!currentArg.empty())
 		args.push_back(currentArg);
 
-	RunCommand(args);
+	RunCommand(args, stdio);
 }

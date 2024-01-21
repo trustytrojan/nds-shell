@@ -26,10 +26,10 @@ INCLUDES	:=	include
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork -march=armv5te -mtune=arm946e-s
 
-CFLAGS	:=	-Wall -O2 -fomit-frame-pointer -ffast-math $(ARCH)
+CFLAGS	:=	-Wall -O3 -fomit-frame-pointer -ffast-math $(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -DARM9
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -Wno-parentheses
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -Wno-parentheses -std=gnu++23
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=ds_arm9.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)

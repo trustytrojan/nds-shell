@@ -18,13 +18,14 @@ void NetParse::printError(const std::string &s)
 	std::cerr << '\n';
 }
 
-bool NetParse::parseAddress(const std::string &addr, const int defaultPort, sockaddr_in &sain)
+bool NetParse::parseAddress(const char *addr, const int defaultPort, sockaddr_in &sain)
 {
+	// ipv4
 	sain.sin_family = AF_INET;
-	const auto colonIndex = addr.find(':');
-	std::string ipOrHostname;
 
-	if (colonIndex == std::string::npos)
+	// get port
+	const auto colonPtr = strchr(addr, ':');
+	if (!colonPtr)
 	{
 		if (defaultPort < 0)
 		{
@@ -33,19 +34,19 @@ bool NetParse::parseAddress(const std::string &addr, const int defaultPort, sock
 		}
 
 		sain.sin_port = htons(defaultPort);
-		ipOrHostname = addr;
 	}
 	else
 	{
-		sain.sin_port = htons(std::stoi(addr.substr(colonIndex + 1)));
-		ipOrHostname = addr.substr(0, colonIndex);
+		*colonPtr = 0;
+		sain.sin_port = htons(atoi(colonPtr + 1));
 	}
 
-	if (inet_aton(ipOrHostname.c_str(), &sain.sin_addr) <= 0) // string is an ip address
+	// get address
+	if (inet_aton(addr, &sain.sin_addr) <= 0)
 	{
-		const auto host = gethostbyname(ipOrHostname.c_str()); // string is a domain name
+		const auto host = gethostbyname(addr);
 
-		if (!host) // string is neither
+		if (!host)
 		{
 			error = Error::PARSE_ERROR;
 			return false;

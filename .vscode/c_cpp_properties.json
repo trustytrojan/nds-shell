@@ -7,7 +7,8 @@
 				"${workspaceFolder}/**",
 				"/opt/devkitpro/libnds/include"
 			],
-			"compilerPath": "/opt/devkitpro/devkitARM/bin/arm-none-eabi-g++"
+			"compilerPath": "/opt/devkitpro/devkitARM/bin/arm-none-eabi-g++",
+			"cppStandard": "gnu++23"
 		}
 	],
 	"version": 4

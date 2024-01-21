@@ -14,7 +14,7 @@ namespace NetParse
 	extern Error error;
 
 	void printError(const std::string &prefix);
-	bool parseAddress(const std::string &addr, const int defaultPort, sockaddr_in &sain);
+	bool parseAddress(const char *addr, const int defaultPort, sockaddr_in &sain);
 }
 
 #endif

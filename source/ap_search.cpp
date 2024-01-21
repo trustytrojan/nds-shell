@@ -1,54 +1,52 @@
 #include "everything.hpp"
 
-Wifi_AccessPoint *findAP(void)
+#define VISIBLE_APS 10
+
+void FindAPInteractive(Wifi_AccessPoint &ap)
 {
-	int i, selected = 0, count = 0, displaytop = 0, pressed = 0;
-	static Wifi_AccessPoint ap;
+	int selectedAP = 0, displayTop = 0, pressed;
 	Wifi_ScanMode();
+
 	do
 	{
+		consoleClear();
+
+		const auto numAPs = Wifi_GetNumAP();
+		std::cout << numAPs << " APs detected\n\n";
+
+		auto displayEnd = displayTop + VISIBLE_APS;
+		if (displayEnd > numAPs)
+			displayEnd = numAPs;
+
+		for (auto i = displayTop; i < displayEnd; i++)
+		{
+			Wifi_GetAPData(i, &ap);
+			std::cout << ((i == selectedAP) ? '*' : ' ') << ' ' << ap.ssid << '\n'
+					  << "  Wep:" << ((ap.flags & WFLAG_APDATA_WEP) ? "Yes" : "No") << " Sig:" << (ap.rssi * 100 / 0xD0) << '\n';
+		}
+
 		scanKeys();
 		pressed = keysDown();
-		count = Wifi_GetNumAP();
-		consoleClear();
-		iprintf("%d APs detected\n\n", count);
-		int displayend = displaytop + 10;
-		if (displayend > count)
-			displayend = count;
-
-		for (i = displaytop; i < displayend; i++)
-		{
-			Wifi_AccessPoint ap;
-			Wifi_GetAPData(i, &ap);
-			iprintf("%s %.29s\n  Wep:%s Sig:%i\n",
-					i == selected ? "*" : " ",
-					ap.ssid,
-					ap.flags & WFLAG_APDATA_WEP ? "Yes " : "No ",
-					ap.rssi * 100 / 0xD0);
-		}
 
 		if (pressed & KEY_UP)
 		{
-			selected--;
-			if (selected < 0)
-				selected = 0;
-			if (selected < displaytop)
-				displaytop = selected;
+			if (selectedAP > 0)
+				--selectedAP;
+			if (selectedAP < displayTop)
+				displayTop = selectedAP;
 		}
 
 		if (pressed & KEY_DOWN)
 		{
-			selected++;
-			if (selected >= count)
-				selected = count - 1;
-			displaytop = selected - 9;
-			if (displaytop < 0)
-				displaytop = 0;
+			if (selectedAP < numAPs - 1)
+				++selectedAP;
+			displayTop = selectedAP - (VISIBLE_APS - 1);
+			if (displayTop < 0)
+				displayTop = 0;
 		}
 
 		swiWaitForVBlank();
 	} while (!(pressed & KEY_A));
 
-	Wifi_GetAPData(selected, &ap);
-	return &ap;
+	Wifi_GetAPData(selectedAP, &ap);
 }

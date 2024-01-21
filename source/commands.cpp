@@ -1,49 +1,48 @@
 #include "everything.hpp"
 #include "NetParse.hpp"
 
-void exit(const Args &args)
+void exit(const Args &, const StandardStreams &)
 {
 	systemShutDown();
 }
 
-void ls(const Args &args)
+void clear(const Args &, const StandardStreams &stdio)
 {
-	using namespace std::filesystem;
+	*stdio.out << "\e[2J";
+}
 
+void ls(const Args &args, const StandardStreams &stdio)
+{
 	const auto path = (args.size() == 1) ? "/" : args[1];
 
-	if (!exists(path))
+	if (!std::filesystem::exists(path))
 	{
-		std::cerr << "\e[41mpath does not exist\e[39m\n";
+		*stdio.err << "\e[41mpath does not exist\e[39m\n";
 		return;
 	}
 
-	for (const auto &entry : directory_iterator(path))
+	for (const auto &entry : std::filesystem::directory_iterator(path))
 	{
 		const auto filename = entry.path().filename().string();
 		if (entry.is_directory())
-			std::cout << "\e[44m" << filename << "\e[39m";
-		else if (filename.substr(filename.size() - 4) == ".nds")
-			std::cout << "\e[42m" << filename << "\e[39m";
+			*stdio.out << "\e[44m" << filename << "\e[39m";
 		else
-			std::cout << filename;
-		std::cout << '\n';
+			*stdio.out << filename;
+		*stdio.out << '\n';
 	}
 }
 
-void cat(const Args &args)
+void cat(const Args &args, const StandardStreams &stdio)
 {
 	if (args.size() == 1)
 	{
-		std::cerr << "args: <filepath>\n";
+		*stdio.err << "args: <filepath>\n";
 		return;
 	}
 
-	using namespace std::filesystem;
-
-	if (!exists(args[1]))
+	if (!std::filesystem::exists(args[1]))
 	{
-		std::cerr << "file '" << args[1] << "' does not exist\n";
+		*stdio.err << "file '" << args[1] << "' does not exist\n";
 		return;
 	}
 
@@ -51,39 +50,66 @@ void cat(const Args &args)
 
 	if (!file)
 	{
-		std::cerr << "cannot open file\n";
+		*stdio.err << "cannot open file\n";
 		return;
 	}
 
-	std::cout << file.rdbuf();
+	*stdio.out << file.rdbuf();
 	file.close();
 }
 
-void batlvl(const Args &args)
+void rm(const Args &args, const StandardStreams &stdio)
 {
-	std::cout << getBatteryLevel() << '\n';
+	if (args.size() == 1)
+	{
+		*stdio.err << "args: <filepath>\n";
+		return;
+	}
+
+	if (!std::filesystem::exists(args[1]))
+	{
+		*stdio.err << "file '" << args[1] << "' does not exist\n";
+		return;
+	}
+
+	if (!std::filesystem::remove(args[1]))
+	{
+		*stdio.err << "failed to remove '"<< args[1] << "'\n";
+	}
+}
+
+void echo(const Args &args, const StandardStreams &stdio)
+{
+	for (auto itr = args.cbegin() + 1; itr != args.cend(); ++itr)
+		*stdio.out << *itr << ' ';
+	*stdio.out << '\n';
+}
+
+void batlvl(const Args &args, const StandardStreams &stdio)
+{
+	*stdio.out << getBatteryLevel() << '\n';
 }
 
 // unfortunately i don't think `system_clock::now` returns anything correct
 // will have to steal example C code from libnds
-void time(const Args &args)
+void time(const Args &args, const StandardStreams &stdio)
 {
 	static const char *const monthStr[] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
 	static const char *const weekdayStr[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 	using namespace std::chrono;
 
 	const auto tt = system_clock::to_time_t(system_clock::now());
-	std::cout << tt << '\n';
+	*stdio.out << tt << '\n';
 	const auto tm = gmtime(&tt);
-	std::cout << weekdayStr[tm->tm_wday] << ' ' << tm->tm_mday << ' ' << monthStr[tm->tm_mon] << ' ' << tm->tm_year << '\n'
+	*stdio.out << weekdayStr[tm->tm_wday] << ' ' << tm->tm_mday << ' ' << monthStr[tm->tm_mon] << ' ' << tm->tm_year << '\n'
 			  << tm->tm_hour << ':' << tm->tm_min << ':' << tm->tm_sec << '\n';
 }
 
-void dns(const Args &args)
+void dns(const Args &args, const StandardStreams &stdio)
 {
 	if (args.size() == 1)
 	{
-		std::cerr << "args: <hostname>\n";
+		*stdio.err << "args: <hostname>\n";
 		return;
 	}
 
@@ -94,5 +120,5 @@ void dns(const Args &args)
 		return;
 	}
 
-	std::cout << inet_ntoa(*(in_addr *)host->h_addr_list[0]) << '\n';
+	*stdio.out << *(in_addr *)host->h_addr_list[0] << '\n';
 }
