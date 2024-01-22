@@ -70,6 +70,7 @@
 		"variant": "cpp",
 		"ios": "cpp",
 		"any": "cpp",
-		"charconv": "cpp"
+		"charconv": "cpp",
+		"*.eslintrc": "cpp"
 	}
 }

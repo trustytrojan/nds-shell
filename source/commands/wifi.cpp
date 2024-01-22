@@ -1,4 +1,6 @@
-#include "everything.hpp"
+#include "../NDS_Shell.hpp"
+
+using namespace NDS_Shell;
 
 // from ap_search.cpp
 void FindAPInteractive(Wifi_AccessPoint &ap);
@@ -13,7 +15,7 @@ static const char *wifiStatusStr[] = {"Disconnected", "Searching", "Authenticati
 static const auto usageStr = "usage:\n"
 							 "\twifi scan\n"
 							 "\twifi list\n"
-							 "\twifi con[nect] [ssid] [-v]\n"
+							 "\twifi con[nect] [ssid] [-q]\n"
 							 "\twifi status\n"
 							 "\twifi enable\n"
 							 "\twifi disable\n"
@@ -91,9 +93,9 @@ void connect(const Args &args, const StandardStreams &stdio)
 	// wait until associated or cannot connect
 	// print each status if -v was passed
 	auto status = Wifi_AssocStatus(), prevStatus = -1;
-	const auto verbose = (std::ranges::find(args, "-v") != args.end());
+	const auto quiet = (std::ranges::find(args, "-q") != args.end());
 	for (; status != ASSOCSTATUS_ASSOCIATED && status != ASSOCSTATUS_CANNOTCONNECT; status = Wifi_AssocStatus())
-		if (verbose && status != prevStatus)
+		if (!quiet && status != prevStatus)
 		{
 			*stdio.out << wifiStatusStr[status] << '\n';
 			prevStatus = status;
@@ -103,7 +105,42 @@ void connect(const Args &args, const StandardStreams &stdio)
 		*stdio.err << "\e[41mcannot connect to '" << ap.ssid << "'\e[39m\n";
 }
 
-void wifi(const Args &args, const StandardStreams &stdio)
+void list(const StandardStreams &stdio)
+{
+	const auto numAPs = Wifi_GetNumAP();
+
+	if (!numAPs)
+	{
+		*stdio.out << "no APs found\ndid you run `wifi scan`?\n";
+		return;
+	}
+
+	// eventually parameterize this with cmdline options
+	const auto numToPrint = std::min(numAPs, 15);
+
+	// Populate a vector with the AP data
+	std::vector<Wifi_AccessPoint> aps(numAPs);
+	for (auto i = 0; i < numAPs; ++i)
+		Wifi_GetAPData(i, &aps[i]);
+
+	// Sort the vector by AP signal
+	std::sort(aps.begin(), aps.end(), [](const auto &ap1, const auto &ap2)
+			  { return ap1.rssi > ap2.rssi; });
+
+	// Print the top 15 or less results
+	std::cout << "Sig Sec  SSID\n";
+	std::ranges::for_each_n(aps.cbegin(), numToPrint, [](const auto &ap)
+							{ std::cout << std::setw(3) << (ap.rssi * 100 / 0xD0) << ' ' << std::setw(4) << ((ap.flags & WFLAG_APDATA_WEP) ? "WEP" : "Open") << " '" << ap.ssid << "'\n"; });
+}
+
+void ipinfo(const StandardStreams &stdio)
+{
+	in_addr gateway, subnetMask, dns1, dns2;
+	Wifi_GetIPInfo(&gateway, &subnetMask, &dns1, &dns2);
+	*stdio.out << "Gateway:    " << gateway << "\nSubnet Mask: " << subnetMask << "\nDNS 1:       " << dns1 << "\nDNS 2:       " << dns2 << '\n';
+}
+
+void Commands::wifi(const Args &args, const StandardStreams &stdio)
 {
 	if (args.size() == 1)
 	{
@@ -114,40 +151,13 @@ void wifi(const Args &args, const StandardStreams &stdio)
 	const auto &subcommand = args[1];
 
 	if (!strncmp(subcommand.c_str(), "con", 3))
-	{
-	}
+		connect(args, stdio);
 
 	else if (subcommand == "scan")
 		Wifi_ScanMode();
 
 	else if (subcommand == "list")
-	{
-		const auto numAPs = Wifi_GetNumAP();
-
-		if (!numAPs)
-		{
-			*stdio.out << "no APs found\ndid you run `wifi scan`?\n";
-			return;
-		}
-
-		// eventually parameterize this with cmdline options
-		const auto numToPrint = std::min(numAPs, 15);
-
-		// Populate a vector with the AP data
-		std::vector<Wifi_AccessPoint> aps(numAPs);
-		for (auto i = 0; i < numAPs; ++i)
-			Wifi_GetAPData(i, &aps[i]);
-
-		// Sort the vector by AP signal
-		std::sort(aps.begin(), aps.end(), [](const auto &ap1, const auto &ap2)
-				  { return ap1.rssi > ap2.rssi; });
-
-		// Print the top 15 or less results
-		std::cout << "Sig Sec  SSID\n";
-		std::ranges::for_each_n(aps.cbegin(), numToPrint,
-								[](const auto &ap)
-								{ std::cout << std::setw(3) << (ap.rssi * 100 / 0xD0) << ' ' << std::setw(4) << ((ap.flags & WFLAG_APDATA_WEP) ? "WEP" : "Open") << " '" << ap.ssid << "'\n"; });
-	}
+		list(stdio);
 
 	else if (subcommand == "status")
 		*stdio.out << wifiStatusStr[Wifi_AssocStatus()] << '\n';
@@ -165,17 +175,7 @@ void wifi(const Args &args, const StandardStreams &stdio)
 		*stdio.out << (in_addr)Wifi_GetIP() << '\n';
 
 	else if (subcommand == "ipinfo")
-	{
-		in_addr gateway, subnetMask, dns1, dns2;
-		Wifi_GetIPInfo(&gateway, &subnetMask, &dns1, &dns2);
-		*stdio.out << "Gateway: " << gateway << "\n"
-												"Subnet Mask: "
-				   << subnetMask << "\n"
-									"DNS 1: "
-				   << dns1 << "\n"
-							  "DNS 2: "
-				   << dns2 << '\n';
-	}
+		ipinfo(stdio);
 
 	else
 		*stdio.err << usageStr;

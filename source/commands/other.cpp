@@ -1,17 +1,28 @@
-#include "everything.hpp"
-#include "NetParse.hpp"
+#include "../NDS_Shell.hpp"
+#include "../NetUtils.hpp"
 
-void exit(const Args &, const StandardStreams &)
+using namespace NDS_Shell;
+
+void Commands::help(const Args &, const StandardStreams &stdio)
+{
+	*stdio.out << "commands: ";
+	auto itr = Commands::map.cbegin();
+	for (; itr != Commands::map.cend(); ++itr)
+		*stdio.out << itr->first << ' ';
+	*stdio.out << '\n';
+}
+
+void Commands::exit(const Args &, const StandardStreams &)
 {
 	systemShutDown();
 }
 
-void clear(const Args &, const StandardStreams &stdio)
+void Commands::clear(const Args &, const StandardStreams &stdio)
 {
 	*stdio.out << "\e[2J";
 }
 
-void ls(const Args &args, const StandardStreams &stdio)
+void Commands::ls(const Args &args, const StandardStreams &stdio)
 {
 	const auto path = (args.size() == 1) ? "/" : args[1];
 
@@ -32,7 +43,7 @@ void ls(const Args &args, const StandardStreams &stdio)
 	}
 }
 
-void cat(const Args &args, const StandardStreams &stdio)
+void Commands::cat(const Args &args, const StandardStreams &stdio)
 {
 	if (args.size() == 1)
 	{
@@ -58,7 +69,7 @@ void cat(const Args &args, const StandardStreams &stdio)
 	file.close();
 }
 
-void rm(const Args &args, const StandardStreams &stdio)
+void Commands::rm(const Args &args, const StandardStreams &stdio)
 {
 	if (args.size() == 1)
 	{
@@ -78,21 +89,21 @@ void rm(const Args &args, const StandardStreams &stdio)
 	}
 }
 
-void echo(const Args &args, const StandardStreams &stdio)
+void Commands::echo(const Args &args, const StandardStreams &stdio)
 {
 	for (auto itr = args.cbegin() + 1; itr != args.cend(); ++itr)
 		*stdio.out << *itr << ' ';
 	*stdio.out << '\n';
 }
 
-void batlvl(const Args &args, const StandardStreams &stdio)
+void Commands::batlvl(const Args &args, const StandardStreams &stdio)
 {
 	*stdio.out << getBatteryLevel() << '\n';
 }
 
 // unfortunately i don't think `system_clock::now` returns anything correct
 // will have to steal example C code from libnds
-void time(const Args &args, const StandardStreams &stdio)
+void Commands::time(const Args &args, const StandardStreams &stdio)
 {
 	static const char *const monthStr[] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
 	static const char *const weekdayStr[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
@@ -105,7 +116,10 @@ void time(const Args &args, const StandardStreams &stdio)
 			  << tm->tm_hour << ':' << tm->tm_min << ':' << tm->tm_sec << '\n';
 }
 
-void dns(const Args &args, const StandardStreams &stdio)
+// move this somewhere else later
+std::ostream &operator<<(std::ostream &ostr, const in_addr &ip);
+
+void Commands::dns(const Args &args, const StandardStreams &stdio)
 {
 	if (args.size() == 1)
 	{

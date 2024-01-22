@@ -6,7 +6,7 @@
 // https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
 namespace EscapeSequences
 {
-	const std::string BASE = "\e[";
+	const auto BASE = "\e[";
 
 	namespace Cursor
 	{

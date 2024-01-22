@@ -1,9 +1,9 @@
 #ifndef __NETPARSE__
 #define __NETPARSE__
 
-#include "everything.hpp"
+#include "libdeps.hpp"
 
-namespace NetParse
+namespace NetUtils
 {
 	enum class Error
 	{

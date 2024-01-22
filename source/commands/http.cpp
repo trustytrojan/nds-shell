@@ -1,7 +1,9 @@
-#include "everything.hpp"
-#include "NetParse.hpp"
+#include "../NDS_Shell.hpp"
+#include "../NetUtils.hpp"
 
-void http(const Args &args, const StandardStreams &stdio)
+using namespace NDS_Shell;
+
+void Commands::http(const Args &args, const StandardStreams &stdio)
 {
 	if (args.size() != 3)
 	{
@@ -43,9 +45,9 @@ void http(const Args &args, const StandardStreams &stdio)
 
 	// parse the address
 	sockaddr_in sain;
-	if (!NetParse::parseAddress(addr, 80, sain))
+	if (!NetUtils::parseAddress(addr, 80, sain))
 	{
-		NetParse::printError("http");
+		NetUtils::printError("http");
 		return;
 	}
 

@@ -1,6 +1,56 @@
-#include "everything.hpp"
+#include "NDS_Shell.hpp"
+#include "CliPrompt.hpp"
 
-void ProcessLine(const std::string &line)
+void NDS_Shell::Init(void)
+{
+	// Video initialization - We want to use both screens
+	videoSetMode(MODE_0_2D);
+	videoSetModeSub(MODE_0_2D);
+	vramSetBankA(VRAM_A_MAIN_BG);
+	vramSetBankC(VRAM_C_SUB_BG);
+
+	// Show console on top screen
+	static PrintConsole console;
+	consoleInit(&console, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
+
+	// Show keyboard on bottom screen
+	keyboardDemoInit();
+	keyboardShow();
+
+	// Mount sdcard using libfat
+	if (!fatInitDefault())
+		std::cerr << "\e[41mfatInitDefault failed: filesystem commands will not work\e[39m\n\n";
+
+	defaultExceptionHandler();
+
+	// Initialize wifi
+	if (!Wifi_InitDefault(false))
+		std::cerr << "\e[41mWifi_InitDefault failed: networking commands will not work\e[39m\n\n";
+}
+
+void NDS_Shell::Start()
+{
+	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter 'help' to see available\ncommands\n\n";
+	CliPrompt prompt("> ", '_', std::cout);
+	std::string line;
+	while (1)
+	{
+		prompt.GetLine(line);
+		ProcessLine(line);
+		line.clear();
+	}
+}
+
+void NDS_Shell::RunCommand(const Args &args, const StandardStreams &stdio)
+{
+	const auto itr = Commands::map.find(args.front());
+	if (itr == Commands::map.cend())
+		std::cerr << "\e[43munknown command\e[39m\n";
+	else
+		itr->second(args, stdio);
+}
+
+void NDS_Shell::ProcessLine(const std::string &line)
 {
 	// save the hassle
 	if (line.empty())
