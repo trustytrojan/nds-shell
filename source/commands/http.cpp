@@ -3,7 +3,7 @@
 
 using namespace NDS_Shell;
 
-void Commands::http(const Args &args, const StandardStreams &stdio)
+void Commands::http()
 {
 	if (args.size() != 3)
 	{

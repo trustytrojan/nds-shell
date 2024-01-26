@@ -1,5 +1,4 @@
-#ifndef __STDSTR__
-#define __STDSTR__
+#pragma once
 
 #include "libdeps.hpp"
 
@@ -11,6 +10,9 @@ struct StandardStreams
 	StandardStreams() : in(&std::cin), out(&std::cout), err(&std::cerr) {}
 	StandardStreams(const StandardStreams &) = delete;
 	StandardStreams &operator=(const StandardStreams &) = delete;
+
+	void reset() { this->~StandardStreams(); }
+
 	~StandardStreams()
 	{
 		// if any stream isnt a standard stream,
@@ -23,13 +25,15 @@ struct StandardStreams
 			const auto fs = (std::ifstream *)in;
 			fs->close();
 			delete fs;
+			in = &std::cin;
 		}
-		
+
 		if (out != &std::cout)
 		{
 			const auto fs = (std::ofstream *)out;
 			fs->close();
 			delete fs;
+			out = &std::cout;
 		}
 
 		if (err != &std::cerr)
@@ -37,8 +41,7 @@ struct StandardStreams
 			const auto fs = (std::ofstream *)err;
 			fs->close();
 			delete fs;
+			err = &std::cerr;
 		}
 	}
 };
-
-#endif

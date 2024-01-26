@@ -3,7 +3,7 @@
 
 using namespace NDS_Shell;
 
-void Commands::help(const Args &, const StandardStreams &stdio)
+void Commands::help()
 {
 	*stdio.out << "commands: ";
 	auto itr = Commands::map.cbegin();
@@ -12,19 +12,9 @@ void Commands::help(const Args &, const StandardStreams &stdio)
 	*stdio.out << '\n';
 }
 
-void Commands::exit(const Args &, const StandardStreams &)
+void Commands::ls()
 {
-	systemShutDown();
-}
-
-void Commands::clear(const Args &, const StandardStreams &stdio)
-{
-	*stdio.out << "\e[2J";
-}
-
-void Commands::ls(const Args &args, const StandardStreams &stdio)
-{
-	const auto path = (args.size() == 1) ? "/" : args[1];
+	const auto &path = (args.size() == 1) ? env["PWD"] : args[1];
 
 	if (!std::filesystem::exists(path))
 	{
@@ -36,14 +26,39 @@ void Commands::ls(const Args &args, const StandardStreams &stdio)
 	{
 		const auto filename = entry.path().filename().string();
 		if (entry.is_directory())
-			*stdio.out << "\e[44m" << filename << "\e[39m";
+			*stdio.out << "\e[44m" << filename << "\e[39m ";
 		else
-			*stdio.out << filename;
+			*stdio.out << filename << ' ';
 		*stdio.out << '\n';
 	}
 }
 
-void Commands::cat(const Args &args, const StandardStreams &stdio)
+void Commands::envCmd()
+{
+	for (const auto &[key, value] : env)
+		*stdio.out << key << '=' << value << '\n';
+}
+
+void Commands::cd()
+{
+	if (args.size() == 1)
+	{
+		env["PWD"] = "/";
+		return;
+	}
+
+	const auto &path = args[1];
+
+	if (!std::filesystem::exists(path))
+	{
+		*stdio.err << "\e[41mpath does not exist\e[39m\n";
+		return;
+	}
+
+	env["PWD"] = path;
+}
+
+void Commands::cat()
 {
 	if (args.size() == 1)
 	{
@@ -69,7 +84,7 @@ void Commands::cat(const Args &args, const StandardStreams &stdio)
 	file.close();
 }
 
-void Commands::rm(const Args &args, const StandardStreams &stdio)
+void Commands::rm()
 {
 	if (args.size() == 1)
 	{
@@ -85,41 +100,21 @@ void Commands::rm(const Args &args, const StandardStreams &stdio)
 
 	if (!std::filesystem::remove(args[1]))
 	{
-		*stdio.err << "failed to remove '"<< args[1] << "'\n";
+		*stdio.err << "failed to remove '" << args[1] << "'\n";
 	}
 }
 
-void Commands::echo(const Args &args, const StandardStreams &stdio)
+void Commands::echo()
 {
-	for (auto itr = args.cbegin() + 1; itr != args.cend(); ++itr)
+	for (auto itr = args.cbegin() + 1; itr < args.cend(); ++itr)
 		*stdio.out << *itr << ' ';
 	*stdio.out << '\n';
-}
-
-void Commands::batlvl(const Args &args, const StandardStreams &stdio)
-{
-	*stdio.out << getBatteryLevel() << '\n';
-}
-
-// unfortunately i don't think `system_clock::now` returns anything correct
-// will have to steal example C code from libnds
-void Commands::time(const Args &args, const StandardStreams &stdio)
-{
-	static const char *const monthStr[] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
-	static const char *const weekdayStr[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-	using namespace std::chrono;
-
-	const auto tt = system_clock::to_time_t(system_clock::now());
-	*stdio.out << tt << '\n';
-	const auto tm = gmtime(&tt);
-	*stdio.out << weekdayStr[tm->tm_wday] << ' ' << tm->tm_mday << ' ' << monthStr[tm->tm_mon] << ' ' << tm->tm_year << '\n'
-			  << tm->tm_hour << ':' << tm->tm_min << ':' << tm->tm_sec << '\n';
 }
 
 // move this somewhere else later
 std::ostream &operator<<(std::ostream &ostr, const in_addr &ip);
 
-void Commands::dns(const Args &args, const StandardStreams &stdio)
+void Commands::dns()
 {
 	if (args.size() == 1)
 	{

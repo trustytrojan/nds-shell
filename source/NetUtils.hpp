@@ -1,5 +1,4 @@
-#ifndef __NETPARSE__
-#define __NETPARSE__
+#pragma once
 
 #include "libdeps.hpp"
 
@@ -16,5 +15,3 @@ namespace NetUtils
 	void printError(const std::string &prefix);
 	bool parseAddress(const char *addr, const int defaultPort, sockaddr_in &sain);
 }
-
-#endif

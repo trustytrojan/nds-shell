@@ -1,58 +1,61 @@
-#ifndef __NDS_SHELL__
-#define __NDS_SHELL__
+#pragma once
 
 #include "libdeps.hpp"
 #include "StandardStreams.hpp"
 
 namespace NDS_Shell
 {
-	using Args = std::vector<std::string>;
-	using Command = std::function<void(const Args &, const StandardStreams &)>;
-
+	// Initializes necessary libnds resources.
 	void Init();
-	void Start();
-	void ProcessLine(const std::string &line);
-	void RunCommand(const Args &args, const StandardStreams &stdio);
 
-	// environment variables are wip!
-	std::unordered_map<std::string, std::string> env {
-		{"PWD", "/"},
-		{"PS1", "> "}
-	};
+	// Starts the prompt loop. Does not return.
+	void Start();
+
+	// Parses a shell line, and:
+	// - If a command was parsed, populates `args` and `stdio`, and runs the specified command.
+	// - If an envirionment variable assignment was parsed, performs the assignment.
+	void ParseLine(const std::string &line);
+
+	// Parse a double-quoted string. Returns false if no closing `"` was found.
+	bool ParseDoubleQuotedString(std::string::const_iterator &itr, const std::string::const_iterator &lineEnd, std::string &currentArg);
+
+	bool ParsePossibleRedirect(const std::string::const_iterator &startItr, const std::string::const_iterator &lineEnd, std::string &currentArg);
+	bool ParseInputRedirect(const std::vector<int> fds, std::string::const_iterator &itr);
+	bool ParseOutputRedirect(const std::vector<int> fds, std::string::const_iterator &itr);
+
+	// A command's arguments
+	inline std::vector<std::string> args;
+
+	// Shell environment variables
+	inline std::unordered_map<std::string, std::string> env {{"PS1", "> "}, {"CURSOR", "_"}};
+
+	// A command's standard streams
+	inline StandardStreams stdio;
 
 	namespace Commands
 	{
-		void exit(const Args &, const StandardStreams &);
-		void help(const Args &, const StandardStreams &);
-		void ls(const Args &, const StandardStreams &);
-		void rm(const Args &, const StandardStreams &);
-		void cat(const Args &, const StandardStreams &);
-		void echo(const Args &, const StandardStreams &);
-		void clear(const Args &, const StandardStreams &);
-		void batlvl(const Args &, const StandardStreams &);
-		void wifi(const Args &, const StandardStreams &);
-		void dns(const Args &, const StandardStreams &);
-		void time(const Args &, const StandardStreams &);
-		void http(const Args &, const StandardStreams &);
+		void help();
+		void echo();
+		void envCmd();
+		void cd();
+		void ls();
+		void cat();
+		void rm();
+		void dns();
+		void wifi();
+		void http();
 
-		const std::unordered_map<std::string, Command> map {
-			{"exit", exit},
+		const std::unordered_map<std::string, void (*)()> map {
 			{"help", help},
+			{"exit", systemShutDown},
+			{"clear", []() { *stdio.out << "\e[2J"; }},
 			{"ls", ls},
-			{"rm", rm},
 			{"cat", cat},
 			{"echo", echo},
-			{"clear", clear},
-			{"batlvl", batlvl},
-			{"wifi", wifi},
+			{"env", envCmd},
 			{"dns", dns},
-			{"time", time},
+			{"wifi", wifi},
 			{"http", http}
 		};
-
-		const auto begin = map.cbegin();
-		const auto end = map.cend();
 	}
 };
-
-#endif

@@ -8,6 +8,9 @@ CliPrompt::CliPrompt(const std::string &bp, const char c, std::ostream &o)
 
 void CliPrompt::GetLine(std::string &line) const
 {
+	// For convenience
+	line.clear();
+
 	// State necessary for processKeyboard
 	u32 cursorPos = 0;
 	bool flashState = false;

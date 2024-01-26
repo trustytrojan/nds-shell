@@ -1,7 +1,7 @@
 #include "NDS_Shell.hpp"
 #include "CliPrompt.hpp"
 
-void NDS_Shell::Init(void)
+void NDS_Shell::Init()
 {
 	// Video initialization - We want to use both screens
 	videoSetMode(MODE_0_2D);
@@ -28,187 +28,229 @@ void NDS_Shell::Init(void)
 		std::cerr << "\e[41mWifi_InitDefault failed: networking commands will not work\e[39m\n\n";
 }
 
+std::string EscapeEscapes(const std::string &str)
+{
+	std::string newStr;
+	for (auto itr = str.cbegin(); itr < str.cend(); ++itr)
+		switch (*itr)
+		{
+		case '\\':
+			if (*(++itr) == 'e')
+				newStr += '\e';
+			else
+			{
+				newStr += '\\';
+				--itr;
+			}
+			break;
+		default:
+			newStr += *itr;
+		}
+	return newStr;
+}
+
 void NDS_Shell::Start()
 {
-	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter 'help' to see available\ncommands\n\n";
-	CliPrompt prompt("> ", '_', std::cout);
+	// Setup prompt and line buffer
+	CliPrompt prompt(env["PS1"], env["CURSOR"][0], std::cout);
 	std::string line;
+
+	// Print startup text
+	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter 'help' to see available\ncommands\n\n";
+
+	// Start loop
 	while (1)
 	{
+		// The important 3 statements:
 		prompt.GetLine(line);
-		ProcessLine(line);
-		line.clear();
+		ParseLine(line); // The rest of the program lies here
+
+		// Update the prompt using env vars
+		// Allow escapes in basePrompt, for colors
+		prompt.basePrompt = EscapeEscapes(env["PS1"]); // If the user wants an empty prompt, so be it
+		prompt.cursor = (env["CURSOR"].empty()) ? ' ' : env["CURSOR"][0]; // Avoid a segfault here...
 	}
 }
 
-void NDS_Shell::RunCommand(const Args &args, const StandardStreams &stdio)
-{
-	const auto itr = Commands::map.find(args.front());
-	if (itr == Commands::map.cend())
-		std::cerr << "\e[43munknown command\e[39m\n";
-	else
-		itr->second(args, stdio);
-}
-
-void NDS_Shell::ProcessLine(const std::string &line)
+void NDS_Shell::ParseLine(const std::string &line)
 {
 	// save the hassle
 	if (line.empty())
 		return;
 
 	const auto lineEnd = line.cend();
-	Args args;
 	std::string currentArg;
 
-	StandardStreams stdio;
-
 	for (auto itr = line.cbegin(); itr < lineEnd; ++itr)
+	{
+		if (isspace(*itr))
+		{
+			if (!currentArg.empty())
+			{
+				// End of current whitespace-separated string, push as an argument.
+				args.push_back(currentArg);
+				currentArg.clear();
+			}
+
+			// Nothing else needs to happen with whitespace
+			continue;
+		}
+
+		if (isdigit(*itr) && currentArg.empty())
+		{
+			if (!ParsePossibleRedirect(itr, lineEnd, currentArg))
+				return;
+			continue;
+		}
+
 		switch (*itr)
 		{
-		case ' ':
-		case '\t':
-		case '\n':
-			if (currentArg.empty())
+		case '\\':
+			// In an unquoted string, only escape spaces and backslashes.
+			// Otherwise, omit the backslash.
+			switch (*(++itr))
+			{
+			case ' ':
+				currentArg += ' ';
 				break;
-			args.push_back(currentArg);
-			currentArg.clear();
+			case '\\':
+				currentArg += '\\';
+				break;
+			default:
+				currentArg += *itr;
+			}
 			break;
 
 		case '"':
-			for (++itr; *itr != '"' && itr < lineEnd; ++itr)
-				switch (*itr)
-				{
-				case '\\':
-					if (*(++itr) == '"')
-						currentArg += '"';
-					else
-					{
-						currentArg += '\\';
-						--itr;
-					}
-					break;
-				default:
-					currentArg += *itr;
-				}
-			if (itr == lineEnd)
-			{
-				std::cerr << "\e[41mshell: closing '\"' not found\e[39m\n";
+			if (!ParseDoubleQuotedString(itr, lineEnd, currentArg))
 				return;
-			}
-			args.push_back(currentArg);
-			currentArg.clear();
 			break;
 
 		case '<':
-		{
-			if (stdio.in != &std::cin)
-			{
-				std::cerr << "\e[41mshell: stdin is already reading from a file\e[39m\n";
+			if (!ParseInputRedirect({0}, itr))
 				return;
-			}
-
-			std::string filepath;
-
-			for (++itr; !isspace(*itr) && itr < lineEnd; ++itr)
-			{
-				filepath += *itr;
-			}
-
-			if (filepath.empty())
-			{
-				std::cerr << "\e[41mshell: expected filepath after '<'\e[39m\n";
-				return;
-			}
-
-			if (!std::filesystem::exists(filepath))
-			{
-				std::cerr << "\e[41mshell: '" << filepath << "' does not exist\e[39m\n";
-				return;
-			}
-
-			if (!*(stdio.in = new std::ifstream(filepath)))
-			{
-				std::cerr << "\e[41mshell: failed to open:\e[39m " << filepath << '\n';
-				return;
-			}
-
 			break;
-		}
 
 		case '>':
-		{
-			if (stdio.out != &std::cout)
-			{
-				std::cerr << "\e[41mshell: stdout is already being redirected\e[39m\n";
+			if (!ParseOutputRedirect({1}, itr))
 				return;
-			}
-
-			std::string filepath;
-
-			for (++itr; !isspace(*itr) && itr < lineEnd; ++itr)
-			{
-				filepath += *itr;
-			}
-
-			if (filepath.empty())
-			{
-				std::cerr << "\e[41mshell: expected filepath after '>'\e[39m\n";
-				return;
-			}
-
-			if (!*(stdio.out = new std::ofstream(filepath)))
-			{
-				std::cerr << "\e[41mshell: failed to open:\e[39m " << filepath << '\n';
-				return;
-			}
-
 			break;
-		}
-
-		case '2':
-		{
-			// if the next character isnt '>', then break
-			if (*(++itr) != '>')
-			{
-				--itr;
-				break;
-			}
-
-			if (stdio.err != &std::cerr)
-			{
-				std::cerr << "\e[41mshell: stderr is already being redirected\e[39m\n";
-				return;
-			}
-
-			std::string filepath;
-
-			for (++itr; !isspace(*itr) && itr < lineEnd; ++itr)
-			{
-				filepath += *itr;
-			}
-
-			if (filepath.empty())
-			{
-				std::cerr << "\e[41mshell: expected filepath after '>'\e[39m\n";
-				return;
-			}
-
-			if (!*(stdio.err = new std::ofstream(filepath)))
-			{
-				std::cerr << "\e[41mshell: failed to open:\e[39m " << filepath << '\n';
-				return;
-			}
-
-			break;
-		}
 
 		default:
 			currentArg += *itr;
 		}
+	}
 
-	// don't forget to push the last argument (currentArg)!
 	if (!currentArg.empty())
 		args.push_back(currentArg);
 
-	RunCommand(args, stdio);
+	const auto &front = args.front();
+
+	if (const auto equalsPtr = strchr(front.c_str(), '='))
+	{
+		// env assignment
+		
+	}
+	else
+	{
+		// command name
+		const auto itr = Commands::map.find(front);
+		if (itr == Commands::map.cend())
+			std::cerr << "\e[41munknown command\e[39m\n";
+		else
+			itr->second();
+		args.clear();
+		stdio.reset();
+	}
+}
+
+bool NDS_Shell::ParseDoubleQuotedString(std::string::const_iterator &itr, const std::string::const_iterator &lineEnd, std::string &currentArg)
+{
+	// When called, itr is pointing at the opening `"`, so increment before looping
+	for (++itr; *itr != '"' && itr < lineEnd; ++itr)
+		switch (*itr)
+		{
+		case '\\':
+			// Only escape double-quotes.
+			// Commands can further escape their arguments if needed.
+			if (*(++itr) == '"')
+				currentArg += '"';
+			else
+			{
+				currentArg += '\\';
+				--itr; // Cancel out the ++ used in the comparison
+			}
+			break;
+
+		case '$':
+		{
+			std::string varname;
+			for (++itr; (isalnum(*itr) || *itr == '_') && *itr != '"' && itr < lineEnd; ++itr)
+				varname += *itr;
+			currentArg += env[varname];
+			if (*itr == '"')
+				--itr; // Decrement to compensate for the outer loop's increment
+			break;
+		}
+		
+		default:
+			currentArg += *itr;
+		}
+
+	if (itr == lineEnd)
+	{
+		std::cerr << "\e[41mshell: closing `\"` not found\e[39m\n";
+		return false;
+	}
+
+	return true;
+}
+
+bool NDS_Shell::ParsePossibleRedirect(const std::string::const_iterator &startItr, const std::string::const_iterator &lineEnd, std::string &currentArg)
+{
+	std::vector<int> fds;
+	auto itr = startItr;
+
+	// Add fds to vector until we hit a non-digit or end of line
+	for (; isdigit(*itr) && itr < lineEnd; ++itr)
+		fds.push_back(*itr - 48);
+
+	if (itr == lineEnd)
+	{
+		// This is not a redirect, just a string full of digits. Add it as an argument.
+		for (itr = startItr; !isspace(*itr) && itr < lineEnd; ++itr)
+			currentArg += *itr;
+		args.push_back(currentArg);
+
+		// No need to clear currentArg since we have hit end of line.
+
+		// This is not an error, so return true.
+		return true;
+	}
+
+	switch (*itr)
+	{
+	case '<':
+		return ParseInputRedirect(fds, itr);
+	case '>':
+		return ParseOutputRedirect(fds, itr);
+	default:
+		// This is not a redirect, just a string. Add it as an argument.
+		for (itr = startItr; !isspace(*itr) && itr < lineEnd; ++itr)
+			currentArg += *itr;
+		args.push_back(currentArg);
+
+		// This is not an error, so return true.
+		return true;
+	}
+
+	return true;
+}
+
+bool NDS_Shell::ParseInputRedirect(const std::vector<int> fds, std::string::const_iterator &itr)
+{
+}
+
+bool NDS_Shell::ParseOutputRedirect(const std::vector<int> fds, std::string::const_iterator &itr)
+{
 }

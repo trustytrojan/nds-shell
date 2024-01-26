@@ -1,5 +1,4 @@
-#ifndef __ESCSEQ__
-#define __ESCSEQ__
+#pragma once
 
 #include <string>
 
@@ -27,5 +26,3 @@ namespace EscapeSequences
 		const auto moveRightOne = move(MoveDirection::RIGHT, 1);
 	}
 }
-
-#endif

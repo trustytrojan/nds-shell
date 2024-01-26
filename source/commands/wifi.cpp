@@ -63,7 +63,7 @@ bool FindAPWithSSID(const StandardStreams &stdio, const std::string &ssid, Wifi_
 	return false;
 }
 
-void connect(const Args &args, const StandardStreams &stdio)
+void connect()
 {
 	Wifi_AccessPoint ap;
 
@@ -91,21 +91,26 @@ void connect(const Args &args, const StandardStreams &stdio)
 		Wifi_ConnectAP(&ap, WEPMODE_NONE, 0, 0);
 
 	// wait until associated or cannot connect
-	// print each status if -v was passed
+	// print each status unless -q was passed
 	auto status = Wifi_AssocStatus(), prevStatus = -1;
 	const auto quiet = (std::ranges::find(args, "-q") != args.end());
 	for (; status != ASSOCSTATUS_ASSOCIATED && status != ASSOCSTATUS_CANNOTCONNECT; status = Wifi_AssocStatus())
+	{
 		if (!quiet && status != prevStatus)
 		{
 			*stdio.out << wifiStatusStr[status] << '\n';
 			prevStatus = status;
 		}
+		swiWaitForVBlank();
+	}
 
 	if (status == ASSOCSTATUS_CANNOTCONNECT)
-		*stdio.err << "\e[41mcannot connect to '" << ap.ssid << "'\e[39m\n";
+		*stdio.out << "\e[41mCannot connect to '" << ap.ssid << "'\e[39m\n";
+	else
+		*stdio.out << "Connected to '" << ap.ssid << "'\n";
 }
 
-void list(const StandardStreams &stdio)
+void list()
 {
 	const auto numAPs = Wifi_GetNumAP();
 
@@ -133,14 +138,14 @@ void list(const StandardStreams &stdio)
 							{ std::cout << std::setw(3) << (ap.rssi * 100 / 0xD0) << ' ' << std::setw(4) << ((ap.flags & WFLAG_APDATA_WEP) ? "WEP" : "Open") << " '" << ap.ssid << "'\n"; });
 }
 
-void ipinfo(const StandardStreams &stdio)
+void ipinfo()
 {
 	in_addr gateway, subnetMask, dns1, dns2;
 	Wifi_GetIPInfo(&gateway, &subnetMask, &dns1, &dns2);
 	*stdio.out << "Gateway:    " << gateway << "\nSubnet Mask: " << subnetMask << "\nDNS 1:       " << dns1 << "\nDNS 2:       " << dns2 << '\n';
 }
 
-void Commands::wifi(const Args &args, const StandardStreams &stdio)
+void Commands::wifi()
 {
 	if (args.size() == 1)
 	{
@@ -151,13 +156,13 @@ void Commands::wifi(const Args &args, const StandardStreams &stdio)
 	const auto &subcommand = args[1];
 
 	if (!strncmp(subcommand.c_str(), "con", 3))
-		connect(args, stdio);
+		connect();
 
 	else if (subcommand == "scan")
 		Wifi_ScanMode();
 
 	else if (subcommand == "list")
-		list(stdio);
+		list();
 
 	else if (subcommand == "status")
 		*stdio.out << wifiStatusStr[Wifi_AssocStatus()] << '\n';
@@ -175,7 +180,7 @@ void Commands::wifi(const Args &args, const StandardStreams &stdio)
 		*stdio.out << (in_addr)Wifi_GetIP() << '\n';
 
 	else if (subcommand == "ipinfo")
-		ipinfo(stdio);
+		ipinfo();
 
 	else
 		*stdio.err << usageStr;

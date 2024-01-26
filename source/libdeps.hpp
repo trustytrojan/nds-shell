@@ -1,5 +1,4 @@
-#ifndef __LIBDEPS__
-#define __LIBDEPS__
+#pragma once
 
 // libnds
 #include <nds.h>
@@ -25,5 +24,3 @@
 #include <cmath>
 #include <ranges>
 #include <iomanip>
-
-#endif

@@ -1,7 +1,7 @@
 {
 	"configurations": [
 		{
-			"name": "NDS",
+			"name": "libnds",
 			"defines": ["ARM9"],
 			"includePath": [
 				"${workspaceFolder}/**",
