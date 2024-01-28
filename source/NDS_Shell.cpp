@@ -1,5 +1,6 @@
 #include "NDS_Shell.hpp"
 #include "CliPrompt.hpp"
+#include "Lexer.hpp"
 
 void NDS_Shell::Init()
 {
@@ -58,12 +59,22 @@ void NDS_Shell::Start()
 	// Print startup text
 	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter 'help' to see available\ncommands\n\n";
 
+	std::vector<Token> tokens;
+
 	// Start loop
 	while (1)
 	{
 		// The important 3 statements:
 		prompt.GetLine(line);
-		ParseLine(line); // The rest of the program lies here
+		if (!LexLine(tokens, line, env))
+			std::cerr << "\e[41mshell: LexLine returned false\e[39m\n";
+		line.clear();
+		for (const auto &[type, value] : tokens)
+		{
+			std::cout << (char)type << '(' << value << ")\n";
+		}
+		tokens.clear();
+		//ParseLine(line); // The rest of the program lies here
 
 		// Update the prompt using env vars
 		// Allow escapes in basePrompt, for colors
@@ -80,6 +91,7 @@ void NDS_Shell::ParseLine(const std::string &line)
 
 	const auto lineEnd = line.cend();
 	std::string currentArg;
+	std::vector<std::string> tempEnvKeys;
 
 	for (auto itr = line.cbegin(); itr < lineEnd; ++itr)
 	{
@@ -96,22 +108,25 @@ void NDS_Shell::ParseLine(const std::string &line)
 			continue;
 		}
 
-		if (isdigit(*itr) && currentArg.empty())
-		{
-			if (!ParsePossibleRedirect(itr, lineEnd, currentArg))
-				return;
-			continue;
-		}
+		// if (isdigit(*itr) && currentArg.empty())
+		// {
+		// 	if (!ParsePossibleRedirect(itr, lineEnd, currentArg))
+		// 		return;
+		// 	continue;
+		// }
 
 		switch (*itr)
 		{
 		case '\\':
-			// In an unquoted string, only escape spaces and backslashes.
+			// In an unquoted string, only escape spaces, backslashes, and equals.
 			// Otherwise, omit the backslash.
 			switch (*(++itr))
 			{
 			case ' ':
 				currentArg += ' ';
+				break;
+			case '=':
+				currentArg += '=';
 				break;
 			case '\\':
 				currentArg += '\\';
@@ -122,7 +137,12 @@ void NDS_Shell::ParseLine(const std::string &line)
 			break;
 
 		case '"':
-			if (!ParseDoubleQuotedString(itr, lineEnd, currentArg))
+			if (ParseDoubleQuotedString(itr, lineEnd, currentArg))
+			{
+				args.push_back(currentArg);
+				currentArg.clear();
+			}
+			else
 				return;
 			break;
 
@@ -144,24 +164,21 @@ void NDS_Shell::ParseLine(const std::string &line)
 	if (!currentArg.empty())
 		args.push_back(currentArg);
 
-	const auto &front = args.front();
-
-	if (const auto equalsPtr = strchr(front.c_str(), '='))
+	// Run command if necessary
+	if (!args.empty())
 	{
-		// env assignment
-		
-	}
-	else
-	{
-		// command name
-		const auto itr = Commands::map.find(front);
+		const auto itr = Commands::map.find(args.front());
 		if (itr == Commands::map.cend())
 			std::cerr << "\e[41munknown command\e[39m\n";
 		else
 			itr->second();
-		args.clear();
-		stdio.reset();
 	}
+
+	// Clear command state
+	args.clear();
+	stdio.reset();
+	for (const auto &key : tempEnvKeys)
+		env.erase(key);
 }
 
 bool NDS_Shell::ParseDoubleQuotedString(std::string::const_iterator &itr, const std::string::const_iterator &lineEnd, std::string &currentArg)
@@ -192,7 +209,7 @@ bool NDS_Shell::ParseDoubleQuotedString(std::string::const_iterator &itr, const 
 				--itr; // Decrement to compensate for the outer loop's increment
 			break;
 		}
-		
+
 		default:
 			currentArg += *itr;
 		}
@@ -221,9 +238,7 @@ bool NDS_Shell::ParsePossibleRedirect(const std::string::const_iterator &startIt
 		for (itr = startItr; !isspace(*itr) && itr < lineEnd; ++itr)
 			currentArg += *itr;
 		args.push_back(currentArg);
-
 		// No need to clear currentArg since we have hit end of line.
-
 		// This is not an error, so return true.
 		return true;
 	}
@@ -239,12 +254,11 @@ bool NDS_Shell::ParsePossibleRedirect(const std::string::const_iterator &startIt
 		for (itr = startItr; !isspace(*itr) && itr < lineEnd; ++itr)
 			currentArg += *itr;
 		args.push_back(currentArg);
+		currentArg.clear();
 
 		// This is not an error, so return true.
 		return true;
 	}
-
-	return true;
 }
 
 bool NDS_Shell::ParseInputRedirect(const std::vector<int> fds, std::string::const_iterator &itr)
