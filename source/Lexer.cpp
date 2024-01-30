@@ -111,16 +111,16 @@ bool ProcessAssignment(StringIterator &itr, const StringIterator &lineEnd, std::
 			if (!LexDoubleQuoteString(itr, lineEnd, value, env))
 				return false;
 			break;
-		
+
 		case '\'':
 			if (!LexSingleQuoteString(itr, lineEnd, value))
 				return false;
 			break;
-		
+
 		default:
 			value += *itr;
 		}
-	
+
 	// DEBUG
 	std::cout << "=(" << key << ',' << value << ")\n";
 
@@ -133,12 +133,24 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 	const auto lineEnd = line.cend();
 	std::string currentToken;
 
+	const auto pushAndClear = [&currentToken, &tokens]()
+		{
+			tokens.push_back({Token::Type::STRING, currentToken});
+			currentToken.clear();
+		};
+
+	const auto pushAndClearIfNotEmpty = [&currentToken, &pushAndClear]()
+		{
+			if (!currentToken.empty())
+				pushAndClear();
+		};
+
 	for (auto itr = line.cbegin(); itr < lineEnd; ++itr)
 	{
 		if (isspace(*itr) && !currentToken.empty())
 		{
-			tokens.push_back({Token::Type::STRING, currentToken});
-			currentToken.clear();
+			pushAndClear();
+			tokens.push_back({Token::Type::WHITESPACE});
 			continue;
 		}
 
@@ -160,7 +172,7 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 
 		case '=':
 			// Validate that `currentToken` contains a valid env key name
-			if (!std::ranges::all_of(currentToken, [](const char c){return isalnum(c) || c == '_';}))
+			if (!std::ranges::all_of(currentToken, [](const char c) {return isalnum(c) || c == '_';}))
 			{
 				currentToken += '=';
 				break;
@@ -176,38 +188,22 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 			break;
 
 		case ';':
-			if (!currentToken.empty())
-			{
-				tokens.push_back({Token::Type::STRING, currentToken});
-				currentToken.clear();
-			}
+			pushAndClearIfNotEmpty();
 			tokens.push_back({Token::Type::SEMICOLON});
 			break;
-		
+
 		case '<':
-			if (!currentToken.empty())
-			{
-				tokens.push_back({Token::Type::STRING, currentToken});
-				currentToken.clear();
-			}
+			pushAndClearIfNotEmpty();
 			tokens.push_back({Token::Type::INPUT_REDIRECT});
 			break;
-		
+
 		case '>':
-			if (!currentToken.empty())
-			{
-				tokens.push_back({Token::Type::STRING, currentToken});
-				currentToken.clear();
-			}
+			pushAndClearIfNotEmpty();
 			tokens.push_back({Token::Type::OUTPUT_REDIRECT});
 			break;
-		
+
 		case '|':
-			if (!currentToken.empty())
-			{
-				tokens.push_back({Token::Type::STRING, currentToken});
-				currentToken.clear();
-			}
+			pushAndClearIfNotEmpty();
 
 			if (*(++itr) == '|')
 				tokens.push_back({Token::Type::OR});
@@ -218,24 +214,20 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 			}
 
 			break;
-		
+
 		case '&':
-			if (!currentToken.empty())
+			pushAndClearIfNotEmpty();
+
+			if (*(++itr) == '&')
+				tokens.push_back({Token::Type::AND});
+			else
 			{
-				tokens.push_back({Token::Type::STRING, currentToken});
-				currentToken.clear();
+				tokens.push_back({Token::Type::AMPERSAND});
+				--itr;
 			}
 
-			// we can't fork, so...
-			if (*(++itr) != '&')
-			{
-				std::cerr << "\e[41mshell: unknown token: `&`\e[39m\n";
-				return false;
-			}
-
-			tokens.push_back({Token::Type::AND});
 			break;
-		
+
 		default:
 			currentToken += *itr;
 		}

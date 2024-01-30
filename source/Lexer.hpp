@@ -9,13 +9,16 @@ struct Token
 {
 	enum class Type
 	{
+		WHITESPACE = 'W',
 		STRING = 'S',
 		INPUT_REDIRECT = '<',
 		OUTPUT_REDIRECT = '>',
 		PIPE = '|',
 		OR = 'O',
 		AND = 'A',
-		SEMICOLON = ';'
+		SEMICOLON = ';',
+		AMPERSAND = '&',
+		EQUALS = '='
 	};
 
 	const Type type;
