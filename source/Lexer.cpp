@@ -94,7 +94,7 @@ bool LexSingleQuoteString(StringIterator &itr, const StringIterator &lineEnd, st
 	return true;
 }
 
-bool ProcessAssignment(StringIterator &itr, const StringIterator &lineEnd, std::string key, EnvMap &env)
+/*bool ProcessAssignment(StringIterator &itr, const StringIterator &lineEnd, std::string key, EnvMap &env)
 {
 	// `currentToken` is copied into `key`
 	// we need to build `value`
@@ -126,7 +126,7 @@ bool ProcessAssignment(StringIterator &itr, const StringIterator &lineEnd, std::
 
 	env[key] = value;
 	return true;
-}
+}*/
 
 bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 {
@@ -169,7 +169,7 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 			if (!LexDoubleQuoteString(itr, lineEnd, currentToken, env))
 				return false;
 			break;
-
+/*
 		case '=':
 			// Validate that `currentToken` contains a valid env key name
 			if (!std::ranges::all_of(currentToken, [](const char c) {return isalnum(c) || c == '_';}))
@@ -180,6 +180,11 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 			if (!ProcessAssignment(itr, lineEnd, currentToken, env))
 				return false;
 			currentToken.clear();
+			break;
+*/
+		case '=':
+			pushAndClearIfNotEmpty();
+			tokens.push_back({Token::Type::EQUALS});
 			break;
 
 		case '$':

@@ -5,11 +5,11 @@ using namespace NDS_Shell;
 
 void Commands::help()
 {
-	*stdio.out << "commands: ";
+	std::cout << "commands: ";
 	auto itr = Commands::map.cbegin();
 	for (; itr != Commands::map.cend(); ++itr)
-		*stdio.out << itr->first << ' ';
-	*stdio.out << '\n';
+		std::cout << itr->first << ' ';
+	std::cout << '\n';
 }
 
 void Commands::ls()
@@ -18,7 +18,7 @@ void Commands::ls()
 
 	if (!std::filesystem::exists(path))
 	{
-		*stdio.err << "\e[41mpath does not exist\e[39m\n";
+		std::cerr << "\e[41mpath does not exist\e[39m\n";
 		return;
 	}
 
@@ -26,17 +26,17 @@ void Commands::ls()
 	{
 		const auto filename = entry.path().filename().string();
 		if (entry.is_directory())
-			*stdio.out << "\e[44m" << filename << "\e[39m ";
+			std::cout << "\e[44m" << filename << "\e[39m ";
 		else
-			*stdio.out << filename << ' ';
-		*stdio.out << '\n';
+			std::cout << filename << ' ';
+		std::cout << '\n';
 	}
 }
 
 void Commands::envCmd()
 {
 	for (const auto &[key, value] : env)
-		*stdio.out << key << '=' << value << '\n';
+		std::cout << key << '=' << value << '\n';
 }
 
 void Commands::cd()
@@ -51,7 +51,7 @@ void Commands::cd()
 
 	if (!std::filesystem::exists(path))
 	{
-		*stdio.err << "\e[41mpath does not exist\e[39m\n";
+		std::cerr << "\e[41mpath does not exist\e[39m\n";
 		return;
 	}
 
@@ -62,13 +62,13 @@ void Commands::cat()
 {
 	if (args.size() == 1)
 	{
-		*stdio.err << "args: <filepath>\n";
+		std::cerr << "args: <filepath>\n";
 		return;
 	}
 
 	if (!std::filesystem::exists(args[1]))
 	{
-		*stdio.err << "file '" << args[1] << "' does not exist\n";
+		std::cerr << "file '" << args[1] << "' does not exist\n";
 		return;
 	}
 
@@ -76,11 +76,11 @@ void Commands::cat()
 
 	if (!file)
 	{
-		*stdio.err << "cannot open file\n";
+		std::cerr << "cannot open file\n";
 		return;
 	}
 
-	*stdio.out << file.rdbuf();
+	std::cout << file.rdbuf();
 	file.close();
 }
 
@@ -88,27 +88,27 @@ void Commands::rm()
 {
 	if (args.size() == 1)
 	{
-		*stdio.err << "args: <filepath>\n";
+		std::cerr << "args: <filepath>\n";
 		return;
 	}
 
 	if (!std::filesystem::exists(args[1]))
 	{
-		*stdio.err << "file '" << args[1] << "' does not exist\n";
+		std::cerr << "file '" << args[1] << "' does not exist\n";
 		return;
 	}
 
 	if (!std::filesystem::remove(args[1]))
 	{
-		*stdio.err << "failed to remove '" << args[1] << "'\n";
+		std::cerr << "failed to remove '" << args[1] << "'\n";
 	}
 }
 
 void Commands::echo()
 {
 	for (auto itr = args.cbegin() + 1; itr < args.cend(); ++itr)
-		*stdio.out << *itr << ' ';
-	*stdio.out << '\n';
+		std::cout << *itr << ' ';
+	std::cout << '\n';
 }
 
 // move this somewhere else later
@@ -118,7 +118,7 @@ void Commands::dns()
 {
 	if (args.size() == 1)
 	{
-		*stdio.err << "args: <hostname>\n";
+		std::cerr << "args: <hostname>\n";
 		return;
 	}
 
@@ -129,5 +129,5 @@ void Commands::dns()
 		return;
 	}
 
-	*stdio.out << *(in_addr *)host->h_addr_list[0] << '\n';
+	std::cout << *(in_addr *)host->h_addr_list[0] << '\n';
 }

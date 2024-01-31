@@ -14,7 +14,8 @@ namespace NDS_Shell
 	void Start();
 
 	bool ParseTokens(const std::vector<Token> &token);
-	bool ParseInputRedirect(TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd);
+	bool ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd);
+	bool ParseOutputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd);
 	bool RedirectInput(const int fd, const std::string &filename);
 
 	// A command's arguments

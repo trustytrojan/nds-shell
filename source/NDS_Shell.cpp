@@ -102,10 +102,10 @@ bool NDS_Shell::ParseTokens(const std::vector<Token> &tokens)
 				return false;
 			break;
 		
-		case Token::Type::OUTPUT_REDIRECT:
-			if (!ParseOutputRedirect(itr, tokensBegin, tokensEnd))
-				return false;
-			break;
+		// case Token::Type::OUTPUT_REDIRECT:
+		// 	if (!ParseOutputRedirect(itr, tokensBegin, tokensEnd))
+		// 		return false;
+		// 	break;
 		}
 
 	return true;
@@ -154,4 +154,9 @@ bool NDS_Shell::ParseInputRedirect(const TokenIterator &itr, const TokenIterator
 
 	std::cerr << "\e[41mshell: integer expected before <\e[39m\n";
 	return false;
+}
+
+bool NDS_Shell::RedirectInput(const int fd, const std::string &filename)
+{
+
 }

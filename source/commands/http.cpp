@@ -7,7 +7,7 @@ void Commands::http()
 {
 	if (args.size() != 3)
 	{
-		*stdio.err << "usage: http <method> <url>\n";
+		std::cerr << "usage: http <method> <url>\n";
 		return;
 	}
 
@@ -19,7 +19,7 @@ void Commands::http()
 	static const std::unordered_set<std::string> httpMethods{"GET", "POST", "PUT", "DELETE"};
 	if (std::find(httpMethods.begin(), httpMethods.cend(), method) == httpMethods.cend())
 	{
-		*stdio.err << "\e[41minvalid http method\e[39m\n";
+		std::cerr << "\e[41minvalid http method\e[39m\n";
 		return;
 	}
 
@@ -85,7 +85,7 @@ void Commands::http()
 	while ((bytesReceived = recv(sock, responseBuffer, BUFSIZ, 0)) > 0)
 	{
 		responseBuffer[bytesReceived] = 0;
-		*stdio.out << responseBuffer;
+		std::cout << responseBuffer;
 	}
 
 	if (bytesReceived == -1)

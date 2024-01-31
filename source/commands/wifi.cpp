@@ -22,10 +22,10 @@ static const auto usageStr = "usage:\n"
 							 "\twifi ip\n"
 							 "\twifi ipinfo\n";
 
-bool GetPassword(const StandardStreams &stdio, std::string &password, WEPMODES &wepmode)
+bool GetPassword(std::string &password, WEPMODES &wepmode)
 {
-	*stdio.out << "Password: ";
-	std::getline(*stdio.in, password); // characters are not shown since keyboard->OnKeyPressed is NULL
+	std::cout << "Password: ";
+	std::getline(std::cin, password); // characters are not shown since keyboard->OnKeyPressed is NULL
 	switch (password.size())
 	{
 	case 5:
@@ -35,17 +35,17 @@ bool GetPassword(const StandardStreams &stdio, std::string &password, WEPMODES &
 		wepmode = WEPMODE_128BIT;
 		break;
 	default:
-		*stdio.out << "\e[41minvalid password\e[39m\n";
+		std::cout << "\e[41minvalid password\e[39m\n";
 		return false;
 	}
 	return true;
 }
 
-bool FindAPWithSSID(const StandardStreams &stdio, const std::string &ssid, Wifi_AccessPoint &ap)
+bool FindAPWithSSID(const std::string &ssid, Wifi_AccessPoint &ap)
 {
 	if (ssid.empty())
 	{
-		*stdio.err << "\e[41mssid cannot be empty\e[39m\n";
+		std::cerr << "\e[41mssid cannot be empty\e[39m\n";
 		return false;
 	}
 
@@ -59,7 +59,7 @@ bool FindAPWithSSID(const StandardStreams &stdio, const std::string &ssid, Wifi_
 			return true;
 	}
 
-	*stdio.err << "\e[41mssid '" << ssid << "' not found\e[39m\ncheck output of `wifi list`\n";
+	std::cerr << "\e[41mssid '" << ssid << "' not found\e[39m\ncheck output of `wifi list`\n";
 	return false;
 }
 
@@ -73,7 +73,7 @@ void connect()
 		consoleClear();
 	}
 	else
-		FindAPWithSSID(stdio, args[2], ap);
+		FindAPWithSSID(args[2], ap);
 
 	// Use DHCP
 	Wifi_SetIP(0, 0, 0, 0, 0);
@@ -83,7 +83,7 @@ void connect()
 	{
 		std::string password;
 		WEPMODES wepmode;
-		if (!GetPassword(stdio, password, wepmode))
+		if (!GetPassword(password, wepmode))
 			return;
 		Wifi_ConnectAP(&ap, wepmode, 0, (unsigned char *)password.c_str());
 	}
@@ -98,16 +98,16 @@ void connect()
 	{
 		if (!quiet && status != prevStatus)
 		{
-			*stdio.out << wifiStatusStr[status] << '\n';
+			std::cout << wifiStatusStr[status] << '\n';
 			prevStatus = status;
 		}
 		swiWaitForVBlank();
 	}
 
 	if (status == ASSOCSTATUS_CANNOTCONNECT)
-		*stdio.out << "\e[41mCannot connect to '" << ap.ssid << "'\e[39m\n";
+		std::cout << "\e[41mCannot connect to '" << ap.ssid << "'\e[39m\n";
 	else
-		*stdio.out << "Connected to '" << ap.ssid << "'\n";
+		std::cout << "Connected to '" << ap.ssid << "'\n";
 }
 
 void list()
@@ -116,7 +116,7 @@ void list()
 
 	if (!numAPs)
 	{
-		*stdio.out << "no APs found\ndid you run `wifi scan`?\n";
+		std::cout << "no APs found\ndid you run `wifi scan`?\n";
 		return;
 	}
 
@@ -142,14 +142,14 @@ void ipinfo()
 {
 	in_addr gateway, subnetMask, dns1, dns2;
 	Wifi_GetIPInfo(&gateway, &subnetMask, &dns1, &dns2);
-	*stdio.out << "Gateway:    " << gateway << "\nSubnet Mask: " << subnetMask << "\nDNS 1:       " << dns1 << "\nDNS 2:       " << dns2 << '\n';
+	std::cout << "Gateway:    " << gateway << "\nSubnet Mask: " << subnetMask << "\nDNS 1:       " << dns1 << "\nDNS 2:       " << dns2 << '\n';
 }
 
 void Commands::wifi()
 {
 	if (args.size() == 1)
 	{
-		*stdio.err << usageStr;
+		std::cerr << usageStr;
 		return;
 	}
 
@@ -165,10 +165,10 @@ void Commands::wifi()
 		list();
 
 	else if (subcommand == "status")
-		*stdio.out << wifiStatusStr[Wifi_AssocStatus()] << '\n';
+		std::cout << wifiStatusStr[Wifi_AssocStatus()] << '\n';
 
 	else if (subcommand == "disconnect")
-		*stdio.out << Wifi_DisconnectAP() << '\n';
+		std::cout << Wifi_DisconnectAP() << '\n';
 
 	else if (subcommand == "disable")
 		Wifi_DisableWifi();
@@ -177,11 +177,11 @@ void Commands::wifi()
 		Wifi_EnableWifi();
 
 	else if (subcommand == "ip")
-		*stdio.out << (in_addr)Wifi_GetIP() << '\n';
+		std::cout << (in_addr)Wifi_GetIP() << '\n';
 
 	else if (subcommand == "ipinfo")
 		ipinfo();
 
 	else
-		*stdio.err << usageStr;
+		std::cerr << usageStr;
 }
