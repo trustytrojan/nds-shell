@@ -2,8 +2,57 @@
 
 using namespace Shell;
 
-// from ap_search.cpp
-void FindAPInteractive(Wifi_AccessPoint &ap);
+#define VISIBLE_APS 10
+
+// rewritten from devkitpro's wifi example
+void FindAPInteractive(Wifi_AccessPoint &ap)
+{
+	int selectedAP = 0, displayTop = 0, pressed;
+	Wifi_ScanMode();
+
+	do
+	{
+		consoleClear();
+
+		const auto numAPs = Wifi_GetNumAP();
+		std::cout << numAPs << " APs detected\n\n";
+
+		auto displayEnd = displayTop + VISIBLE_APS;
+		if (displayEnd > numAPs)
+			displayEnd = numAPs;
+
+		for (auto i = displayTop; i < displayEnd; i++)
+		{
+			Wifi_GetAPData(i, &ap);
+			std::cout << ((i == selectedAP) ? '*' : ' ') << ' ' << ap.ssid << '\n'
+					  << "  Wep:" << ((ap.flags & WFLAG_APDATA_WEP) ? "Yes" : "No") << " Sig:" << (ap.rssi * 100 / 0xD0) << '\n';
+		}
+
+		scanKeys();
+		pressed = keysDown();
+
+		if (pressed & KEY_UP)
+		{
+			if (selectedAP > 0)
+				--selectedAP;
+			if (selectedAP < displayTop)
+				displayTop = selectedAP;
+		}
+
+		if (pressed & KEY_DOWN)
+		{
+			if (selectedAP < numAPs - 1)
+				++selectedAP;
+			displayTop = selectedAP - (VISIBLE_APS - 1);
+			if (displayTop < 0)
+				displayTop = 0;
+		}
+
+		swiWaitForVBlank();
+	} while (!(pressed & KEY_A));
+
+	Wifi_GetAPData(selectedAP, &ap);
+}
 
 // for printing ip addresses without first converting to a string
 std::ostream &operator<<(std::ostream &ostr, const in_addr &ip)
@@ -11,16 +60,16 @@ std::ostream &operator<<(std::ostream &ostr, const in_addr &ip)
 	return ostr << (ip.s_addr & 0xFF) << '.' << ((ip.s_addr >> 8) & 0xFF) << '.' << ((ip.s_addr >> 16) & 0xFF) << '.' << ((ip.s_addr >> 24) & 0xFF);
 }
 
-static const char *wifiStatusStr[] = {"Disconnected", "Searching", "Authenticating", "Associating", "Acquiring DHCP", "Associated", "Cannot Connect"};
-static const auto usageStr = "usage:\n"
-							 "\twifi scan\n"
-							 "\twifi list\n"
-							 "\twifi con[nect] [ssid] [-q]\n"
-							 "\twifi status\n"
-							 "\twifi enable\n"
-							 "\twifi disable\n"
-							 "\twifi ip\n"
-							 "\twifi ipinfo\n";
+static const char *const wifiStatusStr[] = {"Disconnected", "Searching", "Authenticating", "Associating", "Acquiring DHCP", "Associated", "Cannot Connect"};
+static const auto usageStr = R"(usage:
+	wifi scan
+	wifi list
+	wifi con[nect] [ssid] [-q]
+	wifi status
+	wifi enable
+	wifi disable
+	wifi ip
+	wifi ipinfo)";
 
 bool GetPassword(std::string &password, WEPMODES &wepmode)
 {
