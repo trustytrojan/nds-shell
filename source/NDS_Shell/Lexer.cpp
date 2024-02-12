@@ -1,6 +1,7 @@
 #include "Lexer.hpp"
+#include "../NDS_Shell.hpp"
 
-void EscapeInUnquotedString(StringIterator &itr, std::string &currentToken)
+void NDS_Shell::Lexer::EscapeInUnquotedString(StringIterator &itr, std::string &currentToken)
 {
 	// `itr` is pointing at the initial backslash.
 	// Only escape spaces, backslashes, and equals.
@@ -21,7 +22,7 @@ void EscapeInUnquotedString(StringIterator &itr, std::string &currentToken)
 	}
 }
 
-void EscapeInDoubleQuoteString(StringIterator &itr, std::string &currentToken)
+void NDS_Shell::Lexer::EscapeInDoubleQuoteString(StringIterator &itr, std::string &currentToken)
 {
 	// `itr` is pointing at the initial backslash.
 	// Only escape backslashes, double-quotes, and dollar signs.
@@ -41,7 +42,7 @@ void EscapeInDoubleQuoteString(StringIterator &itr, std::string &currentToken)
 	}
 }
 
-void InsertVariable(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
+void NDS_Shell::Lexer::InsertVariable(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
 {
 	// `itr` is pointing at the initial `$`
 	// subtitute variables in the lexing phase to avoid the reiteration overhead during parsing
@@ -52,7 +53,7 @@ void InsertVariable(StringIterator &itr, const StringIterator &lineEnd, std::str
 	--itr; // Let the caller's loop see the character that stopped our loop, they might need it
 }
 
-bool LexDoubleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
+bool NDS_Shell::Lexer::LexDoubleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
 {
 	// When called, itr is pointing at the opening `"`, so increment before looping.
 	for (++itr; *itr != '"' && itr < lineEnd; ++itr)
@@ -79,7 +80,7 @@ bool LexDoubleQuoteString(StringIterator &itr, const StringIterator &lineEnd, st
 	return true;
 }
 
-bool LexSingleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken)
+bool NDS_Shell::Lexer::LexSingleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken)
 {
 	// Nothing can be escaped in single-quote strings.
 	for (++itr; *itr != '\'' && itr < lineEnd; ++itr)
@@ -94,41 +95,7 @@ bool LexSingleQuoteString(StringIterator &itr, const StringIterator &lineEnd, st
 	return true;
 }
 
-/*bool ProcessAssignment(StringIterator &itr, const StringIterator &lineEnd, std::string key, EnvMap &env)
-{
-	// `currentToken` is copied into `key`
-	// we need to build `value`
-	std::string value;
-
-	// `itr` is pointing at `=`, so increment ahead and continue
-	// in bash assignments can look like `A="hello $X world"`, so we need to account for quoted strings as values
-	for (++itr; !isspace(*itr) && itr < lineEnd; ++itr)
-		switch (*itr)
-		{
-		case '"':
-			// good thing these functions simply append to their `currentToken` parameter!
-			// we can make use of this and make them append to `value`
-			if (!LexDoubleQuoteString(itr, lineEnd, value, env))
-				return false;
-			break;
-
-		case '\'':
-			if (!LexSingleQuoteString(itr, lineEnd, value))
-				return false;
-			break;
-
-		default:
-			value += *itr;
-		}
-
-	// DEBUG
-	std::cout << "=(" << key << ',' << value << ")\n";
-
-	env[key] = value;
-	return true;
-}*/
-
-bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
+bool NDS_Shell::Lexer::LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 {
 	const auto lineEnd = line.cend();
 	std::string currentToken;
@@ -169,19 +136,7 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 			if (!LexDoubleQuoteString(itr, lineEnd, currentToken, env))
 				return false;
 			break;
-/*
-		case '=':
-			// Validate that `currentToken` contains a valid env key name
-			if (!std::ranges::all_of(currentToken, [](const char c) {return isalnum(c) || c == '_';}))
-			{
-				currentToken += '=';
-				break;
-			}
-			if (!ProcessAssignment(itr, lineEnd, currentToken, env))
-				return false;
-			currentToken.clear();
-			break;
-*/
+
 		case '=':
 			pushAndClearIfNotEmpty();
 			tokens.push_back({Token::Type::EQUALS});

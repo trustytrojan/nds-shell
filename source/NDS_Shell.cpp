@@ -1,6 +1,6 @@
 #include "NDS_Shell.hpp"
 #include "CliPrompt.hpp"
-#include "Lexer.hpp"
+#include "NDS_Shell/Parser.hpp"
 
 void NDS_Shell::Init()
 {
@@ -60,7 +60,7 @@ void NDS_Shell::Start()
 
 	// Line buffer and token vector
 	std::string line;
-	std::vector<Token> tokens;
+	std::vector<Lexer::Token> tokens;
 
 	while (1)
 	{
@@ -86,74 +86,6 @@ void NDS_Shell::Start()
 		line.clear();
 		tokens.clear();
 	}
-}
-
-bool NDS_Shell::ParseTokens(const std::vector<Token> &tokens)
-{
-	const auto tokensBegin = tokens.cbegin();
-	const auto tokensEnd = tokens.cend();
-
-	for (auto itr = tokensBegin; itr < tokensEnd; ++itr)
-		// first, process all operators
-		switch (itr->type)
-		{
-		case Token::Type::INPUT_REDIRECT:
-			if (!ParseInputRedirect(itr, tokensBegin, tokensEnd))
-				return false;
-			break;
-		
-		// case Token::Type::OUTPUT_REDIRECT:
-		// 	if (!ParseOutputRedirect(itr, tokensBegin, tokensEnd))
-		// 		return false;
-		// 	break;
-		}
-
-	return true;
-}
-
-bool NDS_Shell::ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd)
-{
-	const auto prevItr = itr - 1;
-	const auto nextItr = itr + 1;
-
-	if (nextItr == tokensEnd || nextItr->type != Token::Type::STRING)
-	{
-		std::cerr << "\e[41mshell: filename expected after `<`\e[39m\n";
-		return false;
-	}
-
-	const auto &filename = nextItr->value;
-
-	if (!std::filesystem::exists(filename))
-	{
-		std::cerr << "\e[41mshell: file `" << filename << "` does not exist\e[39m\n";
-		return false;
-	}
-
-	// if `<` is the first token, or whitespace came before it
-	if (itr == tokensBegin || prevItr->type == Token::Type::WHITESPACE)
-	{
-		// redirect the file to stdin
-		RedirectInput(0, filename);
-		return true;
-	}
-
-	if (prevItr->type == Token::Type::STRING)
-	{
-		const auto &fdStr = prevItr->value;
-
-		if (!std::ranges::all_of(fdStr, isdigit))
-		{
-			std::cerr << "\e[41mshell: integer expected before `<`\e[39m\n";
-			return false;
-		}
-
-		RedirectInput(atoi(fdStr.c_str()), filename);
-		return true;
-	}
-
-	std::cerr << "\e[41mshell: integer expected before <\e[39m\n";
-	return false;
 }
 
 bool NDS_Shell::RedirectInput(const int fd, const std::string &filename)

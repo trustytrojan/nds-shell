@@ -1,22 +1,17 @@
 #pragma once
 
 #include "libdeps.hpp"
-#include "Lexer.hpp"
 
 namespace NDS_Shell
 {
-	using TokenIterator = std::vector<Token>::const_iterator;
-
 	// Initializes necessary libnds resources.
 	void Init();
 
 	// Starts the prompt loop. Does not return.
 	void Start();
 
-	bool ParseTokens(const std::vector<Token> &token);
-	bool ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd);
-	bool ParseOutputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd);
 	bool RedirectInput(const int fd, const std::string &filename);
+	bool RedirectOutput(const int fd, const std::string &filename);
 
 	// A command's arguments
 	inline std::vector<std::string> args;

@@ -1,0 +1,6 @@
+UseTab: Always
+IndentWidth: 8
+ContinuationIndentWidth: 8
+ColumnLimit: 0
+BreakBeforeBraces: Allman
+IndentCaseLabels: false
