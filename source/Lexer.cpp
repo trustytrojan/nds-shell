@@ -1,7 +1,9 @@
 #include "Lexer.hpp"
-#include "../NDS_Shell.hpp"
+#include "Shell.hpp"
 
-void NDS_Shell::Lexer::EscapeInUnquotedString(StringIterator &itr, std::string &currentToken)
+using StringIterator = std::string::const_iterator;
+
+void EscapeInUnquotedString(StringIterator &itr, std::string &currentToken)
 {
 	// `itr` is pointing at the initial backslash.
 	// Only escape spaces, backslashes, and equals.
@@ -22,7 +24,7 @@ void NDS_Shell::Lexer::EscapeInUnquotedString(StringIterator &itr, std::string &
 	}
 }
 
-void NDS_Shell::Lexer::EscapeInDoubleQuoteString(StringIterator &itr, std::string &currentToken)
+void EscapeInDoubleQuoteString(StringIterator &itr, std::string &currentToken)
 {
 	// `itr` is pointing at the initial backslash.
 	// Only escape backslashes, double-quotes, and dollar signs.
@@ -42,7 +44,7 @@ void NDS_Shell::Lexer::EscapeInDoubleQuoteString(StringIterator &itr, std::strin
 	}
 }
 
-void NDS_Shell::Lexer::InsertVariable(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
+void InsertVariable(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
 {
 	// `itr` is pointing at the initial `$`
 	// subtitute variables in the lexing phase to avoid the reiteration overhead during parsing
@@ -53,7 +55,7 @@ void NDS_Shell::Lexer::InsertVariable(StringIterator &itr, const StringIterator 
 	--itr; // Let the caller's loop see the character that stopped our loop, they might need it
 }
 
-bool NDS_Shell::Lexer::LexDoubleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
+bool LexDoubleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
 {
 	// When called, itr is pointing at the opening `"`, so increment before looping.
 	for (++itr; *itr != '"' && itr < lineEnd; ++itr)
@@ -80,7 +82,7 @@ bool NDS_Shell::Lexer::LexDoubleQuoteString(StringIterator &itr, const StringIte
 	return true;
 }
 
-bool NDS_Shell::Lexer::LexSingleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken)
+bool LexSingleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken)
 {
 	// Nothing can be escaped in single-quote strings.
 	for (++itr; *itr != '\'' && itr < lineEnd; ++itr)
@@ -95,7 +97,7 @@ bool NDS_Shell::Lexer::LexSingleQuoteString(StringIterator &itr, const StringIte
 	return true;
 }
 
-bool NDS_Shell::Lexer::LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
+bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 {
 	const auto lineEnd = line.cend();
 	std::string currentToken;

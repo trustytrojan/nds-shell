@@ -1,9 +1,12 @@
 #pragma once
 
 #include "libdeps.hpp"
+#include "Lexer.hpp"
 
-namespace NDS_Shell
+namespace Shell
 {
+	using EnvMap = std::unordered_map<std::string, std::string>;
+
 	// Initializes necessary libnds resources.
 	void Init();
 
@@ -17,7 +20,7 @@ namespace NDS_Shell
 	inline std::vector<std::string> args;
 
 	// Shell environment variables
-	inline std::unordered_map<std::string, std::string> env {{"PS1", "> "}, {"CURSOR", "_"}};
+	inline EnvMap env {{"PS1", "> "}, {"CURSOR", "_"}};
 
 	namespace Commands
 	{

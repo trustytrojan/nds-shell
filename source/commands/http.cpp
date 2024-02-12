@@ -1,7 +1,7 @@
-#include "../NDS_Shell.hpp"
+#include "../Shell.hpp"
 #include "../NetUtils.hpp"
 
-using namespace NDS_Shell;
+using namespace Shell;
 
 void Commands::http()
 {

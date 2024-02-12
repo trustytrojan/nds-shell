@@ -1,8 +1,9 @@
-#include "NDS_Shell.hpp"
+#include "Shell.hpp"
 #include "CliPrompt.hpp"
-#include "NDS_Shell/Parser.hpp"
+#include "Parser.hpp"
+#include "Lexer.hpp"
 
-void NDS_Shell::Init()
+void Shell::Init()
 {
 	// Video initialization - We want to use both screens
 	videoSetMode(MODE_0_2D);
@@ -50,7 +51,7 @@ std::string EscapeEscapes(const std::string &str)
 	return newStr;
 }
 
-void NDS_Shell::Start()
+void Shell::Start()
 {
 	// Print startup text
 	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter 'help' to see available\ncommands\n\n";
@@ -60,7 +61,7 @@ void NDS_Shell::Start()
 
 	// Line buffer and token vector
 	std::string line;
-	std::vector<Lexer::Token> tokens;
+	std::vector<Token> tokens;
 
 	while (1)
 	{
@@ -88,7 +89,12 @@ void NDS_Shell::Start()
 	}
 }
 
-bool NDS_Shell::RedirectInput(const int fd, const std::string &filename)
+bool Shell::RedirectInput(const int fd, const std::string &filename)
 {
+	std::cout << "Redirecting input from " << filename << " to " << fd << '\n';
+}
 
+bool Shell::RedirectOutput(const int fd, const std::string &filename)
+{
+	std::cout << "Redirecting output from " << fd << " to " << filename << '\n';
 }

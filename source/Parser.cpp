@@ -1,8 +1,10 @@
-#include "../NDS_Shell.hpp"
+#include "Shell.hpp"
+#include "Parser.hpp"
 
-using NDS_Shell::Lexer::Token;
+bool ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd);
+bool ParseOutputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd);
 
-bool NDS_Shell::Parser::ParseTokens(const std::vector<Token> &tokens)
+bool ParseTokens(const std::vector<Token> &tokens)
 {
 	const auto tokensBegin = tokens.cbegin();
 	const auto tokensEnd = tokens.cend();
@@ -25,7 +27,7 @@ bool NDS_Shell::Parser::ParseTokens(const std::vector<Token> &tokens)
 	return true;
 }
 
-bool NDS_Shell::Parser::ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd)
+bool ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd)
 {
 	const auto prevItr = itr - 1;
 	const auto nextItr = itr + 1;
@@ -48,7 +50,7 @@ bool NDS_Shell::Parser::ParseInputRedirect(const TokenIterator &itr, const Token
 	if (itr == tokensBegin || prevItr->type == Token::Type::WHITESPACE)
 	{
 		// redirect the file to stdin
-		RedirectInput(0, filename);
+		Shell::RedirectInput(0, filename);
 		return true;
 	}
 
@@ -60,11 +62,11 @@ bool NDS_Shell::Parser::ParseInputRedirect(const TokenIterator &itr, const Token
 		return false;
 	}
 
-	RedirectInput(atoi(fdStr.c_str()), filename);
+	Shell::RedirectInput(atoi(fdStr.c_str()), filename);
 	return true;
 }
 
-bool NDS_Shell::Parser::ParseOutputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd)
+bool ParseOutputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd)
 {
 	const auto prevItr = itr - 1;
 	const auto nextItr = itr + 1;
@@ -81,7 +83,7 @@ bool NDS_Shell::Parser::ParseOutputRedirect(const TokenIterator &itr, const Toke
 	if (itr == tokensBegin || prevItr->type == Token::Type::WHITESPACE)
 	{
 		// redirect the file to stdin
-		RedirectOutput(1, filename);
+		Shell::RedirectOutput(1, filename);
 		return true;
 	}
 
@@ -93,6 +95,6 @@ bool NDS_Shell::Parser::ParseOutputRedirect(const TokenIterator &itr, const Toke
 		return false;
 	}
 
-	RedirectOutput(atoi(fdStr.c_str()), filename);
+	Shell::RedirectOutput(atoi(fdStr.c_str()), filename);
 	return true;
 }

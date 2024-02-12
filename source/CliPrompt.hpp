@@ -2,7 +2,7 @@
 
 #include "libdeps.hpp"
 
-// Command-line prompt with a visible, movable cursor that can edit the line at any position.
+// Commandline prompt with a visible, movable cursor that can edit the line at any position.
 struct CliPrompt
 {
 	CliPrompt(const std::string &basePrompt, const char cursor, std::ostream &ostr);
@@ -19,9 +19,12 @@ struct CliPrompt
 	// The stream to print to.
 	std::ostream &ostr;
 
-/* Future feature!
+/* Future features!
 	// Autocomplete function
 	std::function<std::string(const std::string &)> autoComplete;
+
+	// Line history
+	std::vector<std::string> history;
 */
 
 private:

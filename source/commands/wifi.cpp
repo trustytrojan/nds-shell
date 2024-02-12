@@ -1,6 +1,6 @@
-#include "../NDS_Shell.hpp"
+#include "../Shell.hpp"
 
-using namespace NDS_Shell;
+using namespace Shell;
 
 // from ap_search.cpp
 void FindAPInteractive(Wifi_AccessPoint &ap);
