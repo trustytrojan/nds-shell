@@ -8,7 +8,7 @@ struct CliPrompt
 	CliPrompt(const std::string &basePrompt, const char cursor, std::ostream &ostr);
 
 	// Starts processing the keyboard every frame until the Enter key is pressed, then writes user input into `line`.
-	void GetLine(std::string &line) const;
+	void GetLine(std::string &line);
 
 	// The text to print before the cursor.
 	std::string basePrompt;
@@ -22,12 +22,12 @@ struct CliPrompt
 /* Future features!
 	// Autocomplete function
 	std::function<std::string(const std::string &)> autoComplete;
-
-	// Line history
-	std::vector<std::string> history;
 */
+	// Line history
+	std::vector<std::string> lineHistory;
+	std::vector<std::string>::const_iterator lineHistoryItr;
 
 private:
 	// Processes the current state of the keyboard, and updates state as necessary.
-	void ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashState, u8 &flashTimer, bool &newlineEntered) const;
+	void ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashState, u8 &flashTimer, bool &newlineEntered);
 };

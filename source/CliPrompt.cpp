@@ -6,7 +6,7 @@ using namespace EscapeSequences;
 CliPrompt::CliPrompt(const std::string &bp, const char c, std::ostream &o)
 	: basePrompt(bp), cursor(c), ostr(o) {}
 
-void CliPrompt::GetLine(std::string &line) const
+void CliPrompt::GetLine(std::string &line)
 {
 	// For convenience
 	line.clear();
@@ -28,7 +28,7 @@ void CliPrompt::GetLine(std::string &line) const
 	}
 }
 
-void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashState, u8 &flashTimer, bool &newlineEntered) const
+void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashState, u8 &flashTimer, bool &newlineEntered)
 {
 	/**
 	 * While `cursorPos != line.size()`, the character pointed to by the cursor
@@ -38,14 +38,11 @@ void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashSt
 
 	switch (s8 c = keyboardUpdate())
 	{
-	// no keys pressed, or ignored keys
 	case 0:
 	case -1:
 	case DVK_CTRL:
 	case DVK_ALT:
 	case DVK_CAPS:
-	case DVK_DOWN:
-	case DVK_UP:
 	case DVK_FOLD:
 	case DVK_MENU:
 	case DVK_SHIFT:
@@ -61,17 +58,17 @@ void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashSt
 		}
 		break;
 
-	// enter, newline, '\n', 10
 	case DVK_ENTER:
 		if (cursorPos == line.size())
 			ostr << ' ';
 		else
 			ostr << line[cursorPos] << '\r';
 		ostr << '\n';
+		lineHistory.push_back(line);
+		lineHistoryItr = lineHistory.end() - 1;
 		newlineEntered = true;
 		break;
 
-	// backspace, '\b', 8
 	case DVK_BACKSPACE:
 		if (line.empty() || cursorPos == 0)
 			break;
@@ -87,7 +84,6 @@ void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashSt
 		}
 		break;
 
-	// left arrow
 	case DVK_LEFT:
 		if (cursorPos == 0)
 			break;
@@ -99,7 +95,6 @@ void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashSt
 		--cursorPos;
 		break;
 
-	// right arrow
 	case DVK_RIGHT:
 		if (cursorPos == line.size())
 			break;
@@ -107,19 +102,22 @@ void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashSt
 		if (++cursorPos == line.size())
 			ostr << cursor << Cursor::moveLeftOne;
 		break;
+	
+	case DVK_UP:
+		line = lineHistory.back();
+		cursorPos = line.size();
+		break;
+	
+	case DVK_DOWN:
+		break;
 
-	// any other valid character
 	default:
 		if (cursorPos == line.size())
 			line += c;
 		else
 			line.insert(line.begin() + cursorPos, c);
-		// line[cursorPos] = c;
 		ostr << c;
 		if (++cursorPos == line.size())
 			ostr << cursor << Cursor::moveLeftOne;
 	}
-
-	// just in case
-	assert(cursorPos >= 0 && cursorPos <= line.size());
 }
