@@ -1,7 +1,7 @@
 #include "Shell.hpp"
 #include "CliPrompt.hpp"
-#include "Parser.hpp"
 #include "Lexer.hpp"
+#include "Parser.hpp"
 
 void Shell::Init()
 {
@@ -13,7 +13,8 @@ void Shell::Init()
 
 	// Show console on top screen
 	static PrintConsole console;
-	consoleInit(&console, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
+	consoleInit(
+		&console, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
 
 	// Show keyboard on bottom screen
 	keyboardDemoInit();
@@ -21,13 +22,15 @@ void Shell::Init()
 
 	// Mount sdcard using libfat
 	if (!fatInitDefault())
-		std::cerr << "\e[41mfatInitDefault failed: filesystem commands will not work\e[39m\n\n";
+		std::cerr << "\e[41mfatInitDefault failed: filesystem commands will "
+					 "not work\e[39m\n\n";
 
 	defaultExceptionHandler();
 
 	// Initialize wifi
 	if (!Wifi_InitDefault(false))
-		std::cerr << "\e[41mWifi_InitDefault failed: networking commands will not work\e[39m\n\n";
+		std::cerr << "\e[41mWifi_InitDefault failed: networking commands will "
+					 "not work\e[39m\n\n";
 }
 
 std::string EscapeEscapes(const std::string &str)
@@ -54,7 +57,8 @@ std::string EscapeEscapes(const std::string &str)
 void Shell::Start()
 {
 	// Print startup text
-	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter 'help' to see available\ncommands\n\n";
+	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter "
+				 "'help' to see available\ncommands\n\n";
 
 	// Setup prompt
 	CliPrompt prompt(env["PS1"], env["CURSOR"][0], std::cout);
@@ -81,8 +85,11 @@ void Shell::Start()
 
 		// Update the prompt using env vars
 		// Allow escapes in basePrompt, for colors
-		prompt.basePrompt = EscapeEscapes(env["PS1"]); // If the user wants an empty prompt, so be it
-		prompt.cursor = env["CURSOR"].empty() ? ' ' : env["CURSOR"][0]; // Avoid a segfault here...
+		prompt.basePrompt = EscapeEscapes(
+			env["PS1"]); // If the user wants an empty prompt, so be it
+		prompt.cursor = env["CURSOR"].empty()
+							? ' '
+							: env["CURSOR"][0]; // Avoid a segfault here...
 
 		line.clear();
 		tokens.clear();

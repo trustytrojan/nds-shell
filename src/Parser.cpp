@@ -1,8 +1,14 @@
-#include "Shell.hpp"
 #include "Parser.hpp"
+#include "Shell.hpp"
 
-bool ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd);
-bool ParseOutputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd);
+bool ParseInputRedirect(
+	const TokenIterator &itr,
+	const TokenIterator &tokensBegin,
+	const TokenIterator &tokensEnd);
+bool ParseOutputRedirect(
+	const TokenIterator &itr,
+	const TokenIterator &tokensBegin,
+	const TokenIterator &tokensEnd);
 
 bool ParseTokens(const std::vector<Token> &tokens)
 {
@@ -17,7 +23,7 @@ bool ParseTokens(const std::vector<Token> &tokens)
 			if (!ParseInputRedirect(itr, tokensBegin, tokensEnd))
 				return false;
 			break;
-		
+
 		case Token::Type::OUTPUT_REDIRECT:
 			if (!ParseOutputRedirect(itr, tokensBegin, tokensEnd))
 				return false;
@@ -27,7 +33,10 @@ bool ParseTokens(const std::vector<Token> &tokens)
 	return true;
 }
 
-bool ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd)
+bool ParseInputRedirect(
+	const TokenIterator &itr,
+	const TokenIterator &tokensBegin,
+	const TokenIterator &tokensEnd)
 {
 	const auto prevItr = itr - 1;
 	const auto nextItr = itr + 1;
@@ -42,7 +51,8 @@ bool ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBeg
 
 	if (!std::filesystem::exists(filename))
 	{
-		std::cerr << "\e[41mshell: file `" << filename << "` does not exist\e[39m\n";
+		std::cerr << "\e[41mshell: file `" << filename
+				  << "` does not exist\e[39m\n";
 		return false;
 	}
 
@@ -56,7 +66,8 @@ bool ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBeg
 
 	const auto &fdStr = prevItr->value;
 
-	if (prevItr->type != Token::Type::STRING || !std::ranges::all_of(fdStr, isdigit))
+	if (prevItr->type != Token::Type::STRING ||
+		!std::ranges::all_of(fdStr, isdigit))
 	{
 		std::cerr << "\e[41mshell: integer expected before `<`\e[39m\n";
 		return false;
@@ -66,7 +77,10 @@ bool ParseInputRedirect(const TokenIterator &itr, const TokenIterator &tokensBeg
 	return true;
 }
 
-bool ParseOutputRedirect(const TokenIterator &itr, const TokenIterator &tokensBegin, const TokenIterator &tokensEnd)
+bool ParseOutputRedirect(
+	const TokenIterator &itr,
+	const TokenIterator &tokensBegin,
+	const TokenIterator &tokensEnd)
 {
 	const auto prevItr = itr - 1;
 	const auto nextItr = itr + 1;
@@ -89,7 +103,8 @@ bool ParseOutputRedirect(const TokenIterator &itr, const TokenIterator &tokensBe
 
 	const auto &fdStr = prevItr->value;
 
-	if (prevItr->type != Token::Type::STRING || !std::ranges::all_of(fdStr, isdigit))
+	if (prevItr->type != Token::Type::STRING ||
+		!std::ranges::all_of(fdStr, isdigit))
 	{
 		std::cerr << "\e[41mshell: integer expected before `<`\e[39m\n";
 		return false;

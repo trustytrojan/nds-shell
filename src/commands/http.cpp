@@ -1,5 +1,5 @@
-#include "Shell.hpp"
 #include "NetUtils.hpp"
+#include "Shell.hpp"
 
 using namespace Shell;
 
@@ -16,8 +16,10 @@ void Commands::http()
 	std::ranges::transform(method, method.begin(), toupper);
 
 	// check against supported methods
-	static const std::unordered_set<std::string> httpMethods{"GET", "POST", "PUT", "DELETE"};
-	if (std::find(httpMethods.begin(), httpMethods.cend(), method) == httpMethods.cend())
+	static const std::unordered_set<std::string> httpMethods{
+		"GET", "POST", "PUT", "DELETE"};
+	if (std::find(httpMethods.begin(), httpMethods.cend(), method) ==
+		httpMethods.cend())
 	{
 		std::cerr << "\e[41minvalid http method\e[39m\n";
 		return;
@@ -30,7 +32,7 @@ void Commands::http()
 	// take out http:// from url if its there
 	if (!strncmp(addr, "http://", 7))
 		addr += 7;
-	
+
 	const char *path;
 	const auto slashPtr = strchr(addr, '/');
 	if (!slashPtr)
@@ -68,7 +70,9 @@ void Commands::http()
 
 	// construct and send the request
 	std::stringstream ss;
-	ss << method << ' ' << (slashPtr ? "/" : "") << path << " HTTP/1.1\r\nHost: " << addr << "\r\nUser-Agent: Nintendo DS\r\n\r\n";
+	ss << method << ' ' << (slashPtr ? "/" : "") << path
+	   << " HTTP/1.1\r\nHost: " << addr
+	   << "\r\nUser-Agent: Nintendo DS\r\n\r\n";
 	const auto request = ss.str();
 	if (send(sock, request.c_str(), request.size(), 0) == -1)
 	{
@@ -98,6 +102,6 @@ void Commands::http()
 
 	if (close(sock) == -1)
 		perror("close");
-	
+
 	std::cerr << "\e45mreached end of function\e39m\n";
 }

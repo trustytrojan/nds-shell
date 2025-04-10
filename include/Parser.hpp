@@ -1,7 +1,7 @@
 #pragma once
 
-#include "libdeps.hpp"
 #include "Lexer.hpp"
+#include "libdeps.hpp"
 
 using TokenIterator = std::vector<Token>::const_iterator;
 

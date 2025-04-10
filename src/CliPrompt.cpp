@@ -4,7 +4,11 @@
 using namespace EscapeSequences;
 
 CliPrompt::CliPrompt(const std::string &bp, const char c, std::ostream &o)
-	: basePrompt(bp), cursor(c), ostr(o) {}
+	: basePrompt(bp),
+	  cursor(c),
+	  ostr(o)
+{
+}
 
 void CliPrompt::GetLine(std::string &line)
 {
@@ -23,12 +27,18 @@ void CliPrompt::GetLine(std::string &line)
 	// Process the keyboard state at the DS's refresh rate
 	while (!newlineEntered)
 	{
-		ProcessKeyboard(line, cursorPos, flashState, flashTimer, newlineEntered);
+		ProcessKeyboard(
+			line, cursorPos, flashState, flashTimer, newlineEntered);
 		swiWaitForVBlank();
 	}
 }
 
-void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashState, u8 &flashTimer, bool &newlineEntered)
+void CliPrompt::ProcessKeyboard(
+	std::string &line,
+	u32 &cursorPos,
+	bool &flashState,
+	u8 &flashTimer,
+	bool &newlineEntered)
 {
 	/**
 	 * While `cursorPos != line.size()`, the character pointed to by the cursor
@@ -54,7 +64,9 @@ void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashSt
 		else if (++flashTimer >= FLASH_INTERVAL)
 		{
 			flashTimer = 0;
-			((flashState = !flashState) ? (ostr << cursor) : (ostr << line[cursorPos])) << Cursor::moveLeftOne;
+			((flashState = !flashState) ? (ostr << cursor)
+										: (ostr << line[cursorPos]))
+				<< Cursor::moveLeftOne;
 		}
 		break;
 
@@ -80,7 +92,9 @@ void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashSt
 		else
 		{
 			line.erase(--cursorPos, 1);
-			ostr << "\b\e[0K" << line.substr(cursorPos) << Cursor::move(Cursor::MoveDirection::LEFT, line.size() - cursorPos);
+			ostr << "\b\e[0K" << line.substr(cursorPos)
+				 << Cursor::move(
+						Cursor::MoveDirection::LEFT, line.size() - cursorPos);
 		}
 		break;
 
@@ -102,12 +116,12 @@ void CliPrompt::ProcessKeyboard(std::string &line, u32 &cursorPos, bool &flashSt
 		if (++cursorPos == line.size())
 			ostr << cursor << Cursor::moveLeftOne;
 		break;
-	
+
 	case DVK_UP:
 		line = lineHistory.back();
 		cursorPos = line.size();
 		break;
-	
+
 	case DVK_DOWN:
 		break;
 

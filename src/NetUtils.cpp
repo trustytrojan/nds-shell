@@ -18,7 +18,8 @@ void NetUtils::printError(const std::string &s)
 	std::cerr << '\n';
 }
 
-bool NetUtils::parseAddress(const char *addr, const int defaultPort, sockaddr_in &sain)
+bool NetUtils::parseAddress(
+	const char *addr, const int defaultPort, sockaddr_in &sain)
 {
 	// ipv4
 	sain.sin_family = AF_INET;

@@ -1,26 +1,26 @@
 #pragma once
 
 // libnds
-#include <nds.h>
-#include <fat.h>
 #include <dswifi9.h>
+#include <fat.h>
+#include <nds.h>
 
 // networking
 #include <netdb.h>
-#include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 
 // c++
-#include <filesystem>
-#include <string>
-#include <iostream>
-#include <vector>
-#include <unordered_set>
-#include <unordered_map>
-#include <functional>
-#include <fstream>
 #include <algorithm>
 #include <cmath>
-#include <ranges>
+#include <filesystem>
+#include <fstream>
+#include <functional>
 #include <iomanip>
+#include <iostream>
+#include <ranges>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>

@@ -44,20 +44,32 @@ void EscapeInDoubleQuoteString(StringIterator &itr, std::string &currentToken)
 	}
 }
 
-void InsertVariable(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
+void InsertVariable(
+	StringIterator &itr,
+	const StringIterator &lineEnd,
+	std::string &currentToken,
+	EnvMap &env)
 {
 	// `itr` is pointing at the initial `$`
-	// subtitute variables in the lexing phase to avoid the reiteration overhead during parsing
+	// subtitute variables in the lexing phase to avoid the reiteration overhead
+	// during parsing
 	std::string varname;
-	for (++itr; (isalnum(*itr) || *itr == '_') && *itr != '"' && itr < lineEnd; ++itr)
+	for (++itr; (isalnum(*itr) || *itr == '_') && *itr != '"' && itr < lineEnd;
+		 ++itr)
 		varname += *itr;
 	currentToken += env[varname];
-	--itr; // Let the caller's loop see the character that stopped our loop, they might need it
+	--itr; // Let the caller's loop see the character that stopped our loop,
+		   // they might need it
 }
 
-bool LexDoubleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken, EnvMap &env)
+bool LexDoubleQuoteString(
+	StringIterator &itr,
+	const StringIterator &lineEnd,
+	std::string &currentToken,
+	EnvMap &env)
 {
-	// When called, itr is pointing at the opening `"`, so increment before looping.
+	// When called, itr is pointing at the opening `"`, so increment before
+	// looping.
 	for (++itr; *itr != '"' && itr < lineEnd; ++itr)
 		switch (*itr)
 		{
@@ -82,7 +94,10 @@ bool LexDoubleQuoteString(StringIterator &itr, const StringIterator &lineEnd, st
 	return true;
 }
 
-bool LexSingleQuoteString(StringIterator &itr, const StringIterator &lineEnd, std::string &currentToken)
+bool LexSingleQuoteString(
+	StringIterator &itr,
+	const StringIterator &lineEnd,
+	std::string &currentToken)
 {
 	// Nothing can be escaped in single-quote strings.
 	for (++itr; *itr != '\'' && itr < lineEnd; ++itr)
@@ -103,16 +118,16 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 	std::string currentToken;
 
 	const auto pushAndClear = [&currentToken, &tokens]()
-		{
-			tokens.push_back({Token::Type::STRING, currentToken});
-			currentToken.clear();
-		};
+	{
+		tokens.push_back({Token::Type::STRING, currentToken});
+		currentToken.clear();
+	};
 
 	const auto pushAndClearIfNotEmpty = [&currentToken, &pushAndClear]()
-		{
-			if (!currentToken.empty())
-				pushAndClear();
-		};
+	{
+		if (!currentToken.empty())
+			pushAndClear();
+	};
 
 	for (auto itr = line.cbegin(); itr < lineEnd; ++itr)
 	{
