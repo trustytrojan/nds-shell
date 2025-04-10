@@ -1,9 +1,8 @@
 #pragma once
 
 #include "libdeps.hpp"
-#include "Shell.hpp"
 
-using Shell::EnvMap;
+using EnvMap = std::unordered_map<std::string, std::string>;
 
 struct Token
 {

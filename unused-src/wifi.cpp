@@ -1,4 +1,5 @@
 #include "../Shell.hpp"
+#include "/opt/devkitpro/libnds/include/dswifi9.h"
 
 using namespace Shell;
 
@@ -52,12 +53,6 @@ void FindAPInteractive(Wifi_AccessPoint &ap)
 	} while (!(pressed & KEY_A));
 
 	Wifi_GetAPData(selectedAP, &ap);
-}
-
-// for printing ip addresses without first converting to a string
-std::ostream &operator<<(std::ostream &ostr, const in_addr &ip)
-{
-	return ostr << (ip.s_addr & 0xFF) << '.' << ((ip.s_addr >> 8) & 0xFF) << '.' << ((ip.s_addr >> 16) & 0xFF) << '.' << ((ip.s_addr >> 24) & 0xFF);
 }
 
 static const char *const wifiStatusStr[] = {"Disconnected", "Searching", "Authenticating", "Associating", "Acquiring DHCP", "Associated", "Cannot Connect"};

@@ -1,7 +1,13 @@
-#include "../Shell.hpp"
-#include "../NetUtils.hpp"
+#include "Shell.hpp"
+#include "NetUtils.hpp"
 
 using namespace Shell;
+
+// for printing ip addresses without first converting to a string
+std::ostream &operator<<(std::ostream &ostr, const in_addr &ip)
+{
+	return ostr << (ip.s_addr & 0xFF) << '.' << ((ip.s_addr >> 8) & 0xFF) << '.' << ((ip.s_addr >> 16) & 0xFF) << '.' << ((ip.s_addr >> 24) & 0xFF);
+}
 
 void Commands::help()
 {

@@ -5,8 +5,6 @@
 
 namespace Shell
 {
-	using EnvMap = std::unordered_map<std::string, std::string>;
-
 	// Initializes necessary libnds resources.
 	void Init();
 
@@ -44,7 +42,7 @@ namespace Shell
 			{"echo", echo},
 			{"env", envCmd},
 			{"dns", dns},
-			{"wifi", wifi},
+			// {"wifi", wifi},
 			{"http", http}
 		};
 	}

@@ -1,5 +1,5 @@
-#include "../Shell.hpp"
-#include "../NetUtils.hpp"
+#include "Shell.hpp"
+#include "NetUtils.hpp"
 
 using namespace Shell;
 
