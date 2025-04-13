@@ -1,9 +1,19 @@
 #include "Shell.hpp"
 #include "CliPrompt.hpp"
+#include "Commands.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
 
-void Shell::Init()
+#include <dswifi9.h>
+#include <fat.h>
+
+#include <iostream>
+#include <sstream>
+
+namespace Shell
+{
+
+void Init()
 {
 	// Video initialization - We want to use both screens
 	videoSetMode(MODE_0_2D);
@@ -54,54 +64,95 @@ std::string EscapeEscapes(const std::string &str)
 	return newStr;
 }
 
-void Shell::Start()
+void ProcessLineNew(CliPrompt &prompt, std::string &line)
 {
-	// Print startup text
+	static std::vector<Token> tokens;
+
+	if (!LexLine(tokens, line, env))
+		// error occurred
+		return;
+
+	// Debug loop to check tokens
+	for (const auto &[type, value] : tokens)
+		std::cout << (char)type << '(' << value << ")\n";
+
+	if (!ParseTokens(tokens))
+		// error occurred
+		return;
+
+	// Update the prompt using env vars
+	// Allow escapes in basePrompt, for colors
+	prompt.basePrompt = EscapeEscapes(env["PS1"]);
+
+	prompt.cursor = env["CURSOR"].empty()
+						? ' '
+						: env["CURSOR"][0]; // Avoid a segfault here...
+}
+
+void ProcessLine(std::string &line)
+{
+	// Split the line by whitespace into a vector of strings
+	std::istringstream iss{line};
+
+	args.clear();
+	std::string token;
+	while (iss >> token)
+		args.push_back(token);
+
+	if (args.empty())
+	{
+		std::cerr << "\e[41mshell: empty args\e[39m\n";
+		return;
+	}
+
+	const auto commandItr = Commands::MAP.find(args[0]);
+
+	if (commandItr == Commands::MAP.cend())
+	{
+		std::cerr << "\e[41mshell: unknown command\e[39m\n";
+		return;
+	}
+
+	commandItr->second();
+}
+
+void Start()
+{
 	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter "
 				 "'help' to see available\ncommands\n\n";
 
-	// Setup prompt
-	CliPrompt prompt(env["PS1"], env["CURSOR"][0], std::cout);
-
-	// Line buffer and token vector
+	CliPrompt prompt{env["PS1"], env["CURSOR"][0], std::cout};
 	std::string line;
-	std::vector<Token> tokens;
 
-	while (1)
+	while (pmMainLoop())
 	{
+		swiWaitForVBlank();
 		prompt.GetLine(line);
 
-		if (!LexLine(tokens, line, env))
-			// error occurred, continue
+		// Trim leading and trailing whitespace
+		line.erase(0, line.find_first_not_of(" \t\n\r"));
+		line.erase(line.find_last_not_of(" \t\n\r") + 1);
+
+		if (line.empty())
 			continue;
 
-		// Debug loop to check tokens
-		for (const auto &[type, value] : tokens)
-			std::cout << (char)type << '(' << value << ")\n";
+		ProcessLine(line);
 
-		if (!ParseTokens(tokens))
-			// error occurred, continue
-			continue;
-
-		// Update the prompt using env vars
-		// Allow escapes in basePrompt, for colors
-		prompt.basePrompt = EscapeEscapes(
-			env["PS1"]); // If the user wants an empty prompt, so be it
-		prompt.cursor = env["CURSOR"].empty()
-							? ' '
-							: env["CURSOR"][0]; // Avoid a segfault here...
-
-		line.clear();
-		tokens.clear();
+		// forget about the advanced parsing and whatever for now, i do not care
+		// ProcessLineNew(prompt, line);
 	}
 }
 
-bool Shell::RedirectInput(const int fd, const std::string &filename)
+bool RedirectInput(const int fd, const std::string &filename)
 {
 	std::cout << "Redirecting input from " << filename << " to " << fd << '\n';
+	return true;
 }
 
-bool Shell::RedirectOutput(const int fd, const std::string &filename)
+bool RedirectOutput(const int fd, const std::string &filename)
 {
 	std::cout << "Redirecting output from " << fd << " to " << filename << '\n';
+	return true;
 }
+
+} // namespace Shell

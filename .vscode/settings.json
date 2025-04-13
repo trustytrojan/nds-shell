@@ -2,5 +2,6 @@
 	"clangd.arguments": [
 		"--header-insertion=never",
 		"--query-driver=/opt/devkitpro/devkitARM/bin/arm-none-eabi-g++"
-	]
+	],
+	"cmake.configureOnOpen": false
 }

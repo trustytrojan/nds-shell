@@ -1,37 +1,9 @@
 #include "Parser.hpp"
 #include "Shell.hpp"
 
-bool ParseInputRedirect(
-	const TokenIterator &itr,
-	const TokenIterator &tokensBegin,
-	const TokenIterator &tokensEnd);
-bool ParseOutputRedirect(
-	const TokenIterator &itr,
-	const TokenIterator &tokensBegin,
-	const TokenIterator &tokensEnd);
-
-bool ParseTokens(const std::vector<Token> &tokens)
-{
-	const auto tokensBegin = tokens.cbegin();
-	const auto tokensEnd = tokens.cend();
-
-	for (auto itr = tokensBegin; itr < tokensEnd; ++itr)
-		// first, process all operators
-		switch (itr->type)
-		{
-		case Token::Type::INPUT_REDIRECT:
-			if (!ParseInputRedirect(itr, tokensBegin, tokensEnd))
-				return false;
-			break;
-
-		case Token::Type::OUTPUT_REDIRECT:
-			if (!ParseOutputRedirect(itr, tokensBegin, tokensEnd))
-				return false;
-			break;
-		}
-
-	return true;
-}
+#include <iostream>
+#include <filesystem>
+#include <algorithm>
 
 bool ParseInputRedirect(
 	const TokenIterator &itr,
@@ -111,5 +83,39 @@ bool ParseOutputRedirect(
 	}
 
 	Shell::RedirectOutput(atoi(fdStr.c_str()), filename);
+	return true;
+}
+
+bool ParseTokens(const std::vector<Token> &tokens)
+{
+	const auto tokensBegin = tokens.cbegin();
+	const auto tokensEnd = tokens.cend();
+
+	std::string command_to_run;
+
+	for (auto itr = tokensBegin; itr < tokensEnd; ++itr)
+		// first, process all operators
+		switch (itr->type)
+		{
+		case Token::Type::INPUT_REDIRECT:
+			if (!ParseInputRedirect(itr, tokensBegin, tokensEnd))
+				return false;
+			break;
+
+		case Token::Type::OUTPUT_REDIRECT:
+			if (!ParseOutputRedirect(itr, tokensBegin, tokensEnd))
+				return false;
+			break;
+		case Token::Type::WHITESPACE:
+		case Token::Type::STRING:
+		case Token::Type::PIPE:
+		case Token::Type::OR:
+		case Token::Type::AND:
+		case Token::Type::SEMICOLON:
+		case Token::Type::AMPERSAND:
+		case Token::Type::EQUALS:
+			break;
+		}
+
 	return true;
 }

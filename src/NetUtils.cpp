@@ -1,10 +1,17 @@
 #include "NetUtils.hpp"
 
-using namespace NetUtils;
+#include <netdb.h>
 
-Error NetUtils::error;
+#include <iostream>
+#include <sys/socket.h>
+#include <string.h>
 
-void NetUtils::printError(const std::string &s)
+namespace NetUtils
+{
+
+Error error;
+
+void printError(const std::string &s)
 {
 	std::cerr << s << ": ";
 	switch (error)
@@ -18,7 +25,7 @@ void NetUtils::printError(const std::string &s)
 	std::cerr << '\n';
 }
 
-bool NetUtils::parseAddress(
+bool parseAddress(
 	const char *addr, const int defaultPort, sockaddr_in &sain)
 {
 	// ipv4
@@ -58,3 +65,5 @@ bool NetUtils::parseAddress(
 
 	return true;
 }
+
+} // namespace NetUtils

@@ -1,6 +1,9 @@
 #pragma once
 
-#include "libdeps.hpp"
+#include <nds.h>
+
+#include <string>
+#include <vector>
 
 // Commandline prompt with a visible, movable cursor that can edit the line at
 // any position.

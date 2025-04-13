@@ -1,5 +1,6 @@
 #include "Lexer.hpp"
-#include "Shell.hpp"
+
+#include <iostream>
 
 using StringIterator = std::string::const_iterator;
 
@@ -114,16 +115,18 @@ bool LexSingleQuoteString(
 
 bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 {
+	tokens.clear();
+
 	const auto lineEnd = line.cend();
 	std::string currentToken;
 
-	const auto pushAndClear = [&currentToken, &tokens]()
+	const auto pushAndClear = [&]
 	{
 		tokens.push_back({Token::Type::STRING, currentToken});
 		currentToken.clear();
 	};
 
-	const auto pushAndClearIfNotEmpty = [&currentToken, &pushAndClear]()
+	const auto pushAndClearIfNotEmpty = [&]
 	{
 		if (!currentToken.empty())
 			pushAndClear();

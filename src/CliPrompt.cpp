@@ -1,6 +1,8 @@
 #include "CliPrompt.hpp"
 #include "EscapeSequences.hpp"
 
+#include <iostream>
+
 using namespace EscapeSequences;
 
 CliPrompt::CliPrompt(const std::string &bp, const char c, std::ostream &o)
