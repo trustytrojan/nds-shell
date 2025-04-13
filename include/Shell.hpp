@@ -1,7 +1,9 @@
 #pragma once
 
-#include "Lexer.hpp"
 #include <nds.h>
+
+#include <vector>
+#include <string>
 
 namespace Shell
 {
@@ -15,10 +17,9 @@ void Start();
 bool RedirectInput(const int fd, const std::string &filename);
 bool RedirectOutput(const int fd, const std::string &filename);
 
+inline std::string cwd;
+
 // A command's arguments
 inline std::vector<std::string> args;
-
-// Shell environment variables
-inline EnvMap env{{"PS1", "> "}, {"CURSOR", "_"}};
 
 }; // namespace Shell

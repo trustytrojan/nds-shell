@@ -17,6 +17,7 @@ void rm();
 void dns();
 void wifi();
 void http();
+void tcp();
 
 static const std::unordered_map<std::string, void (*)()> MAP{
 	{"help", help},
@@ -27,6 +28,7 @@ static const std::unordered_map<std::string, void (*)()> MAP{
 	{"rm", rm},
 	{"dns", dns},
 	{"wifi", wifi},
+	{"tcp", tcp},
 	{"http", http},
 	{"clear", consoleClear},
 	{"exit", systemShutDown}};

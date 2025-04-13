@@ -1,8 +1,6 @@
 #include "Shell.hpp"
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
-#include "Lexer.hpp"
-#include "Parser.hpp"
 
 #include <dswifi9.h>
 #include <fat.h>
@@ -64,31 +62,6 @@ std::string EscapeEscapes(const std::string &str)
 	return newStr;
 }
 
-void ProcessLineNew(CliPrompt &prompt, std::string &line)
-{
-	static std::vector<Token> tokens;
-
-	if (!LexLine(tokens, line, env))
-		// error occurred
-		return;
-
-	// Debug loop to check tokens
-	for (const auto &[type, value] : tokens)
-		std::cout << (char)type << '(' << value << ")\n";
-
-	if (!ParseTokens(tokens))
-		// error occurred
-		return;
-
-	// Update the prompt using env vars
-	// Allow escapes in basePrompt, for colors
-	prompt.basePrompt = EscapeEscapes(env["PS1"]);
-
-	prompt.cursor = env["CURSOR"].empty()
-						? ' '
-						: env["CURSOR"][0]; // Avoid a segfault here...
-}
-
 void ProcessLine(std::string &line)
 {
 	// Split the line by whitespace into a vector of strings
@@ -121,7 +94,7 @@ void Start()
 	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter "
 				 "'help' to see available\ncommands\n\n";
 
-	CliPrompt prompt{env["PS1"], env["CURSOR"][0], std::cout};
+	CliPrompt prompt;
 	std::string line;
 
 	while (pmMainLoop())
@@ -137,9 +110,6 @@ void Start()
 			continue;
 
 		ProcessLine(line);
-
-		// forget about the advanced parsing and whatever for now, i do not care
-		// ProcessLineNew(prompt, line);
 	}
 }
 

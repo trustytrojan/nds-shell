@@ -1,12 +1,15 @@
 #include "Commands.hpp"
+#include "CliPrompt.hpp"
 #include "NetUtils.hpp"
 #include "Shell.hpp"
 
 #include <dswifi9.h>
 #include <wfc.h>
 
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 
 #include <algorithm>
@@ -172,8 +175,7 @@ void help()
 
 void ls()
 {
-	const auto &path =
-		(Shell::args.size() == 1) ? Shell::env["PWD"] : Shell::args[1];
+	const auto &path = (Shell::args.size() == 1) ? Shell::cwd : Shell::args[1];
 
 	if (!fs::exists(path))
 	{
@@ -196,7 +198,7 @@ void cd()
 {
 	if (Shell::args.size() == 1)
 	{
-		Shell::env["PWD"] = "/";
+		Shell::cwd = "/";
 		return;
 	}
 
@@ -208,7 +210,7 @@ void cd()
 		return;
 	}
 
-	Shell::env["PWD"] = path;
+	Shell::cwd = path;
 }
 
 void cat()
@@ -398,7 +400,109 @@ void wifi()
 	if (is_connect)
 		std::cout << "\e[32mwifi: connection successful.\e[39m\n";
 	else
-	 	std::cout << "\e[41mwifi: connection failed.\e[39m\n";
+		std::cout << "\e[41mwifi: connection failed.\e[39m\n";
+}
+
+void tcp()
+{
+	if (Shell::args.size() != 2)
+	{
+		std::cerr << "usage: http <ip:port>\n";
+		return;
+	}
+
+	// parse the address
+	sockaddr_in sain;
+	if (!NetUtils::parseAddress(Shell::args[1].c_str(), 80, sain))
+	{
+		NetUtils::printError("http");
+		return;
+	}
+
+	// open a connection to the server
+	const auto sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock == -1)
+	{
+		perror("socket");
+		return;
+	}
+	std::cerr << "tcp: socket: " << sock << '\n';
+
+	if (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)) == -1)
+	{
+		perror("connect");
+		close(sock);
+		return;
+	}
+	std::cerr << "tcp: connected\n";
+
+	CliPrompt prompt{"tcp> ", '_', std::cout};
+	std::string lineToSend;
+
+	fd_set master_set{};
+	FD_SET(sock, &master_set);
+
+	fd_set readfds{master_set};
+
+	char buf[200]{};
+	bool shouldExit{};
+	prompt.resetProcessKeyboardState();
+	std::cout << prompt.prompt;
+
+	while (pmMainLoop() && !shouldExit)
+	{
+		swiWaitForVBlank();
+		prompt.ProcessKeyboard(lineToSend);
+
+		if (prompt.newlineWasEntered())
+		{
+			std::cout << "\r\e[1A\e[2K";
+			switch (send(sock, lineToSend.c_str(), lineToSend.length(), 0))
+			{
+			case -1:
+				perror("send");
+				shouldExit = true;
+				break;
+			case 0:
+				std::cout << "tcp: remote end disconnected\n";
+				shouldExit = true;
+				break;
+			}
+			prompt.resetProcessKeyboardState();
+			lineToSend.clear();
+			std::cout << prompt.prompt;
+		}
+
+		static struct timeval t{}; // zero'ed out
+
+		if (select(sock, &readfds, NULL, NULL, &t) != -1)
+		{
+			if (FD_ISSET(sock, &readfds))
+			{
+				switch (const auto bytes_read = recv(sock, buf, sizeof(buf), 0))
+				{
+				case -1:
+					perror("recv");
+					shouldExit = true;
+					break;
+				case 0:
+					std::cout << "\r\e[2Ktcp: remote end disconnected\n";
+					shouldExit = true;
+					break;
+				default:
+					buf[bytes_read] = '\0';
+					std::cout << "\r\e[2K" << buf << '\n' << prompt.prompt << lineToSend;
+				}
+			}
+		}
+		else
+		{
+			perror("select");
+			break;
+		}
+
+		readfds = master_set;
+	}
 }
 
 void http()

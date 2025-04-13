@@ -5,42 +5,35 @@
 
 using namespace EscapeSequences;
 
-CliPrompt::CliPrompt(const std::string &bp, const char c, std::ostream &o)
-	: basePrompt(bp),
-	  cursor(c),
-	  ostr(o)
+CliPrompt::CliPrompt(
+	const std::string &prompt, const char cursor, std::ostream &ostr)
+	: prompt{prompt},
+	  cursor{cursor},
+	  ostr{ostr}
 {
+}
+
+void CliPrompt::resetProcessKeyboardState()
+{
+	cursorPos = {};
+	flashState = {};
+	flashTimer = {};
+	newlineEntered = {};
 }
 
 void CliPrompt::GetLine(std::string &line)
 {
-	// For convenience
 	line.clear();
-
-	// State necessary for processKeyboard
-	u32 cursorPos = 0;
-	bool flashState = false;
-	u8 flashTimer = 0;
-	bool newlineEntered = false;
-
-	// Print initial prompt
-	std::cout << basePrompt << cursor << Cursor::moveLeftOne;
-
-	// Process the keyboard state at the DS's refresh rate
-	while (!newlineEntered)
+	resetProcessKeyboardState();
+	std::cout << prompt << cursor << Cursor::moveLeftOne;
+	while (pmMainLoop() && !newlineEntered)
 	{
-		ProcessKeyboard(
-			line, cursorPos, flashState, flashTimer, newlineEntered);
+		ProcessKeyboard(line);
 		swiWaitForVBlank();
 	}
 }
 
-void CliPrompt::ProcessKeyboard(
-	std::string &line,
-	u32 &cursorPos,
-	bool &flashState,
-	u8 &flashTimer,
-	bool &newlineEntered)
+void CliPrompt::ProcessKeyboard(std::string &line)
 {
 	/**
 	 * While `cursorPos != line.size()`, the character pointed to by the cursor
@@ -50,6 +43,7 @@ void CliPrompt::ProcessKeyboard(
 
 	switch (s8 c = keyboardUpdate())
 	{
+	// keys to ignore:
 	case 0:
 	case -1:
 	case DVK_CTRL:
@@ -78,8 +72,6 @@ void CliPrompt::ProcessKeyboard(
 		else
 			ostr << line[cursorPos] << '\r';
 		ostr << '\n';
-		lineHistory.push_back(line);
-		lineHistoryItr = lineHistory.end() - 1;
 		newlineEntered = true;
 		break;
 
@@ -94,7 +86,7 @@ void CliPrompt::ProcessKeyboard(
 		else
 		{
 			line.erase(--cursorPos, 1);
-			ostr << "\b\e[0K" << line.substr(cursorPos)
+			ostr << "\b\e[0K" << std::string_view{line}.substr(cursorPos)
 				 << Cursor::move(
 						Cursor::MoveDirection::LEFT, line.size() - cursorPos);
 		}
@@ -117,14 +109,6 @@ void CliPrompt::ProcessKeyboard(
 		ostr << line[cursorPos];
 		if (++cursorPos == line.size())
 			ostr << cursor << Cursor::moveLeftOne;
-		break;
-
-	case DVK_UP:
-		line = lineHistory.back();
-		cursorPos = line.size();
-		break;
-
-	case DVK_DOWN:
 		break;
 
 	default:
