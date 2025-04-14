@@ -2,8 +2,8 @@
 
 #include <nds.h>
 
-#include <string>
 #include <iostream>
+#include <string>
 
 // Commandline prompt with a visible, movable cursor that can edit the line at
 // any position.
@@ -26,9 +26,14 @@ public:
 	std::ostream &ostr;
 
 	CliPrompt(
-		const std::string &prompt = "> ", const char cursor = '_', std::ostream &ostr = std::cout);
+		const std::string &prompt = "> ",
+		const char cursor = '_',
+		std::ostream &ostr = std::cout);
 
-	void resetProcessKeyboardState();
+	inline void resetProcessKeyboardState()
+	{
+		cursorPos = flashState = flashTimer = newlineEntered = {};
+	}
 
 	// Processes the current state of the keyboard, and updates state as
 	// necessary.

@@ -91,7 +91,7 @@ void ProcessLine(std::string &line)
 
 void Start()
 {
-	std::cout << "\e[46mnds-shell\ngithub.com/trustytrojan\e[39m\n\nenter "
+	std::cout << "\e[46mgithub.com/trustytrojan/nds-shell\e[39m\n\nenter "
 				 "'help' to see available\ncommands\n\n";
 
 	CliPrompt prompt;

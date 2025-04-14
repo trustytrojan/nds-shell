@@ -13,14 +13,6 @@ CliPrompt::CliPrompt(
 {
 }
 
-void CliPrompt::resetProcessKeyboardState()
-{
-	cursorPos = {};
-	flashState = {};
-	flashTimer = {};
-	newlineEntered = {};
-}
-
 void CliPrompt::GetLine(std::string &line)
 {
 	line.clear();
