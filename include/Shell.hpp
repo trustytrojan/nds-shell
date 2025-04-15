@@ -14,9 +14,6 @@ void Init();
 // Starts the prompt loop. Does not return.
 void Start();
 
-bool RedirectInput(const int fd, const std::string &filename);
-bool RedirectOutput(const int fd, const std::string &filename);
-
 inline std::string cwd;
 
 // A command's arguments

@@ -113,16 +113,4 @@ void Start()
 	}
 }
 
-bool RedirectInput(const int fd, const std::string &filename)
-{
-	std::cout << "Redirecting input from " << filename << " to " << fd << '\n';
-	return true;
-}
-
-bool RedirectOutput(const int fd, const std::string &filename)
-{
-	std::cout << "Redirecting output from " << fd << " to " << filename << '\n';
-	return true;
-}
-
 } // namespace Shell
