@@ -11,7 +11,7 @@ namespace NetUtils
 
 Error error;
 
-void printError(const std::string &s)
+void PrintError(const std::string &s)
 {
 	std::cerr << s << ": ";
 	switch (error)
@@ -25,7 +25,7 @@ void printError(const std::string &s)
 	std::cerr << '\n';
 }
 
-bool parseAddress(
+bool ParseAddress(
 	const char *addr, const int defaultPort, sockaddr_in &sain)
 {
 	// ipv4
