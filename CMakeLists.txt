@@ -1,3 +1,5 @@
+# you MUST use the catnip cmake wrapper provided by devkitpro!
+
 cmake_minimum_required(VERSION 3.13)
 project(nds-shell LANGUAGES CXX)
 

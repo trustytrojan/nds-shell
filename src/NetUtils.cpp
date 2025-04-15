@@ -13,7 +13,7 @@ Error error;
 
 void PrintError(const std::string &s)
 {
-	std::cerr << s << ": ";
+	std::cerr << "\e[41m" << s << ": ";
 	switch (error)
 	{
 	case Error::PARSE_ERROR:
@@ -22,7 +22,7 @@ void PrintError(const std::string &s)
 	case Error::PORT_REQUIRED:
 		std::cerr << "port required";
 	}
-	std::cerr << '\n';
+	std::cerr << "\e[39m\n";
 }
 
 bool ParseAddress(

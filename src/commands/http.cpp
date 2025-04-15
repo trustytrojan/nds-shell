@@ -34,7 +34,7 @@ void Commands::http()
 	if (std::find(httpMethods.begin(), httpMethods.cend(), method) ==
 		httpMethods.cend())
 	{
-		std::cerr << "\e[41minvalid http method\e[39m\n";
+		std::cerr << "\e[41mhttp: invalid method\e[39m\n";
 		return;
 	}
 
@@ -116,5 +116,5 @@ void Commands::http()
 	if (close(sock) == -1)
 		perror("close");
 
-	std::cerr << "\e45mreached end of function\e39m\n";
+	std::cerr << "\e[45mreached end of function\e[39m\n";
 }
