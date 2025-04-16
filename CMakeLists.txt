@@ -9,6 +9,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 list(APPEND CMAKE_MODULE_PATH "$ENV{DEVKITPRO}/cmake")
 include(Platform/NintendoDS)
+include(FetchContent)
+
+FetchContent_Declare(
+	openssl
+	URL https://github.com/openssl/openssl/releases/download/openssl-3.5.0/openssl-3.5.0.tar.gz
+	DOWNLOAD_EXTRACT_TIMESTAMP true
+)
+# run openssl.sh
 
 include_directories(include)
 link_libraries(dswifi9 fat nds9)
