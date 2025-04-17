@@ -12,7 +12,13 @@ include(Platform/NintendoDS)
 
 include_directories(include)
 link_libraries(dswifi9 fat nds9)
+add_compile_options(-fno-exceptions)
 
 file(GLOB_RECURSE SOURCES src/**)
 add_executable(nds-shell ${SOURCES})
 nds_create_rom(nds-shell)
+
+# add_link_options(
+# 	-nostdlib
+# )
+add_executable(sample sample.cpp)

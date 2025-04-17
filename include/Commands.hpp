@@ -18,6 +18,7 @@ void dns();
 void wifi();
 void http();
 void tcp();
+void elfloader();
 
 static const std::unordered_map<std::string, void (*)()> MAP{
 	{"help", help},
@@ -31,6 +32,6 @@ static const std::unordered_map<std::string, void (*)()> MAP{
 	{"tcp", tcp},
 	{"http", http},
 	{"clear", consoleClear},
-	{"exit", systemShutDown}};
+	{"elfloader", elfloader}};
 
 } // namespace Commands
