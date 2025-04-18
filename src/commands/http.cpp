@@ -2,19 +2,41 @@
 #include "NetUtils.hpp"
 #include "Shell.hpp"
 
-#include <dswifi9.h>
-#include <wfc.h>
-
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-
-#include <algorithm>
+#include <cstring>
+#include <curl/curl.h>
 #include <iostream>
-#include <sstream>
-#include <unordered_set>
+#include <unistd.h>
+
+extern "C"
+{
+	// basename doesn't exist in libnds? libcurl depends on it,
+	// so here's a crude implementation.
+	char *basename(const char *path)
+	{
+		if (*path == '\0')
+			// Return current directory for empty paths
+			return const_cast<char *>(".");
+
+		const auto base = strrchr(path, '/');
+		return base ? (base + 1) : const_cast<char *>(path);
+	}
+}
+
+static size_t
+WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+	const auto totalSize = size * nmemb;
+	std::cout.write(static_cast<const char *>(contents), totalSize);
+	return totalSize;
+}
+
+// Custom opensocket callback
+static curl_socket_t OpenSocketCallback(
+	void *clientp, curlsocktype purpose, struct curl_sockaddr *address)
+{
+	// Extract the pre-connected socket from clientp
+	return *(curl_socket_t *)clientp;
+}
 
 void Commands::http()
 {
@@ -24,97 +46,72 @@ void Commands::http()
 		return;
 	}
 
-	// convert to uppercase
-	auto method = Shell::args[1];
-	std::ranges::transform(method, method.begin(), toupper);
+	const auto &method = Shell::args[1];
+	const auto &url = Shell::args[2];
 
-	// check against supported methods
-	static const std::unordered_set<std::string> httpMethods{
-		"GET", "POST", "PUT", "DELETE"};
-	if (std::find(httpMethods.begin(), httpMethods.cend(), method) ==
-		httpMethods.cend())
+	// Parse the URL to extract the host and path
+	std::string host, path;
+	int port = 80; // Default HTTP port
+	if (url.find("http://") == 0)
 	{
-		std::cerr << "\e[41mhttp: invalid method\e[39m\n";
-		return;
+		const auto hostStart = url.find("http://") + 7;
+		const auto pathStart = url.find('/', hostStart);
+		host = url.substr(hostStart, pathStart - hostStart);
+		path = url.substr(pathStart);
 	}
-
-	// parse out address and path from url
-	// the string.h functions are easier to use for this kind of stuff
-	auto addr = Shell::args[2].c_str();
-
-	// take out http:// from url if its there
-	if (!strncmp(addr, "http://", 7))
-		addr += 7;
-
-	const char *path;
-	const auto slashPtr = strchr(addr, '/');
-	if (!slashPtr)
-		path = "/";
 	else
 	{
-		// we lose the / here, but we're saving what could be a long copy
-		// we can insert a / back when constructing the request, see below
-		*slashPtr = 0;
-		path = slashPtr + 1;
-	}
-
-	// parse the address
-	sockaddr_in sain;
-	if (!NetUtils::ParseAddress(addr, 80, sain))
-	{
-		NetUtils::PrintError("http");
+		std::cerr << "Only HTTP URLs are supported\n";
 		return;
 	}
 
-	// open a connection to the server
-	const auto sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock == -1)
+	// Use NetUtils::ParseAddress to resolve the host and port
+	sockaddr_in serverAddr{};
+	if (!NetUtils::ParseAddress(host.c_str(), port, serverAddr))
 	{
-		perror("socket");
-		return;
-	}
-	if (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)) == -1)
-	{
-		perror("connect");
-		if (close(sock) == -1)
-			perror("close");
+		NetUtils::PrintError("Failed to parse address");
 		return;
 	}
 
-	// construct and send the request
-	std::stringstream ss;
-	ss << method << ' ' << (slashPtr ? "/" : "") << path
-	   << " HTTP/1.1\r\nHost: " << addr
-	   << "\r\nUser-Agent: Nintendo DS\r\n\r\n";
-	const auto request = ss.str();
-	if (send(sock, request.c_str(), request.size(), 0) == -1)
+	// Create and connect the socket
+	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0)
 	{
-		perror("send");
-		if (close(sock) == -1)
-			perror("close");
+		std::cerr << "Failed to create socket\n";
 		return;
 	}
 
-	// print the response
-	char responseBuffer[BUFSIZ + 1];
-	responseBuffer[BUFSIZ] = 0;
-	int bytesReceived;
-	while ((bytesReceived = recv(sock, responseBuffer, BUFSIZ, 0)) > 0)
+	if (connect(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
 	{
-		responseBuffer[bytesReceived] = 0;
-		std::cout << responseBuffer;
-	}
-
-	if (bytesReceived == -1)
-	{
-		perror("recv");
-		if (close(sock) == -1)
-			perror("close");
+		std::cerr << "Failed to connect to host: " << host << "\n";
+		closesocket(sockfd);
 		return;
 	}
 
-	if (close(sock) == -1)
-		perror("close");
+	// Initialize libcurl
+	const auto curl = curl_easy_init();
+	if (!curl)
+	{
+		std::cerr << "Failed to initialize libcurl\n";
+		closesocket(sockfd);
+		return;
+	}
 
-	std::cerr << "\e[45mreached end of function\e[39m\n";
+	// Set libcurl options
+	curl_easy_setopt(curl, CURLOPT_URL, path.c_str());
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.c_str());
+	curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, OpenSocketCallback);
+	curl_easy_setopt(curl, CURLOPT_OPENSOCKETDATA, &sockfd);
+
+	// Perform the request
+	if (const auto res = curl_easy_perform(curl); res != CURLE_OK)
+	{
+		std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res)
+				  << "\n";
+	}
+
+	// Cleanup
+	curl_easy_cleanup(curl);
+	closesocket(sockfd);
 }

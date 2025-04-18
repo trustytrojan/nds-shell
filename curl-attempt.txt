@@ -1,0 +1,1 @@
+quit trying to use curl. it can't resolve hostnames without some sort of asynchronous method, and it can't open/connect sockets on its own either. and EVEN WITH giving it an open socket file descriptor, it just crashes the nds. i am giving up now. use another http(s) library.

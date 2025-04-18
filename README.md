@@ -20,6 +20,10 @@ this process has only been tested on arch linux
 	#define LUA_32BITS	1
 	```
 5. if you see errors about math functions being missing, just change something in [CMakeLists.txt](./CMakeLists.txt) and rerun `catnip`
+6. if you see curl errors attempting to call `__atomic_XXXX` functions, comment out this line in `curl_config.h`:
+	```c
+	#define HAVE_ATOMIC 1
+	```
 
 ## todo list
 - implement tftp server
