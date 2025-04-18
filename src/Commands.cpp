@@ -1,6 +1,7 @@
 #include "Commands.hpp"
 #include "NetUtils.hpp"
 #include "Shell.hpp"
+#include "EscapeSequences.hpp"
 
 #include <dswifi9.h>
 #include <nds.h>
@@ -36,7 +37,7 @@ void ls()
 
 	if (!fs::exists(path))
 	{
-		std::cerr << "\e[41mpath does not exist\e[39m\n";
+		std::cerr << "path does not exist\n"_brightred;
 		return;
 	}
 
@@ -63,7 +64,7 @@ void cd()
 
 	if (!fs::exists(path))
 	{
-		std::cerr << "\e[41mpath does not exist\e[39m\n";
+		std::cerr << "path does not exist\n"_brightred;
 		return;
 	}
 
@@ -149,7 +150,7 @@ void ipinfo()
 	in_addr gateway, subnetMask, dns1, dns2;
 	Wifi_GetIPInfo(&gateway, &subnetMask, &dns1, &dns2);
 
-	std::cout << "\e[32mwifi: connection successful.\e[39m\n"
+	std::cout << "wifi: connection successful.\n"_green
 			  << "IP:          " << (in_addr)Wifi_GetIP() << '\n'
 			  << "Gateway:     " << gateway << '\n'
 			  << "Subnet Mask: " << subnetMask << '\n'

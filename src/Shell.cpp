@@ -1,6 +1,7 @@
 #include "Shell.hpp"
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
+#include "EscapeSequences.hpp"
 
 #include <dswifi9.h>
 #include <fat.h>
@@ -30,15 +31,15 @@ void Init()
 
 	// Mount sdcard using libfat
 	if (!fatInitDefault())
-		std::cerr << "\e[41mfatInitDefault failed: filesystem commands will "
-					 "not work\e[39m\n\n";
+		std::cerr << "fatInitDefault failed: filesystem commands will "
+					 "not work\n\n"_brightred;
 
 	defaultExceptionHandler();
 
 	// Initialize wifi
 	if (!Wifi_InitDefault(false))
-		std::cerr << "\e[41mWifi_InitDefault failed: networking commands will "
-					 "not work\e[39m\n\n";
+		std::cerr << "Wifi_InitDefault failed: networking commands will "
+					 "not work\n\n"_brightred;
 }
 
 std::string EscapeEscapes(const std::string &str)
@@ -74,7 +75,7 @@ void ProcessLine(std::string &line)
 
 	if (args.empty())
 	{
-		std::cerr << "\e[41mshell: empty args\e[39m\n";
+		std::cerr << "shell: empty args\n"_brightred;
 		return;
 	}
 
@@ -82,7 +83,7 @@ void ProcessLine(std::string &line)
 
 	if (commandItr == Commands::MAP.cend())
 	{
-		std::cerr << "\e[41mshell: unknown command\e[39m\n";
+		std::cerr << "shell: unknown command\n"_brightred;
 		return;
 	}
 
@@ -91,8 +92,8 @@ void ProcessLine(std::string &line)
 
 void Start()
 {
-	std::cout << "\e[46mgithub.com/trustytrojan/nds-shell\e[39m\n\nenter "
-				 "'help' to see available\ncommands\n\n";
+	std::cout << "github.com/trustytrojan/nds-shell\n\n"_brightcyan
+			  << "enter 'help' to see available\ncommands\n\n";
 
 	CliPrompt prompt;
 	std::string line;

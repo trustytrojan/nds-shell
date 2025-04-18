@@ -88,7 +88,7 @@ bool LexDoubleQuoteString(
 
 	if (itr == lineEnd)
 	{
-		std::cerr << "\e[41mshell: closing `\"` not found\e[39m\n";
+		std::cerr << "shell: closing `\"` not found\n"_brightred;
 		return false;
 	}
 
@@ -106,7 +106,7 @@ bool LexSingleQuoteString(
 
 	if (itr == lineEnd)
 	{
-		std::cerr << "\e[41mshell: closing `'` not found\e[39m\n";
+		std::cerr << "shell: closing `'` not found\n"_brightred;
 		return false;
 	}
 

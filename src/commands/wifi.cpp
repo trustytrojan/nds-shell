@@ -1,4 +1,6 @@
+#include "CliPrompt.hpp"
 #include "Commands.hpp"
+#include "EscapeSequences.hpp"
 #include "NetUtils.hpp"
 
 #include <dswifi9.h>
@@ -154,29 +156,24 @@ _rescan:
 	return apselected;
 }
 
-void GetSSID(WlanBssDesc *ap)
+bool GetSSID(WlanBssDesc *ap)
 {
-	consoleClear();
-	char instr[64];
-	uint inlen;
+	CliPrompt prompt{"SSID: "};
+	std::string line;
 
-	iprintf("Enter hidden SSID name\n");
-	bool ok;
-	do
+	while (true)
 	{
-		if (!fgets(instr, sizeof(instr), stdin))
-			exit(0);
+		std::cout << "Enter hidden SSID name\n";
+		prompt.getLine(line);
+		if (line.empty() || line.length() > WLAN_MAX_SSID_LEN)
+			std::cout << "Invalid SSID\n"_brightred;
+		else
+			break;
+	}
 
-		instr[strcspn(instr, "\n")] = 0;
-		inlen = strlen(instr);
-
-		ok = inlen && inlen <= WLAN_MAX_SSID_LEN;
-		if (!ok)
-			iprintf("Invalid SSID\n");
-	} while (!ok);
-
-	memcpy(ap->ssid, instr, inlen);
-	ap->ssid_len = inlen;
+	memcpy(ap->ssid, line.c_str(), line.length());
+	ap->ssid_len = line.length();
+	return true;
 }
 
 // Auth data must be in main RAM, not DTCM stack
@@ -193,7 +190,7 @@ bool GetPassword(WlanBssDesc *ap)
 	{
 		if (!fgets(instr, sizeof(instr), stdin))
 		{
-			std::cerr << "\e[41mwifi: GetPassword: fgets failed\e[39m\n";
+			std::cerr << "wifi: GetPassword: fgets failed\n"_brightred;
 			return false;
 		}
 
@@ -218,7 +215,7 @@ bool GetPassword(WlanBssDesc *ap)
 		}
 
 		if (!ok)
-			iprintf("Invalid key!\n");
+			std::cerr << "Invalid key!\n"_brightred;
 	} while (!ok);
 
 	if (ap->auth_type < WlanBssAuthType_WPA_PSK_TKIP)
@@ -227,7 +224,7 @@ bool GetPassword(WlanBssDesc *ap)
 	}
 	else
 	{
-		iprintf("Deriving PMK, please wait\n");
+		std::cout << "Deriving PMK, please wait\n";
 		wfcDeriveWpaKey(&auth, ap->ssid, ap->ssid_len, instr, inlen);
 	}
 
@@ -240,7 +237,7 @@ void Commands::wifi()
 
 	if (!ap)
 	{
-		std::cerr << "\e[41mwifi: ap is null\e[39m\n";
+		std::cerr << "wifi: ap is null\n"_brightred;
 		return;
 	}
 
@@ -253,13 +250,13 @@ void Commands::wifi()
 
 	if (ap->auth_type != WlanBssAuthType_Open && !GetPassword(ap))
 	{
-		std::cerr << "\e[41mwifi: GetPassword failed\e[39m\n";
+		std::cerr << "wifi: GetPassword failed\n"_brightred;
 		return;
 	}
 
 	if (!wfcBeginConnect(ap, &auth))
 	{
-		std::cerr << "\e[41mwifi: wfcBeginConnect failed\e[39m\n";
+		std::cerr << "wifi: wfcBeginConnect failed\n"_brightred;
 		return;
 	}
 
@@ -271,14 +268,14 @@ void Commands::wifi()
 
 		if (keysDown() & KEY_START)
 		{
-			std::cerr << "wifi: connection canceled\n";
+			std::cout << "wifi: connection canceled\n";
 			return;
 		}
 
 		int status = Wifi_AssocStatus();
 
 		consoleClear();
-		iprintf("%s\n", connStatus[status]);
+		std::cout << connStatus[status] << "\nPress start to cancel";
 
 		is_connect = status == ASSOCSTATUS_ASSOCIATED;
 		if (is_connect || status == ASSOCSTATUS_DISCONNECTED)
@@ -287,14 +284,14 @@ void Commands::wifi()
 
 	if (!is_connect)
 	{
-		std::cout << "\e[41mwifi: connection failed.\e[39m\n";
+		std::cout << "wifi: connection failed.\n"_brightred;
 		return;
 	}
 
 	in_addr gateway, subnetMask, dns1, dns2;
 	Wifi_GetIPInfo(&gateway, &subnetMask, &dns1, &dns2);
 
-	std::cout << "\e[32mwifi: connection successful.\e[39m\n"
+	std::cout << "wifi: connection successful.\n"_green
 			  << "IP:          " << (in_addr)Wifi_GetIP() << '\n'
 			  << "Gateway:     " << gateway << '\n'
 			  << "Subnet Mask: " << subnetMask << '\n'
