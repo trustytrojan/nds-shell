@@ -2,8 +2,8 @@
 
 #include <nds.h>
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace Shell
 {

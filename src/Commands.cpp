@@ -3,6 +3,7 @@
 #include "Shell.hpp"
 
 #include <dswifi9.h>
+#include <nds.h>
 #include <wfc.h>
 
 #include <fcntl.h>
@@ -137,5 +138,44 @@ void dns()
 
 	std::cout << *(in_addr *)host->h_addr_list[0] << '\n';
 }
+
+void ip()
+{
+	std::cout << (in_addr)Wifi_GetIP() << '\n';
+}
+
+void ipinfo()
+{
+	in_addr gateway, subnetMask, dns1, dns2;
+	Wifi_GetIPInfo(&gateway, &subnetMask, &dns1, &dns2);
+
+	std::cout << "\e[32mwifi: connection successful.\e[39m\n"
+			  << "IP:          " << (in_addr)Wifi_GetIP() << '\n'
+			  << "Gateway:     " << gateway << '\n'
+			  << "Subnet Mask: " << subnetMask << '\n'
+			  << "DNS 1:       " << dns1 << '\n'
+			  << "DNS 2:       " << dns2 << '\n';
+}
+
+const std::unordered_map<std::string, void (*)()> MAP{
+	{"help", help},
+	{"echo", echo},
+	{"cd", cd},
+	{"ls", ls},
+	{"cat", cat},
+	{"rm", rm},
+	{"dns", dns},
+	{"wifi", wifi},
+	{"ip", ip},
+	{"ipinfo", ipinfo},
+	{"tcp", tcp},
+	{"http", http},
+	{"clear", consoleClear},
+	{"exit",
+	 []
+	 {
+		 exit(0);
+	 }},
+	{"lua", lua}};
 
 } // namespace Commands

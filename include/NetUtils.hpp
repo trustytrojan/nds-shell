@@ -2,13 +2,13 @@
 
 #include <netinet/in.h>
 
-#include <string>
 #include <iostream>
+#include <string>
 
 namespace NetUtils
 {
 
-	enum class Error
+enum class Error
 {
 	PORT_REQUIRED,
 	PARSE_ERROR

@@ -9,21 +9,31 @@
 // any position.
 class CliPrompt
 {
-	// State necessary for ProcessKeyboard
+	// The stream to print to.
+	std::ostream &ostr;
+
+	// State necessary for rendering a visible cursor
 	u32 cursorPos{};
 	bool flashState{};
 	u8 flashTimer{};
-	bool newlineEntered{};
+
+	// Keypress state
+	bool _newlineEntered{};
+	bool _foldPressed{};
+
+	inline void resetKeypressState() { _newlineEntered = _foldPressed = {}; }
+	void flashCursor(const std::string &line);
+	void handleBackspace(std::string &line);
+	void handleEnter(const std::string &line);
+	void handleLeft(const std::string &line);
+	void handleRight(const std::string &line);
 
 public:
 	// The text to print before the cursor.
-	const std::string prompt;
+	std::string prompt;
 
 	// The character to print as the cursor.
-	const char cursor;
-
-	// The stream to print to.
-	std::ostream &ostr;
+	char cursor;
 
 	CliPrompt(
 		const std::string &prompt = "> ",
@@ -32,16 +42,17 @@ public:
 
 	inline void resetProcessKeyboardState()
 	{
-		cursorPos = flashState = flashTimer = newlineEntered = {};
+		cursorPos = flashState = flashTimer = {};
 	}
 
 	// Processes the current state of the keyboard, and updates state as
 	// necessary.
-	void ProcessKeyboard(std::string &line);
+	void processKeyboard(std::string &line);
 
 	// Starts processing the keyboard every frame until the Enter key is
 	// pressed, then writes user input into `line`.
-	void GetLine(std::string &line);
+	void getLine(std::string &line);
 
-	inline constexpr bool newlineWasEntered() const { return newlineEntered; }
+	inline constexpr bool newlineEntered() const { return _newlineEntered; }
+	inline constexpr bool foldPressed() const { return _foldPressed; }
 };

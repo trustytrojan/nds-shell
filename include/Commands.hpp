@@ -3,34 +3,16 @@
 #include <string>
 #include <unordered_map>
 
-#include <nds.h>
-
 namespace Commands
 {
 
-void help();
-void echo();
-void cd();
-void ls();
-void cat();
-void rm();
-void dns();
+// these are defined in commands/*.cpp
 void wifi();
 void http();
 void tcp();
+void lua();
 
-static const std::unordered_map<std::string, void (*)()> MAP{
-	{"help", help},
-	{"echo", echo},
-	{"cd", cd},
-	{"ls", ls},
-	{"cat", cat},
-	{"rm", rm},
-	{"dns", dns},
-	{"wifi", wifi},
-	{"tcp", tcp},
-	{"http", http},
-	{"clear", consoleClear},
-	{"exit", systemShutDown}};
+// the smaller commands are defined in Commands.cpp
+extern const std::unordered_map<std::string, void (*)()> MAP;
 
 } // namespace Commands

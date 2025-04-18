@@ -1,5 +1,6 @@
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
+#include "EscapeSequences.hpp"
 #include "NetUtils.hpp"
 #include "Shell.hpp"
 
@@ -58,14 +59,21 @@ void Commands::tcp()
 	char buf[200]{};
 	bool shouldExit{};
 	prompt.resetProcessKeyboardState();
-	std::cout << prompt.prompt;
+	std::cout << prompt.prompt << prompt.cursor
+			  << EscapeSequences::Cursor::moveLeftOne;
 
 	while (pmMainLoop() && !shouldExit)
 	{
 		swiWaitForVBlank();
-		prompt.ProcessKeyboard(lineToSend);
+		prompt.processKeyboard(lineToSend);
 
-		if (prompt.newlineWasEntered())
+		if (prompt.foldPressed())
+		{
+			std::cout << "\r\e[2Ktcp: fold key pressed\n";
+			break;
+		}
+
+		if (prompt.newlineEntered())
 		{
 			std::cout << "\r\e[1A\e[2K";
 			switch (send(sock, lineToSend.c_str(), lineToSend.length(), 0))
@@ -83,7 +91,8 @@ void Commands::tcp()
 			}
 			prompt.resetProcessKeyboardState();
 			lineToSend.clear();
-			std::cout << prompt.prompt;
+			std::cout << prompt.prompt << prompt.cursor
+					  << EscapeSequences::Cursor::moveLeftOne;
 		}
 
 		// Check for incoming data
@@ -107,7 +116,7 @@ void Commands::tcp()
 			default:
 				buf[bytesRead] = '\0';
 				std::cout << "\r\e[2K" << buf << '\n'
-						  << prompt.prompt << lineToSend;
+						  << prompt.prompt << lineToSend << prompt.cursor;
 				break;
 			}
 		}
@@ -118,5 +127,7 @@ void Commands::tcp()
 		}
 	}
 
-	close(sock);
+	// close() and closesocket() operate on DIFFERENT fd tables
+	// might want to tell the libnds devs about this
+	closesocket(sock);
 }

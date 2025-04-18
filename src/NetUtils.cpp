@@ -3,8 +3,8 @@
 #include <netdb.h>
 
 #include <iostream>
-#include <sys/socket.h>
 #include <string.h>
+#include <sys/socket.h>
 
 namespace NetUtils
 {
@@ -25,8 +25,7 @@ void PrintError(const std::string &s)
 	std::cerr << "\e[39m\n";
 }
 
-bool ParseAddress(
-	const char *addr, const int defaultPort, sockaddr_in &sain)
+bool ParseAddress(const char *addr, const int defaultPort, sockaddr_in &sain)
 {
 	// ipv4
 	sain.sin_family = AF_INET;

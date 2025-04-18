@@ -2,6 +2,7 @@
 #include "NetUtils.hpp"
 
 #include <dswifi9.h>
+#include <nds.h>
 #include <wfc.h>
 
 #include <fcntl.h>
@@ -72,7 +73,10 @@ _rescan:
 		scanKeys();
 
 		if (keysDown() & KEY_START)
-			exit(0);
+		{
+			std::cerr << "\e[2Jwifi: connection canceled\n";
+			return NULL;
+		}
 	}
 
 	if (!aplist || !count)
@@ -88,7 +92,10 @@ _rescan:
 
 		u32 pressed = keysDownRepeat();
 		if (pressed & KEY_START)
-			exit(0);
+		{
+			std::cerr << "\e[2Jwifi: connection canceled\n";
+			return NULL;
+		}
 		if (pressed & KEY_A)
 		{
 			apselected = &aplist[selected];
@@ -185,7 +192,10 @@ bool GetPassword(WlanBssDesc *ap)
 	do
 	{
 		if (!fgets(instr, sizeof(instr), stdin))
+		{
+			std::cerr << "\e[41mwifi: GetPassword: fgets failed\e[39m\n";
 			return false;
+		}
 
 		instr[strcspn(instr, "\n")] = 0;
 		inlen = strlen(instr);
@@ -244,6 +254,7 @@ void Commands::wifi()
 	if (ap->auth_type != WlanBssAuthType_Open && !GetPassword(ap))
 	{
 		std::cerr << "\e[41mwifi: GetPassword failed\e[39m\n";
+		return;
 	}
 
 	if (!wfcBeginConnect(ap, &auth))

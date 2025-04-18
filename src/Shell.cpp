@@ -100,7 +100,7 @@ void Start()
 	while (pmMainLoop())
 	{
 		swiWaitForVBlank();
-		prompt.GetLine(line);
+		prompt.getLine(line);
 
 		// Trim leading and trailing whitespace
 		line.erase(0, line.find_first_not_of(" \t\n\r"));
