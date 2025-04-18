@@ -14,7 +14,6 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
-#include <unordered_set>
 
 void Commands::http()
 {
@@ -24,25 +23,14 @@ void Commands::http()
 		return;
 	}
 
-	// convert to uppercase
+	// Convert to uppercase
 	auto method = Shell::args[1];
 	std::ranges::transform(method, method.begin(), toupper);
 
-	// check against supported methods
-	static const std::unordered_set<std::string> httpMethods{
-		"GET", "POST", "PUT", "DELETE"};
-	if (std::find(httpMethods.begin(), httpMethods.cend(), method) ==
-		httpMethods.cend())
-	{
-		std::cerr << "\e[41mhttp: invalid method\e[39m\n";
-		return;
-	}
-
-	// parse out address and path from url
-	// the string.h functions are easier to use for this kind of stuff
+	// Parse out address and path from url
 	auto addr = Shell::args[2].c_str();
 
-	// take out http:// from url if its there
+	// Take out http:// from url if it's there
 	if (!strncmp(addr, "http://", 7))
 		addr += 7;
 
@@ -52,13 +40,11 @@ void Commands::http()
 		path = "/";
 	else
 	{
-		// we lose the / here, but we're saving what could be a long copy
-		// we can insert a / back when constructing the request, see below
 		*slashPtr = 0;
 		path = slashPtr + 1;
 	}
 
-	// parse the address
+	// Parse the address
 	sockaddr_in sain;
 	if (!NetUtils::ParseAddress(addr, 80, sain))
 	{
@@ -66,7 +52,7 @@ void Commands::http()
 		return;
 	}
 
-	// open a connection to the server
+	// Open a connection to the server
 	const auto sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == -1)
 	{
@@ -76,45 +62,97 @@ void Commands::http()
 	if (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)) == -1)
 	{
 		perror("connect");
-		if (close(sock) == -1)
-			perror("close");
+		closesocket(sock);
 		return;
 	}
 
-	// construct and send the request
+	// Construct and send the request
 	std::stringstream ss;
 	ss << method << ' ' << (slashPtr ? "/" : "") << path
 	   << " HTTP/1.1\r\nHost: " << addr
-	   << "\r\nUser-Agent: Nintendo DS\r\n\r\n";
+	   << "\r\nUser-Agent: Nintendo DS\r\nConnection: close\r\n\r\n"; // Force
+																	  // connection
+																	  // close
 	const auto request = ss.str();
 	if (send(sock, request.c_str(), request.size(), 0) == -1)
 	{
 		perror("send");
-		if (close(sock) == -1)
-			perror("close");
+		closesocket(sock);
 		return;
 	}
 
-	// print the response
-	char responseBuffer[BUFSIZ + 1];
-	responseBuffer[BUFSIZ] = 0;
-	int bytesReceived;
-	while ((bytesReceived = recv(sock, responseBuffer, BUFSIZ, 0)) > 0)
+	// Read response
+	char buffer[1024];
+	int totalReceived = 0;
+	int contentLength = -1;
+	bool headersComplete = false;
+	std::string headers;
+
+	// First pass: read headers
+	while (!headersComplete)
 	{
-		responseBuffer[bytesReceived] = 0;
-		std::cout << responseBuffer;
+		int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
+		if (bytesReceived <= 0)
+		{
+			perror("recv");
+			closesocket(sock);
+			return;
+		}
+
+		totalReceived += bytesReceived;
+		headers.append(buffer, bytesReceived);
+
+		// Check for end of headers
+		size_t headerEnd = headers.find("\r\n\r\n");
+		if (headerEnd != std::string::npos)
+		{
+			headersComplete = true;
+
+			// Find Content-Length header
+			size_t clPos = headers.find("Content-Length: ");
+			if (clPos != std::string::npos)
+				contentLength = atoi(headers.c_str() + clPos + 16);
+
+			// Print headers
+			std::cout << headers.substr(0, headerEnd + 4);
+
+			// Handle any body data we might have already read
+			if (headers.size() > headerEnd + 4)
+			{
+				std::cout.write(
+					headers.c_str() + headerEnd + 4,
+					headers.size() - (headerEnd + 4));
+				if (contentLength > 0)
+					contentLength -= (headers.size() - (headerEnd + 4));
+			}
+		}
 	}
 
-	if (bytesReceived == -1)
+	// Second pass: read body if we know the length
+	if (contentLength > 0)
 	{
-		perror("recv");
-		if (close(sock) == -1)
-			perror("close");
-		return;
+		while (contentLength > 0)
+		{
+			int bytesReceived = recv(
+				sock, buffer, std::min(contentLength, (int)sizeof(buffer)), 0);
+			if (bytesReceived <= 0)
+				break;
+
+			std::cout.write(buffer, bytesReceived);
+			contentLength -= bytesReceived;
+		}
+	}
+	else
+	{
+		// No Content-Length - read until connection closes
+		while (true)
+		{
+			int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
+			if (bytesReceived <= 0)
+				break;
+			std::cout.write(buffer, bytesReceived);
+		}
 	}
 
-	if (close(sock) == -1)
-		perror("close");
-
-	std::cerr << "\e[45mreached end of function\e[39m\n";
+	closesocket(sock);
 }
