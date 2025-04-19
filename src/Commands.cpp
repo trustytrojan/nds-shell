@@ -23,11 +23,12 @@ namespace Commands
 
 void help()
 {
-	std::cout << "commands: ";
+	auto num_commands = MAP.size();
+	std::cout << num_commands << " commands available:\n";
 	auto itr = MAP.cbegin();
-	for (; itr != MAP.cend(); ++itr)
-		std::cout << itr->first << ' ';
-	std::cout << '\n';
+	for (; num_commands > 1; --num_commands)
+		std::cout << (itr++)->first << ' ';
+	std::cout << itr->first << '\n';
 }
 
 void ls()
@@ -40,7 +41,7 @@ void ls()
 		return;
 	}
 
-	for (const auto &entry : fs::directory_iterator(path))
+	for (const auto &entry : fs::directory_iterator{path})
 	{
 		const auto filename = entry.path().filename().string();
 		if (entry.is_directory())
@@ -80,20 +81,21 @@ void cat()
 
 	if (!fs::exists(Shell::args[1]))
 	{
-		std::cerr << "file '" << Shell::args[1] << "' does not exist\n";
+		std::cerr << "\e[41mcat: file does not exist: " << Shell::args[1]
+				  << "\e[39m\n";
 		return;
 	}
 
-	std::ifstream file(Shell::args[1]);
+	std::ifstream file{Shell::args[1]};
 
 	if (!file)
 	{
-		std::cerr << "cannot open file\n";
+		std::cerr << "\e[41mcat: cannot open file: " << Shell::args[1]
+				  << "\e[39m\n";
 		return;
 	}
 
 	std::cout << file.rdbuf();
-	file.close();
 }
 
 void rm()
@@ -106,12 +108,14 @@ void rm()
 
 	if (!fs::exists(Shell::args[1]))
 	{
-		std::cerr << "file '" << Shell::args[1] << "' does not exist\n";
+		std::cerr << "\e[41mrm: file does not exist: " << Shell::args[1]
+				  << "\e[39m\n";
 		return;
 	}
 
 	if (!fs::remove(Shell::args[1]))
-		std::cerr << "failed to remove '" << Shell::args[1] << "'\n";
+		std::cerr << "\e[41mrm: failed to remove: " << Shell::args[1]
+				  << "\e[39m\n";
 }
 
 void echo()
@@ -132,7 +136,9 @@ void dns()
 	const auto host = gethostbyname(Shell::args[1].c_str());
 	if (!host)
 	{
+		std::cerr << "\e[41m";
 		perror("gethostbyname");
+		std::cerr << "\e[39m";
 		return;
 	}
 
@@ -149,12 +155,22 @@ void ipinfo()
 	in_addr gateway, subnetMask, dns1, dns2;
 	Wifi_GetIPInfo(&gateway, &subnetMask, &dns1, &dns2);
 
-	std::cout << "\e[32mwifi: connection successful.\e[39m\n"
-			  << "IP:          " << (in_addr)Wifi_GetIP() << '\n'
+	std::cout << "IP:          " << (in_addr)Wifi_GetIP() << '\n'
 			  << "Gateway:     " << gateway << '\n'
 			  << "Subnet Mask: " << subnetMask << '\n'
 			  << "DNS 1:       " << dns1 << '\n'
 			  << "DNS 2:       " << dns2 << '\n';
+}
+
+void source()
+{
+	if (Shell::args.size() < 1)
+	{
+		std::cerr << "args: <filepath>\n";
+		return;
+	}
+
+	Shell::SourceFile(Shell::args[1]);
 }
 
 const std::unordered_map<std::string, void (*)()> MAP{
@@ -176,6 +192,7 @@ const std::unordered_map<std::string, void (*)()> MAP{
 	 {
 		 exit(0);
 	 }},
-	{"lua", lua}};
+	{"lua", lua},
+	{"source", source}};
 
 } // namespace Commands

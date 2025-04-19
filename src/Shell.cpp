@@ -5,8 +5,12 @@
 #include <dswifi9.h>
 #include <fat.h>
 
+#include <filesystem>
 #include <iostream>
 #include <sstream>
+#include <fstream>
+
+namespace fs = std::filesystem;
 
 namespace Shell
 {
@@ -62,7 +66,23 @@ std::string EscapeEscapes(const std::string &str)
 	return newStr;
 }
 
-void ProcessLine(std::string &line)
+void SourceFile(const std::string &filepath)
+{
+	std::ifstream file{filepath};
+
+	if (!file)
+	{
+		std::cerr << "\e[41mshell: cannot open file: " << filepath
+				  << "\e[39m\n";
+		return;
+	}
+
+	std::string line;
+	while (std::getline(file, line) && !line.starts_with("return"))
+		Shell::ProcessLine(line);
+}
+
+void ProcessLine(const std::string &line)
 {
 	// Split the line by whitespace into a vector of strings
 	std::istringstream iss{line};
@@ -70,7 +90,7 @@ void ProcessLine(std::string &line)
 	args.clear();
 	std::string token;
 	while (iss >> token)
-		args.push_back(token);
+		args.emplace_back(token);
 
 	if (args.empty())
 	{
@@ -78,7 +98,15 @@ void ProcessLine(std::string &line)
 		return;
 	}
 
-	const auto commandItr = Commands::MAP.find(args[0]);
+	const auto &command = args[0];
+
+	if (const auto withExtension{command + ".ndsh"}; fs::exists(withExtension))
+	{
+		SourceFile(withExtension);
+		return;
+	}
+
+	const auto commandItr = Commands::MAP.find(command);
 
 	if (commandItr == Commands::MAP.cend())
 	{

@@ -14,6 +14,9 @@ void Init();
 // Starts the prompt loop. Does not return.
 void Start();
 
+void ProcessLine(const std::string &line);
+void SourceFile(const std::string &filepath);
+
 inline std::string cwd;
 
 // A command's arguments
