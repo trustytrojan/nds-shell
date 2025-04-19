@@ -6,9 +6,9 @@
 #include <fat.h>
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <sstream>
-#include <fstream>
 
 namespace fs = std::filesystem;
 
@@ -119,8 +119,12 @@ void ProcessLine(const std::string &line)
 
 void Start()
 {
-	std::cout << "\e[46mgithub.com/trustytrojan/nds-shell\e[39m\n\nenter "
-				 "'help' to see available\ncommands\n\n";
+	std::cout << "\e[46mgithub.com/trustytrojan/nds-shell\e[39m\n\n";
+
+	if (fs::exists(".ndshrc"))
+		SourceFile(".ndshrc");
+
+	std::cout << "enter 'help' to see available\ncommands\n\n";
 
 	CliPrompt prompt;
 	std::string line;
