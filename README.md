@@ -7,11 +7,12 @@ A Bash-like shell for the Nintendo DS, using the [libnds](https://github.com/dev
 - filesystem manipulation
 
 ## building
-this process has only been tested on arch linux
+*note: the build process has only been tested on arch linux*
 
 1. get [devkitpro](https://devkitpro.org/wiki/Getting_Started) on your system
 2. install the `nds-dev` metapackage (explained in the link above)
-3. run `$DEVKITPRO/tools/bin/catnip -T nds`
+3. run `$DEVKITPRO/tools/bin/catnip -Tnds -j$(nproc)` (assuming `catnip` is not on your `PATH`).
+	- **do NOT run cmake or any cmake ide/gui tool. you MUST run catnip.**
 4. if you see a crap ton of compile errors from lua, make sure to set this define to `1` in `luaconf.h`:
 	```c
 	/*
@@ -19,7 +20,7 @@ this process has only been tested on arch linux
 	*/
 	#define LUA_32BITS	1
 	```
-5. if you see errors about math functions being missing, just change something in [CMakeLists.txt](./CMakeLists.txt) and rerun `catnip`
+5. if you see errors about math functions, just change something in [CMakeLists.txt](./CMakeLists.txt) and rerun `catnip`
 
 ## todo list
 - implement tftp server

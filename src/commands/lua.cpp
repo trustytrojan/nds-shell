@@ -5,32 +5,19 @@
 
 #include <sol/sol.hpp>
 
-static std::string
-lua_value_to_string(const sol::object &obj, const bool expand_function = true)
+std::ostream &operator<<(std::ostream &ostr, const sol::object &obj)
 {
-	std::ostringstream ss;
 	switch (obj.get_type())
 	{
 	case sol::type::nil:
-		ss << "nil";
-		break;
+		return ostr << "nil";
 	case sol::type::table:
-		ss << '{';
-		for (const auto &[k, v] : obj.as<sol::table>())
-			ss << lua_value_to_string(k) << ": "
-			   << lua_value_to_string(v, false) << ", ";
-		ss << '}';
-		break;
+		return ostr << "table: " << obj.pointer();
 	case sol::type::function:
-		ss << "function";
-		if (expand_function)
-			ss << ": " << obj.as<sol::function>().pointer();
-		break;
+		return ostr << "function: " << obj.pointer();
 	default:
-		ss << obj.as<std::string>();
-		break;
+		return ostr << obj.as<std::string_view>();
 	}
-	return ss.str();
 }
 
 void Commands::lua()
@@ -60,13 +47,12 @@ void Commands::lua()
 			if (!line.contains("print") && !line.contains("return"))
 				line = "return " + line;
 
-			std::cout << lua_value_to_string(lua.safe_script(line)) << '\n';
+			std::cout << lua.safe_script(line).get<sol::object>() << '\n';
 
 			line.clear();
 			prompt.resetProcessKeyboardState();
 			std::cout << prompt.prompt << prompt.cursor
 					  << EscapeSequences::Cursor::moveLeftOne;
-			;
 		}
 
 		if (prompt.foldPressed())
