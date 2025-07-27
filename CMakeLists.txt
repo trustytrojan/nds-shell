@@ -20,9 +20,15 @@ set(LUA_ENABLE_SHARED OFF)
 set(LUA_ENABLE_TESTING OFF)
 set(LUA_BUILD_BINARY OFF)
 set(LUA_BUILD_COMPILER OFF)
-FetchContent_Declare(lua URL https://github.com/walterschell/Lua/archive/refs/heads/master.zip)
-FetchContent_Declare(sol2 URL https://github.com/ThePhD/sol2/archive/refs/heads/develop.zip)
+FetchContent_Declare(lua URL https://github.com/walterschell/Lua/archive/master.zip)
+FetchContent_Declare(sol2 URL https://github.com/ThePhD/sol2/archive/develop.zip)
 FetchContent_MakeAvailable(lua sol2)
+
+# enable 32-bit numbers
+execute_process(
+	COMMAND sed -i "s/#define LUA_32BITS\\s\\+0/#define LUA_32BITS 1/" "${lua_SOURCE_DIR}/lua-5.4.7/include/luaconf.h"
+	COMMAND_ERROR_IS_FATAL ANY
+)
 
 add_compile_options(-fno-rtti)
 include_directories(include)

@@ -13,17 +13,8 @@ A Bash-like shell for the Nintendo DS, using the [libnds](https://github.com/dev
 2. install the `nds-dev` metapackage (explained in the link above)
 3. run `$DEVKITPRO/tools/bin/catnip -Tnds -j$(nproc)` (assuming `catnip` is not on your `PATH`).
 	- **do NOT run cmake or any cmake ide/gui tool. you MUST run catnip.**
-4. if you see a crap ton of compile errors from lua, make sure to set this define to `1` in `luaconf.h`:
-	```c
-	/*
-	@@ LUA_32BITS enables Lua with 32-bit integers and 32-bit floats.
-	*/
-	#define LUA_32BITS	1
-	```
-5. if you see errors about math functions, just change something in [CMakeLists.txt](./CMakeLists.txt) and rerun `catnip`
+4. if you see errors about math functions, just change something in [CMakeLists.txt](./CMakeLists.txt) and rerun `catnip`
 
 ## todo list
-- implement tftp server
-  - so we can push new shell binaries & lua scripts remotely!
 - implement better http command with a proxy
 - bind libnds functions to lua
