@@ -11,6 +11,7 @@ void wifi();
 void http();
 void tcp();
 void lua();
+void source();
 
 // the smaller commands are defined in Commands.cpp
 extern const std::unordered_map<std::string, void (*)()> MAP;
