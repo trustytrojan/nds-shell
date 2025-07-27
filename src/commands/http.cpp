@@ -1,23 +1,31 @@
 #include "Commands.hpp"
 #include "Shell.hpp"
 
+#include <algorithm>
 #include <curl/curl.h>
 
 #include <cstring>
 #include <iostream>
 
-static size_t
-WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+// Debug callback to print libcurl logs
+static int CurlDebugCallback(
+	CURL *, curl_infotype type, char *data, size_t size, void *)
 {
-	const auto totalSize = size * nmemb;
-	std::cout.write(static_cast<const char *>(contents), totalSize);
-	return totalSize;
-}
-
-static curl_socket_t OpenSocketCallback(
-	void *clientp, curlsocktype purpose, struct curl_sockaddr *address)
-{
-	return socket(address->family, address->socktype, 0);
+	switch (type)
+	{
+	case CURLINFO_TEXT:
+	case CURLINFO_HEADER_IN:
+	case CURLINFO_HEADER_OUT:
+	case CURLINFO_DATA_IN:
+	case CURLINFO_DATA_OUT:
+		std::cerr << "\e[40m";
+		std::cerr.write(data, size);
+		std::cerr << "\e[39m";
+		break;
+	default:
+		break;
+	}
+	return 0;
 }
 
 void Commands::http()
@@ -28,34 +36,47 @@ void Commands::http()
 		return;
 	}
 
-	const auto &method = Shell::args[1];
+	// grab arguments
+	std::string method(Shell::args[1].length(), '\0');
 	const auto &url = Shell::args[2];
 
-	char errorBuffer[CURL_ERROR_SIZE]{}; // Buffer to store error messages
+	// ensure uppercase method
+	std::ranges::transform(Shell::args[1], method.begin(), toupper);
 
-	// Initialize libcurl
 	const auto curl = curl_easy_init();
 	if (!curl)
 	{
-		std::cerr << "Failed to initialize libcurl\n";
+		std::cerr << "\e[41mhttp: curl_easy_init failed\e[39m\n";
 		return;
 	}
 
-	// Set libcurl options
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-	curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, OpenSocketCallback);
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.c_str());
-	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer);
-	// curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http");
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
-	// Perform the request
+	// write http response to stdout
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, stdout);
+
+	// we need a custom opensocket callback because of
+	// https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L98
+	curl_easy_setopt(
+		curl, CURLOPT_OPENSOCKETFUNCTION, //OpenSocketCallback
+		[](auto, auto, auto address)
+		{ return socket(address->family, address->socktype, 0); }
+	);
+
+	// get curl errors
+	char curl_errbuf[CURL_ERROR_SIZE]{};
+	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, curl_errbuf);
+
+	// debug output
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, CurlDebugCallback);
+
 	if (const auto res = curl_easy_perform(curl); res != CURLE_OK)
 	{
 		std::cerr << "\e[41mhttp: curl: " << curl_easy_strerror(res) << ": "
-				  << errorBuffer << "\e[39m\n";
+				  << curl_errbuf << "\e[39m\n";
 	}
 
-	// Cleanup
 	curl_easy_cleanup(curl);
 }
