@@ -59,7 +59,7 @@ void Commands::http()
 	// we need a custom opensocket callback because of
 	// https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L98
 	curl_easy_setopt(
-		curl, CURLOPT_OPENSOCKETFUNCTION, //OpenSocketCallback
+		curl, CURLOPT_OPENSOCKETFUNCTION,
 		[](auto, auto, auto address)
 		{ return socket(address->family, address->socktype, 0); }
 	);
