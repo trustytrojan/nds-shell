@@ -14,6 +14,7 @@ include(FetchContent)
 
 add_compile_options(-fno-exceptions)
 add_compile_definitions(SOL_EXCEPTIONS=0)
+link_libraries(m) # for lua
 
 set(LUA_SUPPORT_DL OFF)
 set(LUA_ENABLE_SHARED OFF)
