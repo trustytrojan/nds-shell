@@ -26,7 +26,7 @@ jobs:
         run: sudo dkp-pacman -Sy --noconfirm nds-dev
 
       - name: Configure & build CMake project with Catnip
-        run: catnip -Tnds -j$(nproc)
+        run: /opt/devkitpro/tools/bin/catnip -Tnds -j$(nproc)
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
