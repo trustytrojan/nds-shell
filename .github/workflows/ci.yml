@@ -1,0 +1,35 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install devKitPro pacman
+        run: |
+          wget https://apt.devkitpro.org/install-devkitpro-pacman
+          chmod +x ./install-devkitpro-pacman
+          sudo ./install-devkitpro-pacman
+
+      - name: Install nds-dev metapackage
+        run: sudo dkp-pacman -Sy --noconfirm nds-dev
+
+      - name: Configure & build CMake project with Catnip
+        run: catnip -Tnds -j$(nproc)
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nds-shell
+          path: build/main.release/nds-shell.*
