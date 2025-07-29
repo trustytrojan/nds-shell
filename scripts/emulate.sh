@@ -1,2 +1,2 @@
 #!/bin/sh
-desmume build/main.release/nds-shell.nds
+melonDS build/main.release/nds-shell.nds

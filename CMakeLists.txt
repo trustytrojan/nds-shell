@@ -53,6 +53,7 @@ set(HAVE_GETSOCKNAME ON)
 set(HAVE_GETPEERNAME ON)
 
 set(HTTP_ONLY ON)
+set(PICKY_COMPILER OFF) # -Wpedantic is annoying
 
 add_compile_options(-Wno-pedantic)
 FetchContent_Declare(curl URL https://github.com/curl/curl/archive/curl-8_15_0.zip)
