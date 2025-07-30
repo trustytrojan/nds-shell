@@ -19,9 +19,6 @@ include(FetchContent)
 ## mbedtls
 set(ENABLE_PROGRAMS OFF)
 set(ENABLE_TESTING OFF)
-# set(DISABLE_PACKAGE_CONFIG_AND_INSTALL OFF)
-set(MBEDTLS_AS_SUBPROJECT ON)
-# set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)
 add_compile_definitions(
 	_POSIX_VERSION=202507 # just needs to be something greater than the 2000s
 	MBEDTLS_TEST_SW_INET_PTON # libnds doesn't provide inet_pton()
