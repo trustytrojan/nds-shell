@@ -7,9 +7,8 @@
 #include <cstring>
 #include <iostream>
 
-// Debug callback to print libcurl logs
-static int CurlDebugCallback(
-	CURL *, curl_infotype type, char *data, size_t size, void *)
+static int
+curl_debug(CURL *, curl_infotype type, char *data, size_t size, void *)
 {
 	switch (type)
 	{
@@ -18,30 +17,40 @@ static int CurlDebugCallback(
 	case CURLINFO_HEADER_OUT:
 	case CURLINFO_DATA_IN:
 	case CURLINFO_DATA_OUT:
+	case CURLINFO_SSL_DATA_IN:
+	case CURLINFO_SSL_DATA_OUT:
 		std::cerr << "\e[40m";
 		std::cerr.write(data, size);
 		std::cerr << "\e[39m";
-		break;
 	default:
 		break;
 	}
 	return 0;
 }
 
-void Commands::http()
+static curl_socket_t
+curl_opensocket(void *, curlsocktype, curl_sockaddr *addr)
 {
-	if (Shell::args.size() != 3)
+	return socket(addr->family, addr->socktype, 0);
+}
+
+void Commands::curl()
+{
+	if (Shell::args.size() < 2)
 	{
-		std::cerr << "usage: http <method> <url>\n";
+		std::cerr << "usage: curl [method] <url>\n";
 		return;
 	}
 
 	// grab arguments
-	std::string method(Shell::args[1].length(), '\0');
-	const auto &url = Shell::args[2];
+	std::string method = "GET";
+	if (Shell::args.size() >= 3)
+	{ // method is optional
+		method.resize(Shell::args[1].length());
+		std::ranges::transform(Shell::args[1], method.begin(), toupper);
+	}
 
-	// ensure uppercase method
-	std::ranges::transform(Shell::args[1], method.begin(), toupper);
+	const auto &url = Shell::args.back();
 
 	const auto curl = curl_easy_init();
 	if (!curl)
@@ -53,24 +62,25 @@ void Commands::http()
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.c_str());
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
-	// write http response to stdout
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, stdout);
+	// copy your OS's CA cert bundle onto the SD card
+	// (rename this string if necessary)
+	curl_easy_setopt(curl, CURLOPT_CAINFO, "tls-ca-bundle.pem");
+
+	// by default, http response is written to stdout
 
 	// we need a custom opensocket callback because of
 	// https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L98
-	curl_easy_setopt(
-		curl, CURLOPT_OPENSOCKETFUNCTION,
-		[](auto, auto, auto address)
-		{ return socket(address->family, address->socktype, 0); }
-	);
+	// note to self... DO NOT USE C++ LAMBDAS
+	curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, curl_opensocket);
 
 	// get curl errors
 	char curl_errbuf[CURL_ERROR_SIZE]{};
 	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, curl_errbuf);
 
 	// debug output
+	// TODO: make this optional
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, CurlDebugCallback);
+	curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
 
 	if (const auto res = curl_easy_perform(curl); res != CURLE_OK)
 	{

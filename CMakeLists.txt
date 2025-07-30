@@ -2,6 +2,7 @@
 
 cmake_minimum_required(VERSION 3.13)
 cmake_policy(SET CMP0135 NEW)
+cmake_policy(SET CMP0077 NEW)
 project(nds-shell LANGUAGES CXX)
 
 set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
@@ -15,6 +16,22 @@ list(APPEND CMAKE_MODULE_PATH "$ENV{DEVKITPRO}/cmake")
 include(Platform/NintendoDS)
 include(FetchContent)
 
+## mbedtls
+set(ENABLE_PROGRAMS OFF)
+set(ENABLE_TESTING OFF)
+# set(DISABLE_PACKAGE_CONFIG_AND_INSTALL OFF)
+# set(MBEDTLS_AS_SUBPROJECT ON)
+# set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)
+add_compile_definitions(
+	_POSIX_VERSION=202507 # just needs to be something greater than the 2000s
+	MBEDTLS_TEST_SW_INET_PTON # libnds doesn't provide inet_pton()
+)
+FetchContent_Declare(mbedtls
+	GIT_REPOSITORY https://github.com/trustytrojan/mbedtls
+	GIT_TAG 3.6.4-nds)
+FetchContent_MakeAvailable(mbedtls)
+list(APPEND CMAKE_PREFIX_PATH "${mbedtls_BINARY_DIR}/cmake")
+
 ## curl
 set(BUILD_LIBCURL_DOCS OFF)
 set(BUILD_MISC_DOCS OFF)
@@ -23,11 +40,15 @@ set(BUILD_EXAMPLES OFF)
 set(BUILD_CURL_EXE OFF)
 set(BUILD_STATIC_LIBS ON)
 
-set(CURL_ENABLE_SSL OFF)
+set(CURL_ENABLE_EXPORT_TARGET OFF)
 set(CURL_USE_LIBSSH2 OFF)
 set(CURL_USE_LIBPSL OFF)
 set(CURL_DISABLE_INSTALL ON)
 set(CURL_DISABLE_BINDLOCAL ON)
+set(CURL_DISABLE_SOCKETPAIR ON)
+
+set(CURL_USE_MBEDTLS ON) # disables openssl by implication
+set(MBEDTLS_LIBRARIES mbedx509 mbedcrypto mbedtls) # may not be necessary
 
 set(ENABLE_CURL_MANUAL OFF)
 set(ENABLE_UNIX_SOCKETS OFF)
@@ -52,11 +73,11 @@ set(HAVE_CLOSESOCKET ON)
 set(HAVE_GETSOCKNAME ON)
 set(HAVE_GETPEERNAME ON)
 
-set(HTTP_ONLY ON)
+set(HTTP_ONLY ON) # http(s), ws(s)
 set(PICKY_COMPILER OFF) # -Wpedantic is annoying
+set(USE_MANUAL OFF)
 
-add_compile_options(-Wno-pedantic)
-FetchContent_Declare(curl URL https://github.com/curl/curl/archive/curl-8_15_0.zip)
+FetchContent_Declare(curl URL https://github.com/trustytrojan/curl/archive/8.15.0-mbedtls.zip)
 FetchContent_MakeAvailable(curl)
 
 ## lua
@@ -65,6 +86,7 @@ set(LUA_ENABLE_SHARED OFF)
 set(LUA_ENABLE_TESTING OFF)
 set(LUA_BUILD_BINARY OFF)
 set(LUA_BUILD_COMPILER OFF)
+link_libraries(m) # has to be done manually for now
 FetchContent_Declare(lua URL https://github.com/walterschell/Lua/archive/master.zip)
 FetchContent_MakeAvailable(lua)
 

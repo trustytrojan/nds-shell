@@ -185,7 +185,7 @@ const std::unordered_map<std::string, void (*)()> MAP{
 	{"ip", ip},
 	{"ipinfo", ipinfo},
 	{"tcp", tcp},
-	{"http", http},
+	{"curl", curl},
 	{"clear", consoleClear},
 	{"exit",
 	 []
