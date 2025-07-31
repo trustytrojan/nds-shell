@@ -26,3 +26,6 @@ A Bash-like shell for the Nintendo DS, using the [libnds](https://github.com/dev
 ## todo list
 - a way to push files to the DS remotely (try FTP with curl)
 - create a lua api for adding custom commands
+- add command to set curl's CA cert file instead of hardcoding
+- use proper shell/argument parsing library for commands
+  - or use the existing lexer/parser code in `unused-src`, but this is a waste of time if a bash parser library exists
