@@ -40,7 +40,7 @@ void Init()
 	defaultExceptionHandler();
 
 	// Initialize wifi
-	if (!Wifi_InitDefault(false))
+	if (!Wifi_InitDefault(false)) // PASS TRUE FOR EMULATORS
 		std::cerr << "\e[41mWifi_InitDefault failed: networking commands will "
 					 "not work\e[39m\n\n";
 }

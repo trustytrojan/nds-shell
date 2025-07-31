@@ -8,7 +8,7 @@ namespace Commands
 
 // these are defined in commands/*.cpp
 void wifi();
-void http();
+void curl();
 void tcp();
 void lua();
 void source();
