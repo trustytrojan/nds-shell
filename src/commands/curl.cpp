@@ -79,8 +79,8 @@ void Commands::curl()
 
 	// debug output
 	// TODO: make this optional
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
+	// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	// curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
 
 	if (const auto res = curl_easy_perform(curl); res != CURLE_OK)
 	{
