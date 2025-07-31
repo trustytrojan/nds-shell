@@ -1,10 +1,10 @@
 #pragma once
 
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
-using EnvMap = std::unordered_map<std::string, std::string>;
+using Env = std::unordered_map<std::string, std::string>;
 
 struct Token
 {
@@ -26,4 +26,4 @@ struct Token
 	const std::string value;
 };
 
-bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env);
+bool LexLine(std::vector<Token> &tokens, const std::string &line, Env &env);

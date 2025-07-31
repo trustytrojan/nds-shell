@@ -2,13 +2,13 @@
 
 #include <nds.h>
 
+#include <fstream>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <iostream>
-#include <fstream>
 
-using EnvMap = std::unordered_map<std::string, std::string>;
+using Env = std::unordered_map<std::string, std::string>;
 
 namespace Shell
 {
@@ -26,11 +26,11 @@ void RedirectInput(int fd, const std::string &filename);
 void ResetStreams();
 
 inline std::string cwd;
-inline EnvMap env;
+inline Env env;
 inline std::ofstream outf, errf;
 inline std::ifstream inf;
-inline std::ostream *out = &std::cout, *err = &std::cerr;
-inline std::istream *in = &std::cin;
+inline std::ostream *out{&std::cout}, *err{&std::cerr};
+inline std::istream *in{&std::cin};
 
 // A command's arguments
 inline std::vector<std::string> args;

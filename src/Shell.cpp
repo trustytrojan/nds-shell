@@ -62,6 +62,11 @@ void SourceFile(const std::string &filepath)
 		Shell::ProcessLine(line);
 }
 
+std::ostream &operator<<(std::ostream &ostr, const Token &t)
+{
+	return ostr << (char)t.type << '(' << t.value << ')';
+}
+
 void ProcessLine(const std::string &line)
 {
 	if (!line.length())
@@ -71,6 +76,15 @@ void ProcessLine(const std::string &line)
 
 	if (!LexLine(tokens, line, env))
 		return;
+
+	std::cerr << "\e[40m";
+	std::cerr << "tokens: ";
+	{
+		auto itr = tokens.cbegin();
+		for (; itr < tokens.cend() - 1; ++itr)
+			std::cerr << *itr << ' ';
+		std::cerr << *itr << '\n';
+	}
 
 	args.clear();
 
@@ -84,9 +98,13 @@ void ProcessLine(const std::string &line)
 	}
 
 	std::cerr << "args: ";
-	for (const auto &arg : args)
-		std::cerr << "'" << arg << "' ";
-	std::cerr << '\n';
+	{
+		auto itr = args.cbegin();
+		for (; itr < args.cend() - 1; ++itr)
+			std::cerr << '\'' << *itr << "' ";
+		std::cerr << '\'' << *itr << "'\n";
+	}
+	std::cerr << "\e[39m";
 
 	const auto &command = args[0];
 

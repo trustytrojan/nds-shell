@@ -33,10 +33,9 @@ static curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *addr)
 	return socket(addr->family, addr->socktype, 0);
 }
 
-size_t curl_write(char *buffer, size_t size, size_t nitems, void *outstream)
+size_t curl_write(char *buffer, size_t size, size_t nitems, void *)
 {
-	const auto out = reinterpret_cast<std::ostream *>(outstream);
-	out->write(buffer, size * nitems);
+	Shell::out->write(buffer, size * nitems);
 	return size * nitems;
 }
 
@@ -74,7 +73,6 @@ void Commands::curl()
 
 	// by default, http response is written to stdout
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, Shell::out);
 
 	// we need a custom opensocket callback because of
 	// https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L98

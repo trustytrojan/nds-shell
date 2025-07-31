@@ -88,10 +88,16 @@ void cat()
 		return;
 	}
 
-	if (!fs::exists(Shell::args[1]))
+	std::error_code ec;
+	if (!fs::exists(Shell::args[1], ec) && !ec)
 	{
 		*Shell::err << "\e[41mcat: file does not exist: " << Shell::args[1]
 					<< "\e[39m\n";
+		return;
+	}
+	else if (ec)
+	{
+		*Shell::err << "\e[41mcat: " << ec.message() << "\e[39m\n";
 		return;
 	}
 
@@ -111,20 +117,17 @@ void rm()
 {
 	if (Shell::args.size() == 1)
 	{
-		*Shell::err << "args: <filepath>\n";
+		*Shell::err << "args: <filepaths...>\n";
 		return;
 	}
 
-	if (!fs::exists(Shell::args[1]))
+	for (auto itr = Shell::args.cbegin() + 1; itr < Shell::args.cend(); ++itr)
 	{
-		*Shell::err << "\e[41mrm: file does not exist: " << Shell::args[1]
-					<< "\e[39m\n";
-		return;
+		std::error_code ec;
+		if (!fs::remove(Shell::args[1], ec))
+			*Shell::err << "\e[41mrm: failed to remove: '" << Shell::args[1]
+						<< "': " << ec.message() << "\e[39m\n";
 	}
-
-	if (!fs::remove(Shell::args[1]))
-		*Shell::err << "\e[41mrm: failed to remove: " << Shell::args[1]
-					<< "\e[39m\n";
 }
 
 void echo()
@@ -145,9 +148,7 @@ void dns()
 	const auto host = gethostbyname(Shell::args[1].c_str());
 	if (!host)
 	{
-		*Shell::err << "\e[41m";
-		perror("gethostbyname");
-		*Shell::err << "\e[39m";
+		*Shell::err << "\e[41mdns: gethostbyname: " << strerror(errno) << "\e[39m";
 		return;
 	}
 
@@ -182,6 +183,31 @@ void source()
 	Shell::SourceFile(Shell::args[1]);
 }
 
+void rename()
+{
+	if (Shell::args.size() < 3)
+	{
+		*Shell::err << "args: <oldpath> <newpath>\n";
+		return;
+	}
+
+	std::error_code ec;
+	fs::rename(Shell::args[1], Shell::args[2], ec);
+	if (ec)
+		*Shell::err << "\e[41mrename: " << ec.message() << "\e[39m\n";
+}
+
+void pwd()
+{
+	*Shell::out << Shell::cwd << '\n';
+}
+
+void env()
+{
+	for (const auto &[k, v] : Shell::env)
+		*Shell::out << k << '=' << v << '\n';
+}
+
 const std::unordered_map<std::string, void (*)()> MAP{
 	{"help", help},
 	{"echo", echo},
@@ -195,6 +221,9 @@ const std::unordered_map<std::string, void (*)()> MAP{
 	{"ipinfo", ipinfo},
 	{"tcp", tcp},
 	{"curl", curl},
+	{"pwd", pwd},
+	{"env", env},
+	{"rename", rename},
 	{"clear", consoleClear},
 	{"exit",
 	 []

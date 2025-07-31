@@ -98,7 +98,17 @@ bool ParseOutputRedirect(
 
 bool ParseTokens(const std::vector<Token> &tokens)
 {
-	const auto tokensBegin = tokens.cbegin(), tokensEnd = tokens.cend();
+	const auto tokensBegin{tokens.cbegin()}, tokensEnd{tokens.cend()};
+
+	// THIS NEEDS 2 PASSES:
+	// 1. Group up tokens into larger structures BASED ON OPERATORS. examples:
+	//    - [S(2) >() S(file.txt)] -> OutputRedirect{fd: 2, filename: 'file.txt'}
+	//    - [S(NAME) =() S(VALUE)] -> EnvAssign{key: 'NAME', value: 'VALUE'}
+	//    - [S(echo) W() S(hello) W() |() W() S(cat)] -> Pipeline{commands: [Command{args: ['echo', 'hello']}, Command{args: ['cat']}]}
+	//    - [S(DEBUG) =() S(1) W() S(curl) W() S(google.com)] -> [EnvAssign{key: 'DEBUG', value: '1'}, Command{args: ['curl', 'google.com']}]
+	// 2. Affect the shell.
+
+	// also consider just taking this code out of here and making it a separate project! seems fun enough
 
 	for (auto itr = tokensBegin; itr < tokensEnd; ++itr)
 		switch (itr->type)

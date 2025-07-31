@@ -49,7 +49,7 @@ void InsertVariable(
 	StrItr &itr,
 	const StrItr &lineEnd,
 	std::string &currentToken,
-	EnvMap &env)
+	Env &env)
 {
 	// `itr` is pointing at the initial `$`
 	// subtitute variables in the lexing phase to avoid the reiteration overhead
@@ -67,7 +67,7 @@ bool LexDoubleQuoteString(
 	StrItr &itr,
 	const StrItr &lineEnd,
 	std::string &currentToken,
-	EnvMap &env)
+	Env &env)
 {
 	// When called, itr is pointing at the opening `"`, so increment before
 	// looping.
@@ -113,7 +113,7 @@ bool LexSingleQuoteString(
 	return true;
 }
 
-bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
+bool LexLine(std::vector<Token> &tokens, const std::string &line, Env &env)
 {
 	tokens.clear();
 
@@ -134,10 +134,11 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 
 	for (auto itr = line.cbegin(); itr < lineEnd; ++itr)
 	{
-		if (isspace(*itr) && !currentToken.empty())
+		if (isspace(*itr))
 		{
-			pushAndClear();
-			tokens.emplace_back(Token::Type::WHITESPACE);
+			pushAndClearIfNotEmpty();
+			if (tokens.back().type != Token::Type::WHITESPACE)
+				tokens.emplace_back(Token::Type::WHITESPACE);
 			continue;
 		}
 
