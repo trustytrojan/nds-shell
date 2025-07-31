@@ -1,12 +1,12 @@
 #include "Parser.hpp"
 #include "Shell.hpp"
 
-#include <iostream>
-#include <filesystem>
 #include <algorithm>
+#include <filesystem>
+#include <iostream>
 
 bool ParseInputRedirect(
-	const TokenIterator &itr,
+	TokenIterator &itr,
 	const TokenIterator &tokensBegin,
 	const TokenIterator &tokensEnd)
 {
@@ -33,6 +33,8 @@ bool ParseInputRedirect(
 	{
 		// redirect the file to stdin
 		Shell::RedirectInput(0, filename);
+		++itr; // increment to the filename token, so the main loop increments
+		// past *that*
 		return true;
 	}
 
@@ -45,12 +47,15 @@ bool ParseInputRedirect(
 		return false;
 	}
 
+	++itr; // increment to the filename token, so the main loop increments
+		   // past *that*
+
 	Shell::RedirectInput(atoi(fdStr.c_str()), filename);
 	return true;
 }
 
 bool ParseOutputRedirect(
-	const TokenIterator &itr,
+	TokenIterator &itr,
 	const TokenIterator &tokensBegin,
 	const TokenIterator &tokensEnd)
 {
@@ -68,8 +73,10 @@ bool ParseOutputRedirect(
 	// if `<` is the first token, or whitespace came before it
 	if (itr == tokensBegin || prevItr->type == Token::Type::WHITESPACE)
 	{
-		// redirect the file to stdin
+		// redirect stdout to the file
 		Shell::RedirectOutput(1, filename);
+		++itr; // increment to the filename token, so the main loop increments
+			   // past *that*
 		return true;
 	}
 
@@ -82,19 +89,18 @@ bool ParseOutputRedirect(
 		return false;
 	}
 
+	++itr; // increment to the filename token, so the main loop increments
+		   // past *that*
+
 	Shell::RedirectOutput(atoi(fdStr.c_str()), filename);
 	return true;
 }
 
 bool ParseTokens(const std::vector<Token> &tokens)
 {
-	const auto tokensBegin = tokens.cbegin();
-	const auto tokensEnd = tokens.cend();
-
-	std::string command_to_run;
+	const auto tokensBegin = tokens.cbegin(), tokensEnd = tokens.cend();
 
 	for (auto itr = tokensBegin; itr < tokensEnd; ++itr)
-		// first, process all operators
 		switch (itr->type)
 		{
 		case Token::Type::INPUT_REDIRECT:
@@ -106,8 +112,12 @@ bool ParseTokens(const std::vector<Token> &tokens)
 			if (!ParseOutputRedirect(itr, tokensBegin, tokensEnd))
 				return false;
 			break;
-		case Token::Type::WHITESPACE:
+
 		case Token::Type::STRING:
+			Shell::args.emplace_back(itr->value);
+			break;
+
+		case Token::Type::WHITESPACE:
 		case Token::Type::PIPE:
 		case Token::Type::OR:
 		case Token::Type::AND:

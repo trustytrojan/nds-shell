@@ -19,7 +19,7 @@ void Commands::tcp()
 {
 	if (Shell::args.size() != 2)
 	{
-		std::cerr << "usage: http <ip:port>\n";
+		*Shell::err << "usage: http <ip:port>\n";
 		return;
 	}
 
@@ -38,7 +38,7 @@ void Commands::tcp()
 		perror("socket");
 		return;
 	}
-	std::cerr << "tcp: socket: " << sock << '\n';
+	*Shell::err << "tcp: socket: " << sock << '\n';
 
 	if (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)) == -1)
 	{
@@ -46,9 +46,9 @@ void Commands::tcp()
 		close(sock);
 		return;
 	}
-	std::cerr << "tcp: connected\n";
+	*Shell::err << "tcp: connected\n";
 
-	CliPrompt prompt{"tcp> ", '_', std::cout};
+	CliPrompt prompt{"tcp> ", '_', *Shell::out};
 	std::string lineToSend;
 
 	fd_set master_set{};
@@ -59,7 +59,7 @@ void Commands::tcp()
 	char buf[200]{};
 	bool shouldExit{};
 	prompt.resetProcessKeyboardState();
-	std::cout << prompt.prompt << prompt.cursor
+	*Shell::out << prompt.prompt << prompt.cursor
 			  << EscapeSequences::Cursor::moveLeftOne;
 
 	while (pmMainLoop() && !shouldExit)
@@ -69,29 +69,29 @@ void Commands::tcp()
 
 		if (prompt.foldPressed())
 		{
-			std::cout << "\r\e[2Ktcp: fold key pressed\n";
+			*Shell::out << "\r\e[2Ktcp: fold key pressed\n";
 			break;
 		}
 
 		if (prompt.newlineEntered())
 		{
-			std::cout << "\r\e[1A\e[2K";
+			*Shell::out << "\r\e[1A\e[2K";
 			switch (send(sock, lineToSend.c_str(), lineToSend.length(), 0))
 			{
 			case -1:
-				std::cerr << "\e[41m";
+				*Shell::err << "\e[41m";
 				perror("send");
-				std::cerr << "\e[39m";
+				*Shell::err << "\e[39m";
 				shouldExit = true;
 				break;
 			case 0:
-				std::cout << "\r\e[2Ktcp: remote end disconnected\n";
+				*Shell::out << "\r\e[2Ktcp: remote end disconnected\n";
 				shouldExit = true;
 				break;
 			}
 			prompt.resetProcessKeyboardState();
 			lineToSend.clear();
-			std::cout << prompt.prompt << prompt.cursor
+			*Shell::out << prompt.prompt << prompt.cursor
 					  << EscapeSequences::Cursor::moveLeftOne;
 		}
 
@@ -110,12 +110,12 @@ void Commands::tcp()
 				shouldExit = true;
 				break;
 			case 0:
-				std::cout << "\r\e[2Ktcp: remote end disconnected\n";
+				*Shell::out << "\r\e[2Ktcp: remote end disconnected\n";
 				shouldExit = true;
 				break;
 			default:
 				buf[bytesRead] = '\0';
-				std::cout << "\r\e[2K" << buf << '\n'
+				*Shell::out << "\r\e[2K" << buf << '\n'
 						  << prompt.prompt << lineToSend << prompt.cursor;
 				break;
 			}

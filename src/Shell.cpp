@@ -1,6 +1,8 @@
 #include "Shell.hpp"
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
+#include "Lexer.hpp"
+#include "Parser.hpp"
 
 #include <dswifi9.h>
 #include <fat.h>
@@ -8,7 +10,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 
 namespace fs = std::filesystem;
 
@@ -45,27 +46,6 @@ void Init()
 					 "not work\e[39m\n\n";
 }
 
-std::string EscapeEscapes(const std::string &str)
-{
-	std::string newStr;
-	for (auto itr = str.cbegin(); itr < str.cend(); ++itr)
-		switch (*itr)
-		{
-		case '\\':
-			if (*(++itr) == 'e')
-				newStr += '\e';
-			else
-			{
-				newStr += '\\';
-				--itr;
-			}
-			break;
-		default:
-			newStr += *itr;
-		}
-	return newStr;
-}
-
 void SourceFile(const std::string &filepath)
 {
 	std::ifstream file{filepath};
@@ -84,19 +64,29 @@ void SourceFile(const std::string &filepath)
 
 void ProcessLine(const std::string &line)
 {
-	// Split the line by whitespace into a vector of strings
-	std::istringstream iss{line};
+	if (!line.length())
+		return;
+
+	std::vector<Token> tokens;
+
+	if (!LexLine(tokens, line, env))
+		return;
 
 	args.clear();
-	std::string token;
-	while (iss >> token)
-		args.emplace_back(token);
+
+	if (!ParseTokens(tokens))
+		return;
 
 	if (args.empty())
 	{
 		std::cerr << "\e[41mshell: empty args\e[39m\n";
 		return;
 	}
+
+	std::cerr << "args: ";
+	for (const auto &arg : args)
+		std::cerr << "'" << arg << "' ";
+	std::cerr << '\n';
 
 	const auto &command = args[0];
 
@@ -115,6 +105,67 @@ void ProcessLine(const std::string &line)
 	}
 
 	commandItr->second();
+	ResetStreams();
+}
+
+void ResetStreams()
+{
+	if (in != &std::cin)
+	{
+		reinterpret_cast<std::ifstream *>(in)->close();
+		in = &std::cin;
+	}
+
+	if (out != &std::cout)
+	{
+		reinterpret_cast<std::ofstream *>(out)->close();
+		out = &std::cout;
+	}
+
+	if (err != &std::cerr)
+	{
+		reinterpret_cast<std::ofstream *>(err)->close();
+		err = &std::cerr;
+	}
+}
+
+void RedirectOutput(int fd, const std::string &filename)
+{
+	if (fd == 1)
+	{
+		outf.open(filename);
+		if (!outf)
+		{
+			*err << "\e[41mshell: cannot open file for writing: " << filename
+				 << "\e[39m\n";
+			return;
+		}
+		out = &outf;
+	}
+	else if (fd == 2)
+	{
+		errf.open(filename);
+		if (!errf)
+		{
+			*err << "\e[41mshell: cannot open file for writing: " << filename
+				 << "\e[39m\n";
+			return;
+		}
+		err = &errf;
+	}
+}
+
+void RedirectInput(int fd, const std::string &filename)
+{
+	inf.open(filename);
+	if (!inf)
+	{
+		*err << "\e[41mshell: cannot open file for reading: " << filename
+			 << "\e[39m\n";
+		return;
+	}
+	if (fd == 0)
+		in = &inf;
 }
 
 void Start()

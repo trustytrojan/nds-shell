@@ -5,8 +5,6 @@
 #include <nds.h>
 #include <wfc.h>
 
-#include <iostream>
-
 static const char *const signalStrength[] = {
 	"   ",
 	"*  ",
@@ -48,11 +46,11 @@ static WlanBssDesc *GetAPList(unsigned *const count)
 {
 	if (!wfcBeginScan(&filter))
 	{
-		std::cerr << "\e[41mwifi: GetAPList: wfcBeginScan failed\e[39m\n";
+		*Shell::err << "\e[41mwifi: GetAPList: wfcBeginScan failed\e[39m\n";
 		return NULL;
 	}
 
-	std::cout << "Scanning APs...\n";
+	*Shell::out << "Scanning APs...\n";
 	WlanBssDesc *aplist{};
 
 	while (pmMainLoop() && !(aplist = wfcGetScanBssList(count)))
@@ -62,7 +60,7 @@ static WlanBssDesc *GetAPList(unsigned *const count)
 
 		if (keysDown() & KEY_START)
 		{
-			std::cerr << "\e[2Jwifi: connection canceled\n";
+			*Shell::err << "\e[2Jwifi: connection canceled\n";
 			return NULL;
 		}
 	}
@@ -103,7 +101,7 @@ _rescan:
 		u32 pressed = keysDownRepeat();
 		if (pressed & KEY_START)
 		{
-			std::cerr << "\e[2Jwifi: connection canceled\n";
+			*Shell::err << "\e[2Jwifi: connection canceled\n";
 			return NULL;
 		}
 		if (pressed & KEY_A)
@@ -204,7 +202,7 @@ bool GetPassword(WlanBssDesc *ap)
 	{
 		if (!fgets(instr, sizeof(instr), stdin))
 		{
-			std::cerr << "\e[41mwifi: GetPassword: fgets failed\e[39m\n";
+			*Shell::err << "\e[41mwifi: GetPassword: fgets failed\e[39m\n";
 			return false;
 		}
 
@@ -256,13 +254,13 @@ int ConnectAP(WlanBssDesc *const ap)
 
 	if (ap->auth_type != WlanBssAuthType_Open && !GetPassword(ap))
 	{
-		std::cerr << "\e[41mwifi: GetPassword failed\e[39m\n";
+		*Shell::err << "\e[41mwifi: GetPassword failed\e[39m\n";
 		return EXIT_FAILURE;
 	}
 
 	if (!wfcBeginConnect(ap, &auth))
 	{
-		std::cerr << "\e[41mwifi: wfcBeginConnect failed\e[39m\n";
+		*Shell::err << "\e[41mwifi: wfcBeginConnect failed\e[39m\n";
 		return EXIT_FAILURE;
 	}
 
@@ -279,12 +277,12 @@ int ConnectAP(WlanBssDesc *const ap)
 
 		if (status != prevStatus)
 		{
-			std::cout << "\r\e[2K" << connStatus[status];
+			*Shell::out << "\r\e[2K" << connStatus[status];
 			prevStatus = status;
 		}
 	}
 
-	std::cout << "\r\e[2K" << connStatus[status] << '\n';
+	*Shell::out << "\r\e[2K" << connStatus[status] << '\n';
 
 	if (status == ASSOCSTATUS_CANNOTCONNECT)
 		return EXIT_FAILURE;
@@ -294,7 +292,7 @@ int ConnectAP(WlanBssDesc *const ap)
 
 void subcommand_connect()
 {
-	std::cout << "Press Start to cancel\n";
+	*Shell::out << "Press Start to cancel\n";
 	WlanBssDesc *ap{};
 
 	if (Shell::args.size() == 2)
@@ -310,7 +308,7 @@ void subcommand_connect()
 
 		if (!aplist || !count)
 		{
-			std::cerr << "No APs detected\n";
+			*Shell::err << "No APs detected\n";
 			return;
 		}
 
@@ -328,28 +326,28 @@ void subcommand_connect()
 
 		if (!ap)
 		{
-			std::cerr << "\e[41mwifi: SSID '" << ssid << "' not found\e[39m\n";
+			*Shell::err << "\e[41mwifi: SSID '" << ssid << "' not found\e[39m\n";
 			return;
 		}
 	}
 
 	if (!ap)
 	{
-		std::cerr << "\e[41mwifi: ap is null\e[39m\n";
+		*Shell::err << "\e[41mwifi: ap is null\e[39m\n";
 		return;
 	}
 
 	switch (ConnectAP(ap))
 	{
 	case EXIT_FAILURE:
-		std::cout << "\e[41mwifi: connection failed.\e[39m\n";
+		*Shell::out << "\e[41mwifi: connection failed.\e[39m\n";
 		return;
 	case 2:
-		std::cout << "wifi: connection canceled\n";
+		*Shell::out << "wifi: connection canceled\n";
 		return;
 	}
 
-	std::cout << "\e[32mwifi: connection successful.\e[39m\n";
+	*Shell::out << "\e[32mwifi: connection successful.\e[39m\n";
 }
 
 static const auto subcommandsString = R"(subcommands:
@@ -363,7 +361,7 @@ void Commands::wifi()
 {
 	if (Shell::args.size() == 1)
 	{
-		std::cout << subcommandsString;
+		*Shell::out << subcommandsString;
 		return;
 	}
 
@@ -372,9 +370,9 @@ void Commands::wifi()
 	if (subcommand.starts_with("con"))
 		subcommand_connect();
 	else if (subcommand.starts_with("dis") && Wifi_DisconnectAP())
-		std::cerr << "\e[41mwifi: Wifi_DisconnectAP failed\e[39m\n";
+		*Shell::err << "\e[41mwifi: Wifi_DisconnectAP failed\e[39m\n";
 	else if (subcommand.starts_with("stat"))
-		std::cout << connStatus[Wifi_AssocStatus()] << '\n';
+		*Shell::out << connStatus[Wifi_AssocStatus()] << '\n';
 	else if (subcommand.starts_with("auto"))
 		Wifi_AutoConnect();
 }

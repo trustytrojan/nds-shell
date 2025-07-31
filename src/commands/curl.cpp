@@ -19,26 +19,32 @@ curl_debug(CURL *, curl_infotype type, char *data, size_t size, void *)
 	case CURLINFO_DATA_OUT:
 	case CURLINFO_SSL_DATA_IN:
 	case CURLINFO_SSL_DATA_OUT:
-		std::cerr << "\e[40m";
-		std::cerr.write(data, size);
-		std::cerr << "\e[39m";
+		*Shell::err << "\e[40m";
+		Shell::err->write(data, size);
+		*Shell::err << "\e[39m";
 	default:
 		break;
 	}
 	return 0;
 }
 
-static curl_socket_t
-curl_opensocket(void *, curlsocktype, curl_sockaddr *addr)
+static curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *addr)
 {
 	return socket(addr->family, addr->socktype, 0);
+}
+
+size_t curl_write(char *buffer, size_t size, size_t nitems, void *outstream)
+{
+	const auto out = reinterpret_cast<std::ostream *>(outstream);
+	out->write(buffer, size * nitems);
+	return size * nitems;
 }
 
 void Commands::curl()
 {
 	if (Shell::args.size() < 2)
 	{
-		std::cerr << "usage: curl [method] <url>\n";
+		*Shell::err << "usage: curl [method] <url>\n";
 		return;
 	}
 
@@ -55,7 +61,7 @@ void Commands::curl()
 	const auto curl = curl_easy_init();
 	if (!curl)
 	{
-		std::cerr << "\e[41mhttp: curl_easy_init failed\e[39m\n";
+		*Shell::err << "\e[41mhttp: curl_easy_init failed\e[39m\n";
 		return;
 	}
 
@@ -67,6 +73,8 @@ void Commands::curl()
 	curl_easy_setopt(curl, CURLOPT_CAINFO, "tls-ca-bundle.pem");
 
 	// by default, http response is written to stdout
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, Shell::out);
 
 	// we need a custom opensocket callback because of
 	// https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L98
@@ -84,8 +92,8 @@ void Commands::curl()
 
 	if (const auto res = curl_easy_perform(curl); res != CURLE_OK)
 	{
-		std::cerr << "\e[41mhttp: curl: " << curl_easy_strerror(res) << ": "
-				  << curl_errbuf << "\e[39m\n";
+		*Shell::err << "\e[41mhttp: curl: " << curl_easy_strerror(res) << ": "
+					<< curl_errbuf << "\e[39m\n";
 	}
 
 	curl_easy_cleanup(curl);
