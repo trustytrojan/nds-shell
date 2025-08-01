@@ -348,7 +348,7 @@ void subcommand_connect()
 		return;
 	}
 
-	*Shell::out << "\e[32mwifi: connection successful.\e[39m\n";
+	*Shell::out << "\e[42mwifi: connection successful\e[39m\n";
 }
 
 void subcommand_autoconnect()
@@ -369,6 +369,16 @@ void subcommand_autoconnect()
 			prevStatus = status;
 		}
 	}
+
+	*Shell::out << "\r\e[2K";
+
+	if (status == ASSOCSTATUS_CANNOTCONNECT)
+	{
+		*Shell::err << "\e[41mwifi: connection failed\n\e[39m";
+		return;
+	}
+
+	*Shell::out << "\e[42mwifi: connection successful\e[39m\n";
 }
 
 static const auto subcommandsString = R"(subcommands:

@@ -6,6 +6,7 @@
 
 #include <dswifi9.h>
 #include <fat.h>
+#include <wfc.h>
 
 #include <filesystem>
 #include <fstream>
@@ -13,10 +14,12 @@
 
 namespace fs = std::filesystem;
 
+void subcommand_autoconnect(); // from wifi.cpp
+
 namespace Shell
 {
 
-void Init()
+void InitConsole()
 {
 	// Video initialization - We want to use both screens
 	videoSetMode(MODE_0_2D);
@@ -32,20 +35,31 @@ void Init()
 	// Show keyboard on bottom screen
 	keyboardDemoInit();
 	keyboardShow();
+}
 
-	// Mount sdcard using libfat
+void InitResources()
+{
+	std::cout << "initializing filesystem...";
+
 	if (!fatInitDefault())
-		std::cerr << "\e[41mfatInitDefault failed: filesystem commands may not "
-					 "work\e[39m\n";
-
-	defaultExceptionHandler();
-
-	// Initialize wifi
-	// print something here to indicate wifi connection attempt!
-	std::cerr << "\e[40mattempting wifi autoconnect...\n\e[39m";
-	if (!Wifi_InitDefault(true))
-		std::cerr << "\e[41mWifi_InitDefault failed: networking commands may "
+		std::cerr << "\r\e[2K\e[41mfat init failed: filesystem commands will "
 					 "not work\e[39m\n";
+	else
+		std::cout << "\r\e[2K\e[42mfilesystem intialized!\n";
+
+	std::cout << "initializing wifi...";
+
+	if (!wlmgrInitDefault() || !wfcInit())
+		std::cerr
+			<< "\r\e[2K\e[41mwifi init failed: networking commands will not "
+			   "work\e[39m\n";
+	else
+	{
+		std::cout << "\r\e[2K\e[42mwifi initialized!\n\e[39mautoconnecting...";
+		subcommand_autoconnect();
+	}
+
+	std::cout << '\n';
 }
 
 void SourceFile(const std::string &filepath)
@@ -92,7 +106,7 @@ std::string GetEnv(const std::string &key, const std::string &_default)
 
 void ProcessLine(const std::string &line)
 {
-	if (!line.length())
+	if (line.empty())
 		return;
 
 	std::vector<Token> tokens;
@@ -234,27 +248,24 @@ void RedirectInput(int fd, const std::string &filename)
 
 void Start()
 {
+	InitConsole();
 	std::cout << "\e[46mgithub.com/trustytrojan/nds-shell\e[39m\n\n";
+	InitResources();
 
 	if (fs::exists(".ndshrc"))
 		SourceFile(".ndshrc");
 
-	std::cout << "enter 'help' to see available\ncommands\n\n";
+	std::cout << "run 'help' for help\n\n";
 
 	CliPrompt prompt;
 	std::string line;
-
 	while (pmMainLoop())
 	{
-		swiWaitForVBlank();
 		prompt.getLine(line);
 
 		// Trim leading and trailing whitespace
 		line.erase(0, line.find_first_not_of(" \t\n\r"));
 		line.erase(line.find_last_not_of(" \t\n\r") + 1);
-
-		if (line.empty())
-			continue;
 
 		ProcessLine(line);
 	}

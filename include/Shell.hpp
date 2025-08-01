@@ -14,7 +14,10 @@ namespace Shell
 {
 
 // Initializes necessary libnds resources.
-void Init();
+void InitConsole();
+
+// Initializes optional resources (fat, wifi).
+void InitResources();
 
 // Starts the prompt loop. Does not return.
 void Start();

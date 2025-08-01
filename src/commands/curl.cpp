@@ -3,40 +3,34 @@
 
 #include <algorithm>
 #include <curl/curl.h>
-
-#include <cstring>
 #include <iostream>
 
 static int
-curl_debug(CURL *, curl_infotype type, char *data, size_t size, void *)
+curl_debug(CURL *, curl_infotype, char *const data, const size_t size, void *)
 {
-	switch (type)
-	{
-	case CURLINFO_TEXT:
-	case CURLINFO_HEADER_IN:
-	case CURLINFO_HEADER_OUT:
-	case CURLINFO_DATA_IN:
-	case CURLINFO_DATA_OUT:
-	case CURLINFO_SSL_DATA_IN:
-	case CURLINFO_SSL_DATA_OUT:
-		*Shell::err << "\e[40m";
-		Shell::err->write(data, size);
-		*Shell::err << "\e[39m";
-	default:
-		break;
-	}
+	*Shell::err << "\e[40m";
+	Shell::err->write(data, size);
+	*Shell::err << "\e[39m";
 	return 0;
 }
 
-static curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *addr)
+static curl_socket_t
+curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr)
 {
 	return socket(addr->family, addr->socktype, 0);
 }
 
-size_t curl_write(char *buffer, size_t size, size_t nitems, void *)
+size_t
+curl_write(char *const buffer, const size_t size, const size_t nitems, void *)
 {
-	Shell::out->write(buffer, size * nitems);
-	return size * nitems;
+	// manually put chars because putting a char* can cause a memory error here:
+	// https://github.com/devkitPro/libnds/blob/6194b32d8f94e2ebc8078e64bf213ffc13ba1985/source/arm9/console.c#L223
+	// looks like they didn't check for null chars in the loop condition
+	const auto bytes = size * nitems;
+	const char *const endp = buffer + bytes;
+	for (const char *p = buffer; *p && p < endp; ++p)
+		*Shell::out << *p;
+	return bytes;
 }
 
 void Commands::curl()
@@ -67,11 +61,10 @@ void Commands::curl()
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.c_str());
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
-	// set a sane timeout so we aren't stuck connecting
-	curl_easy_setopt(
-		curl,
-		CURLOPT_CONNECTTIMEOUT,
-		atoi(Shell::GetEnv("CURL_TIMEOUT", "10").c_str()));
+	// set a timeout so we aren't stuck connecting/reading
+	const auto timeout = atoi(Shell::GetEnv("CURL_TIMEOUT", "10").c_str());
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, timeout);
 
 	// CA cert bundle file, set the filename using env
 	// copy one from a linux system and it works flawlessly
