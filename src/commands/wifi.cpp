@@ -351,6 +351,26 @@ void subcommand_connect()
 	*Shell::out << "\e[32mwifi: connection successful.\e[39m\n";
 }
 
+void subcommand_autoconnect()
+{
+	Wifi_AutoConnect();
+
+	auto status = Wifi_AssocStatus(), prevStatus = -1;
+	for (; pmMainLoop() && status != ASSOCSTATUS_ASSOCIATED &&
+		   status != ASSOCSTATUS_CANNOTCONNECT;
+		 status = Wifi_AssocStatus())
+	{
+		swiWaitForVBlank();
+		scanKeys();
+
+		if (status != prevStatus)
+		{
+			*Shell::out << "\r\e[2K" << connStatus[status];
+			prevStatus = status;
+		}
+	}
+}
+
 static const auto subcommandsString = R"(subcommands:
   con[nect] [ssid]
   dis[connect]
@@ -375,5 +395,5 @@ void Commands::wifi()
 	else if (subcommand.starts_with("stat"))
 		*Shell::out << connStatus[Wifi_AssocStatus()] << '\n';
 	else if (subcommand.starts_with("auto"))
-		Wifi_AutoConnect();
+		subcommand_autoconnect();
 }

@@ -35,15 +35,17 @@ void Init()
 
 	// Mount sdcard using libfat
 	if (!fatInitDefault())
-		std::cerr << "\e[41mfatInitDefault failed: filesystem commands will "
-					 "not work\e[39m\n\n";
+		std::cerr << "\e[41mfatInitDefault failed: filesystem commands may not "
+					 "work\e[39m\n";
 
 	defaultExceptionHandler();
 
 	// Initialize wifi
-	if (!Wifi_InitDefault(false)) // PASS TRUE FOR EMULATORS
-		std::cerr << "\e[41mWifi_InitDefault failed: networking commands will "
-					 "not work\e[39m\n\n";
+	// print something here to indicate wifi connection attempt!
+	std::cerr << "\e[40mattempting wifi autoconnect...\n\e[39m";
+	if (!Wifi_InitDefault(true))
+		std::cerr << "\e[41mWifi_InitDefault failed: networking commands may "
+					 "not work\e[39m\n";
 }
 
 void SourceFile(const std::string &filepath)
