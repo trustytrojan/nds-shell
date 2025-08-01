@@ -82,9 +82,9 @@ std::optional<std::string> GetEnv(const std::string &key)
 	return {};
 }
 
-const std::string &GetEnv(const std::string &key, const std::string &_default)
+std::string GetEnv(const std::string &key, const std::string &_default)
 {
-	const auto &val = GetEnv(key);
+	const auto val = GetEnv(key);
 	return val ? *val : _default;
 }
 

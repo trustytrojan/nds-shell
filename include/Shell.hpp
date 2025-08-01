@@ -27,7 +27,7 @@ void ResetStreams();
 
 bool HasEnv(const std::string &key);
 std::optional<std::string> GetEnv(const std::string &key);
-const std::string &GetEnv(const std::string &key, const std::string &_default);
+std::string GetEnv(const std::string &key, const std::string &_default);
 
 inline std::string cwd;
 inline Env env, commandEnv;
