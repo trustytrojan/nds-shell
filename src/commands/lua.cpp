@@ -31,11 +31,13 @@ void Commands::lua()
 		return;
 	}
 
-	CliPrompt prompt{"lua> ", '_', std::cout};
+	*Shell::out << "press fold/esc key to exit\n";
+
+	CliPrompt prompt{"lua> ", '_', *Shell::out};
 	std::string line;
 	prompt.resetProcessKeyboardState();
-	std::cout << prompt.prompt << prompt.cursor
-			  << EscapeSequences::Cursor::moveLeftOne;
+	*Shell::out << prompt.prompt << prompt.cursor
+				<< EscapeSequences::Cursor::moveLeftOne;
 
 	while (pmMainLoop())
 	{
@@ -47,17 +49,17 @@ void Commands::lua()
 			if (!line.contains("print") && !line.contains("return"))
 				line = "return " + line;
 
-			std::cout << lua.safe_script(line).get<sol::object>() << '\n';
+			*Shell::out << lua.safe_script(line).get<sol::object>() << '\n';
 
 			line.clear();
 			prompt.resetProcessKeyboardState();
-			std::cout << prompt.prompt << prompt.cursor
-					  << EscapeSequences::Cursor::moveLeftOne;
+			*Shell::out << prompt.prompt << prompt.cursor
+						<< EscapeSequences::Cursor::moveLeftOne;
 		}
 
 		if (prompt.foldPressed())
 		{
-			std::cout << "\r\e[2K";
+			*Shell::out << "\r\e[2K";
 			break;
 		}
 	}

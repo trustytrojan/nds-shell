@@ -2,9 +2,9 @@
 
 #include <iostream>
 
-using StringIterator = std::string::const_iterator;
+using StrItr = std::string::const_iterator;
 
-void EscapeInUnquotedString(StringIterator &itr, std::string &currentToken)
+void EscapeInUnquotedString(StrItr &itr, std::string &currentToken)
 {
 	// `itr` is pointing at the initial backslash.
 	// Only escape spaces, backslashes, and equals.
@@ -25,7 +25,7 @@ void EscapeInUnquotedString(StringIterator &itr, std::string &currentToken)
 	}
 }
 
-void EscapeInDoubleQuoteString(StringIterator &itr, std::string &currentToken)
+void EscapeInDoubleQuoteString(StrItr &itr, std::string &currentToken)
 {
 	// `itr` is pointing at the initial backslash.
 	// Only escape backslashes, double-quotes, and dollar signs.
@@ -46,10 +46,10 @@ void EscapeInDoubleQuoteString(StringIterator &itr, std::string &currentToken)
 }
 
 void InsertVariable(
-	StringIterator &itr,
-	const StringIterator &lineEnd,
+	StrItr &itr,
+	const StrItr &lineEnd,
 	std::string &currentToken,
-	EnvMap &env)
+	const Env &env)
 {
 	// `itr` is pointing at the initial `$`
 	// subtitute variables in the lexing phase to avoid the reiteration overhead
@@ -58,16 +58,17 @@ void InsertVariable(
 	for (++itr; (isalnum(*itr) || *itr == '_') && *itr != '"' && itr < lineEnd;
 		 ++itr)
 		varname += *itr;
-	currentToken += env[varname];
+	if (const auto envItr{env.find(varname)}; envItr != env.cend())
+		currentToken += envItr->second;
 	--itr; // Let the caller's loop see the character that stopped our loop,
 		   // they might need it
 }
 
 bool LexDoubleQuoteString(
-	StringIterator &itr,
-	const StringIterator &lineEnd,
+	StrItr &itr,
+	const StrItr &lineEnd,
 	std::string &currentToken,
-	EnvMap &env)
+	const Env &env)
 {
 	// When called, itr is pointing at the opening `"`, so increment before
 	// looping.
@@ -96,9 +97,7 @@ bool LexDoubleQuoteString(
 }
 
 bool LexSingleQuoteString(
-	StringIterator &itr,
-	const StringIterator &lineEnd,
-	std::string &currentToken)
+	StrItr &itr, const StrItr &lineEnd, std::string &currentToken)
 {
 	// Nothing can be escaped in single-quote strings.
 	for (++itr; *itr != '\'' && itr < lineEnd; ++itr)
@@ -113,7 +112,8 @@ bool LexSingleQuoteString(
 	return true;
 }
 
-bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
+bool LexLine(
+	std::vector<Token> &tokens, const std::string &line, const Env &env)
 {
 	tokens.clear();
 
@@ -122,7 +122,7 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 
 	const auto pushAndClear = [&]
 	{
-		tokens.push_back({Token::Type::STRING, currentToken});
+		tokens.emplace_back(Token::Type::STRING, currentToken);
 		currentToken.clear();
 	};
 
@@ -134,10 +134,11 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 
 	for (auto itr = line.cbegin(); itr < lineEnd; ++itr)
 	{
-		if (isspace(*itr) && !currentToken.empty())
+		if (isspace(*itr))
 		{
-			pushAndClear();
-			tokens.push_back({Token::Type::WHITESPACE});
+			pushAndClearIfNotEmpty();
+			if (tokens.back().type != Token::Type::WHITESPACE)
+				tokens.emplace_back(Token::Type::WHITESPACE);
 			continue;
 		}
 
@@ -159,7 +160,7 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 
 		case '=':
 			pushAndClearIfNotEmpty();
-			tokens.push_back({Token::Type::EQUALS});
+			tokens.emplace_back(Token::Type::EQUALS);
 			break;
 
 		case '$':
@@ -169,43 +170,39 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 
 		case ';':
 			pushAndClearIfNotEmpty();
-			tokens.push_back({Token::Type::SEMICOLON});
+			tokens.emplace_back(Token::Type::SEMICOLON);
 			break;
 
 		case '<':
 			pushAndClearIfNotEmpty();
-			tokens.push_back({Token::Type::INPUT_REDIRECT});
+			tokens.emplace_back(Token::Type::INPUT_REDIRECT);
 			break;
 
 		case '>':
 			pushAndClearIfNotEmpty();
-			tokens.push_back({Token::Type::OUTPUT_REDIRECT});
+			tokens.emplace_back(Token::Type::OUTPUT_REDIRECT);
 			break;
 
 		case '|':
 			pushAndClearIfNotEmpty();
-
 			if (*(++itr) == '|')
-				tokens.push_back({Token::Type::OR});
+				tokens.emplace_back(Token::Type::OR);
 			else
 			{
-				tokens.push_back({Token::Type::PIPE});
+				tokens.emplace_back(Token::Type::PIPE);
 				--itr;
 			}
-
 			break;
 
 		case '&':
 			pushAndClearIfNotEmpty();
-
 			if (*(++itr) == '&')
-				tokens.push_back({Token::Type::AND});
+				tokens.emplace_back(Token::Type::AND);
 			else
 			{
-				tokens.push_back({Token::Type::AMPERSAND});
+				tokens.emplace_back(Token::Type::AMPERSAND);
 				--itr;
 			}
-
 			break;
 
 		default:
@@ -214,7 +211,7 @@ bool LexLine(std::vector<Token> &tokens, const std::string &line, EnvMap &env)
 	}
 
 	if (!currentToken.empty())
-		tokens.push_back({Token::Type::STRING, currentToken});
+		tokens.emplace_back(Token::Type::STRING, currentToken);
 
 	return true;
 }

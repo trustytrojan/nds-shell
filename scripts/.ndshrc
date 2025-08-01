@@ -1,2 +1,3 @@
+SHELL_DEBUG=1
 wifi con hotspot
 ipinfo

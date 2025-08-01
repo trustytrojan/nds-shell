@@ -19,7 +19,7 @@ void Commands::tcp()
 {
 	if (Shell::args.size() != 2)
 	{
-		std::cerr << "usage: http <ip:port>\n";
+		*Shell::err << "usage: tcp <ip:port>\n";
 		return;
 	}
 
@@ -27,7 +27,7 @@ void Commands::tcp()
 	sockaddr_in sain;
 	if (!NetUtils::ParseAddress(Shell::args[1].c_str(), 80, sain))
 	{
-		NetUtils::PrintError("http");
+		NetUtils::PrintError("tcp");
 		return;
 	}
 
@@ -38,7 +38,7 @@ void Commands::tcp()
 		perror("socket");
 		return;
 	}
-	std::cerr << "tcp: socket: " << sock << '\n';
+	*Shell::err << "\e[40mtcp: socket: " << sock << "\n\e[39m";
 
 	if (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)) == -1)
 	{
@@ -46,9 +46,9 @@ void Commands::tcp()
 		close(sock);
 		return;
 	}
-	std::cerr << "tcp: connected\n";
+	*Shell::err << "\e[40mtcp: connected\e[39m\n";
 
-	CliPrompt prompt{"tcp> ", '_', std::cout};
+	CliPrompt prompt{"tcp> ", '_', *Shell::out};
 	std::string lineToSend;
 
 	fd_set master_set{};
@@ -59,8 +59,11 @@ void Commands::tcp()
 	char buf[200]{};
 	bool shouldExit{};
 	prompt.resetProcessKeyboardState();
-	std::cout << prompt.prompt << prompt.cursor
-			  << EscapeSequences::Cursor::moveLeftOne;
+
+	*Shell::out << "press fold/esc key to exit\n";
+
+	*Shell::out << prompt.prompt << prompt.cursor
+				<< EscapeSequences::Cursor::moveLeftOne;
 
 	while (pmMainLoop() && !shouldExit)
 	{
@@ -69,30 +72,30 @@ void Commands::tcp()
 
 		if (prompt.foldPressed())
 		{
-			std::cout << "\r\e[2Ktcp: fold key pressed\n";
+			*Shell::out << "\r\e[2Ktcp: fold key pressed\n";
 			break;
 		}
 
 		if (prompt.newlineEntered())
 		{
-			std::cout << "\r\e[1A\e[2K";
+			*Shell::out << "\r\e[1A\e[2K";
 			switch (send(sock, lineToSend.c_str(), lineToSend.length(), 0))
 			{
 			case -1:
-				std::cerr << "\e[41m";
+				*Shell::err << "\e[41m";
 				perror("send");
-				std::cerr << "\e[39m";
+				*Shell::err << "\e[39m";
 				shouldExit = true;
 				break;
 			case 0:
-				std::cout << "\r\e[2Ktcp: remote end disconnected\n";
+				*Shell::out << "\r\e[2Ktcp: remote end disconnected\n";
 				shouldExit = true;
 				break;
 			}
 			prompt.resetProcessKeyboardState();
 			lineToSend.clear();
-			std::cout << prompt.prompt << prompt.cursor
-					  << EscapeSequences::Cursor::moveLeftOne;
+			*Shell::out << prompt.prompt << prompt.cursor
+						<< EscapeSequences::Cursor::moveLeftOne;
 		}
 
 		// Check for incoming data
@@ -110,13 +113,13 @@ void Commands::tcp()
 				shouldExit = true;
 				break;
 			case 0:
-				std::cout << "\r\e[2Ktcp: remote end disconnected\n";
+				*Shell::out << "\r\e[2Ktcp: remote end disconnected\n";
 				shouldExit = true;
 				break;
 			default:
 				buf[bytesRead] = '\0';
-				std::cout << "\r\e[2K" << buf << '\n'
-						  << prompt.prompt << lineToSend << prompt.cursor;
+				*Shell::out << "\r\e[2K" << buf << '\n'
+							<< prompt.prompt << lineToSend << prompt.cursor;
 				break;
 			}
 		}
@@ -128,6 +131,5 @@ void Commands::tcp()
 	}
 
 	// close() and closesocket() operate on DIFFERENT fd tables
-	// might want to tell the libnds devs about this
 	closesocket(sock);
 }

@@ -1,21 +1,25 @@
 #include "Shell.hpp"
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
+#include "Lexer.hpp"
+#include "Parser.hpp"
 
 #include <dswifi9.h>
 #include <fat.h>
+#include <wfc.h>
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 
 namespace fs = std::filesystem;
+
+void subcommand_autoconnect(); // from wifi.cpp
 
 namespace Shell
 {
 
-void Init()
+void InitConsole()
 {
 	// Video initialization - We want to use both screens
 	videoSetMode(MODE_0_2D);
@@ -31,39 +35,31 @@ void Init()
 	// Show keyboard on bottom screen
 	keyboardDemoInit();
 	keyboardShow();
-
-	// Mount sdcard using libfat
-	if (!fatInitDefault())
-		std::cerr << "\e[41mfatInitDefault failed: filesystem commands will "
-					 "not work\e[39m\n\n";
-
-	defaultExceptionHandler();
-
-	// Initialize wifi
-	if (!Wifi_InitDefault(false)) // PASS TRUE FOR EMULATORS
-		std::cerr << "\e[41mWifi_InitDefault failed: networking commands will "
-					 "not work\e[39m\n\n";
 }
 
-std::string EscapeEscapes(const std::string &str)
+void InitResources()
 {
-	std::string newStr;
-	for (auto itr = str.cbegin(); itr < str.cend(); ++itr)
-		switch (*itr)
-		{
-		case '\\':
-			if (*(++itr) == 'e')
-				newStr += '\e';
-			else
-			{
-				newStr += '\\';
-				--itr;
-			}
-			break;
-		default:
-			newStr += *itr;
-		}
-	return newStr;
+	std::cout << "initializing filesystem...";
+
+	if (!fatInitDefault())
+		std::cerr << "\r\e[2K\e[41mfat init failed: filesystem commands will "
+					 "not work\e[39m\n";
+	else
+		std::cout << "\r\e[2K\e[42mfilesystem intialized!\n";
+
+	std::cout << "initializing wifi...";
+
+	if (!wlmgrInitDefault() || !wfcInit())
+		std::cerr
+			<< "\r\e[2K\e[41mwifi init failed: networking commands will not "
+			   "work\e[39m\n";
+	else
+	{
+		std::cout << "\r\e[2K\e[42mwifi initialized!\n\e[39mautoconnecting...";
+		subcommand_autoconnect();
+	}
+
+	std::cout << '\n';
 }
 
 void SourceFile(const std::string &filepath)
@@ -82,20 +78,92 @@ void SourceFile(const std::string &filepath)
 		Shell::ProcessLine(line);
 }
 
+std::ostream &operator<<(std::ostream &ostr, const Token &t)
+{
+	return ostr << (char)t.type << '(' << t.value << ')';
+}
+
+bool HasEnv(const std::string &key)
+{
+	return commandEnv.find(key) != commandEnv.cend() ||
+		   env.find(key) != env.cend();
+}
+
+std::optional<std::string> GetEnv(const std::string &key)
+{
+	if (const auto itr = commandEnv.find(key); itr != commandEnv.cend())
+		return itr->second;
+	if (const auto itr = env.find(key); itr != env.cend())
+		return itr->second;
+	return {};
+}
+
+std::string GetEnv(const std::string &key, const std::string &_default)
+{
+	const auto val = GetEnv(key);
+	return val ? *val : _default;
+}
+
 void ProcessLine(const std::string &line)
 {
-	// Split the line by whitespace into a vector of strings
-	std::istringstream iss{line};
+	if (line.empty())
+		return;
+
+	std::vector<Token> tokens;
+
+	if (!LexLine(tokens, line, env))
+		return;
+
+	if (HasEnv("SHELL_DEBUG"))
+	{ // debug tokens
+		std::cerr << "\e[40mtokens: ";
+		auto itr = tokens.cbegin();
+		for (; itr < tokens.cend() - 1; ++itr)
+			std::cerr << *itr << ' ';
+		std::cerr << *itr << "\n\e[39m";
+	}
 
 	args.clear();
-	std::string token;
-	while (iss >> token)
-		args.emplace_back(token);
+	commandEnv.clear(); // Clear previous command-local env
+	std::vector<IoRedirect> redirects;
+	std::vector<EnvAssign> envAssigns;
 
+	if (!ParseTokens(tokens, redirects, envAssigns, args))
+		return;
+
+	if (args.empty() && envAssigns.empty())
+	{
+		std::cerr << "\e[41mshell: no args or env assigns\e[39m\n";
+		return;
+	}
+
+	// Handle environment assignments
 	if (args.empty())
 	{
-		std::cerr << "\e[41mshell: empty args\e[39m\n";
+		// Standalone assignments - apply to shell env
+		for (const auto &assign : envAssigns)
+			env[assign.key] = assign.value;
 		return;
+	}
+
+	// Command with assignments - apply to command env
+	for (const auto &assign : envAssigns)
+		commandEnv[assign.key] = assign.value;
+
+	// Apply redirections (rightmost takes precedence for same fd)
+	for (const auto &redirect : redirects)
+		if (redirect.direction == IoRedirect::Direction::IN)
+			RedirectInput(redirect.fd, redirect.filename);
+		else
+			RedirectOutput(redirect.fd, redirect.filename);
+
+	if (HasEnv("SHELL_DEBUG"))
+	{ // debug args
+		std::cerr << "\e[40margs: ";
+		auto itr = args.cbegin();
+		for (; itr < args.cend() - 1; ++itr)
+			std::cerr << '\'' << *itr << "' ";
+		std::cerr << '\'' << *itr << "'\n\e[39m";
 	}
 
 	const auto &command = args[0];
@@ -115,31 +183,89 @@ void ProcessLine(const std::string &line)
 	}
 
 	commandItr->second();
+	ResetStreams();
+}
+
+void ResetStreams()
+{
+	if (in != &std::cin)
+	{
+		reinterpret_cast<std::ifstream *>(in)->close();
+		in = &std::cin;
+	}
+
+	if (out != &std::cout)
+	{
+		reinterpret_cast<std::ofstream *>(out)->close();
+		out = &std::cout;
+	}
+
+	if (err != &std::cerr)
+	{
+		reinterpret_cast<std::ofstream *>(err)->close();
+		err = &std::cerr;
+	}
+}
+
+void RedirectOutput(int fd, const std::string &filename)
+{
+	if (fd == 1)
+	{
+		outf.open(filename);
+		if (!outf)
+		{
+			*err << "\e[41mshell: cannot open file for writing: " << filename
+				 << "\e[39m\n";
+			return;
+		}
+		out = &outf;
+	}
+	else if (fd == 2)
+	{
+		errf.open(filename);
+		if (!errf)
+		{
+			*err << "\e[41mshell: cannot open file for writing: " << filename
+				 << "\e[39m\n";
+			return;
+		}
+		err = &errf;
+	}
+}
+
+void RedirectInput(int fd, const std::string &filename)
+{
+	inf.open(filename);
+	if (!inf)
+	{
+		*err << "\e[41mshell: cannot open file for reading: " << filename
+			 << "\e[39m\n";
+		return;
+	}
+	if (fd == 0)
+		in = &inf;
 }
 
 void Start()
 {
+	InitConsole();
 	std::cout << "\e[46mgithub.com/trustytrojan/nds-shell\e[39m\n\n";
+	InitResources();
 
 	if (fs::exists(".ndshrc"))
 		SourceFile(".ndshrc");
 
-	std::cout << "enter 'help' to see available\ncommands\n\n";
+	std::cout << "run 'help' for help\n\n";
 
 	CliPrompt prompt;
 	std::string line;
-
 	while (pmMainLoop())
 	{
-		swiWaitForVBlank();
 		prompt.getLine(line);
 
 		// Trim leading and trailing whitespace
 		line.erase(0, line.find_first_not_of(" \t\n\r"));
 		line.erase(line.find_last_not_of(" \t\n\r") + 1);
-
-		if (line.empty())
-			continue;
 
 		ProcessLine(line);
 	}
