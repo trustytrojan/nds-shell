@@ -1,5 +1,7 @@
 #pragma once
 
+#include "CliPrompt.hpp"
+
 #include <nds.h>
 
 #include <fstream>
@@ -18,6 +20,8 @@ void InitConsole();
 
 // Initializes optional resources (fat, wifi).
 void InitResources();
+
+inline CliPrompt prompt;
 
 // Starts the prompt loop. Does not return.
 void Start();

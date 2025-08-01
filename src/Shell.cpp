@@ -107,6 +107,7 @@ std::string GetEnv(const std::string &key, const std::string &_default)
 void ProcessLine(const std::string &line)
 {
 	if (line.empty())
+		// don't process empty lines
 		return;
 
 	std::vector<Token> tokens;
@@ -137,25 +138,14 @@ void ProcessLine(const std::string &line)
 		return;
 	}
 
-	// Handle environment assignments
+	// Handle environment assignments.
+
 	if (args.empty())
-	{
-		// Standalone assignments - apply to shell env
+	{ // Standalone assignments - apply to shell env and return
 		for (const auto &assign : envAssigns)
 			env[assign.key] = assign.value;
 		return;
 	}
-
-	// Command with assignments - apply to command env
-	for (const auto &assign : envAssigns)
-		commandEnv[assign.key] = assign.value;
-
-	// Apply redirections (rightmost takes precedence for same fd)
-	for (const auto &redirect : redirects)
-		if (redirect.direction == IoRedirect::Direction::IN)
-			RedirectInput(redirect.fd, redirect.filename);
-		else
-			RedirectOutput(redirect.fd, redirect.filename);
 
 	if (HasEnv("SHELL_DEBUG"))
 	{ // debug args
@@ -166,10 +156,21 @@ void ProcessLine(const std::string &line)
 		std::cerr << '\'' << *itr << "'\n\e[39m";
 	}
 
+	// Command with assignments - apply to command env and continue
+	for (const auto &assign : envAssigns)
+		commandEnv[assign.key] = assign.value;
+
+	// Apply redirections (rightmost takes precedence for same fd)
+	for (const auto &redirect : redirects)
+		if (redirect.direction == IoRedirect::Direction::IN)
+			RedirectInput(redirect.fd, redirect.filename);
+		else
+			RedirectOutput(redirect.fd, redirect.filename);
+
 	const auto &command = args[0];
 
 	if (const auto withExtension{command + ".ndsh"}; fs::exists(withExtension))
-	{
+	{ // Treat .ndsh files as commands!
 		SourceFile(withExtension);
 		return;
 	}
@@ -257,10 +258,11 @@ void Start()
 
 	std::cout << "run 'help' for help\n\n";
 
-	CliPrompt prompt;
+	prompt.setLineHistory(".ndsh_history");
 	std::string line;
 	while (pmMainLoop())
 	{
+		// Blocks until a line is entered
 		prompt.getLine(line);
 
 		// Trim leading and trailing whitespace
@@ -268,6 +270,21 @@ void Start()
 		line.erase(line.find_last_not_of(" \t\n\r") + 1);
 
 		ProcessLine(line);
+
+		if (line.size())
+		{
+			// Save line to .ndsh_history file
+			// This happens on every entered line, possibly rethink this
+			// It's either this or nothing gets saved when power is forced off
+			// TODO: Some weird unicode characters keep getting saved when I
+			// power off the DS. These crash the whole program if ran as a line.
+			// Figure it out!
+			std::ofstream historyFile{".ndsh_history", std::ios::app};
+			if (historyFile)
+				historyFile << line << '\n';
+			else
+				std::cerr << "\e[41mshell: failed to save history\n\e[39m";
+		}
 	}
 }
 

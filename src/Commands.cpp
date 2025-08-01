@@ -220,6 +220,22 @@ void unset()
 	Shell::env.erase(Shell::args[1]);
 }
 
+void history()
+{
+	if (Shell::args.size() == 2 && Shell::args[1] == "-c")
+	{
+		Shell::prompt.clearLineHistory();
+		std::error_code ec;
+		if (!fs::remove("/.ndsh_history", ec))
+			*Shell::err << "\e[41mhistory: failed to remove '.ndsh_history': "
+						<< ec.message() << "\e[39m\n";
+		return;
+	}
+
+	for (const auto &line : Shell::prompt.getLineHistory())
+		*Shell::out << line << '\n';
+}
+
 const std::unordered_map<std::string, void (*)()> MAP{
 	{"help", help},
 	{"echo", echo},
@@ -238,6 +254,7 @@ const std::unordered_map<std::string, void (*)()> MAP{
 	{"rename", rename},
 	{"clear", consoleClear},
 	{"unset", unset},
+	{"history", history},
 	{"exit",
 	 []
 	 {

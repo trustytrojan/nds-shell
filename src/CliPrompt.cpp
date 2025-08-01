@@ -1,6 +1,7 @@
 #include "CliPrompt.hpp"
 #include "EscapeSequences.hpp"
 
+#include <fstream>
 #include <iostream>
 
 using namespace EscapeSequences;
@@ -23,6 +24,13 @@ void CliPrompt::getLine(std::string &line)
 		processKeyboard(line);
 		swiWaitForVBlank();
 	} while (pmMainLoop() && !_newlineEntered);
+}
+
+void CliPrompt::resetProcessKeyboardState()
+{
+	cursorPos = flashState = flashTimer = {};
+	lineHistoryItr = lineHistory.cend();
+	lineToBeAdded.clear();
 }
 
 void CliPrompt::flashCursor(const std::string &line)
@@ -73,6 +81,9 @@ void CliPrompt::handleEnter(const std::string &line)
 		ostr << line[cursorPos] << '\r';
 	ostr << '\n';
 	_newlineEntered = true;
+	if (line.size())
+		// don't push empty lines!
+		lineHistory.emplace_back(line);
 }
 
 void CliPrompt::handleLeft(const std::string &line)
@@ -96,6 +107,46 @@ void CliPrompt::handleRight(const std::string &line)
 		ostr << cursor << Cursor::moveLeftOne;
 }
 
+void CliPrompt::handleUp(std::string &line)
+{
+	if (lineHistory.empty() || lineHistoryItr - 1 < lineHistory.cbegin())
+		// obviously do nothing here
+		return;
+
+	if (lineHistoryItr == lineHistory.cend())
+		// save the "new" line for if the user goes all the way down again
+		lineToBeAdded = line;
+
+	// go up one, reset cursorPos, reprint everything
+	line = *--lineHistoryItr;
+	cursorPos = line.size();
+	ostr << "\r\e[2K" << prompt << line << cursor << Cursor::moveLeftOne;
+}
+
+void CliPrompt::handleDown(std::string &line)
+{
+	if (lineHistory.empty() || lineHistoryItr + 1 > lineHistory.cend())
+		// obviously do nothing here
+		return;
+
+	// go down one
+	++lineHistoryItr;
+
+	if (lineHistoryItr == lineHistory.cend())
+	{
+		// we're at the "new line to-be-added", restore it
+		line = lineToBeAdded;
+		cursorPos = line.size();
+		ostr << "\r\e[2K" << prompt << line << cursor << Cursor::moveLeftOne;
+		return;
+	}
+
+	// go down one, reset cursorPos, reprint everything
+	line = *lineHistoryItr;
+	cursorPos = line.size();
+	ostr << "\r\e[2K" << prompt << line << cursor << Cursor::moveLeftOne;
+}
+
 void CliPrompt::processKeyboard(std::string &line)
 {
 	resetKeypressState();
@@ -110,6 +161,10 @@ void CliPrompt::processKeyboard(std::string &line)
 		handleLeft(line);
 	if (keysPressed & KEY_RIGHT)
 		handleRight(line);
+	if (keysPressed & KEY_UP)
+		handleUp(line);
+	if (keysPressed & KEY_DOWN)
+		handleDown(line);
 
 	switch (const s8 c = keyboardUpdate())
 	{
@@ -152,6 +207,18 @@ void CliPrompt::processKeyboard(std::string &line)
 		handleRight(line);
 		break;
 
+	case DVK_UP:
+		if (keysPressed & KEY_UP)
+			break;
+		handleUp(line);
+		break;
+
+	case DVK_DOWN:
+		if (keysPressed & KEY_DOWN)
+			break;
+		handleDown(line);
+		break;
+
 	default:
 		if (cursorPos == line.size())
 		{
@@ -169,4 +236,13 @@ void CliPrompt::processKeyboard(std::string &line)
 		if (++cursorPos == line.size())
 			ostr << cursor << Cursor::moveLeftOne;
 	}
+}
+
+void CliPrompt::setLineHistory(const std::string &filename)
+{
+	lineHistory.clear();
+	std::ifstream lineHistoryFile{filename};
+	std::string historyLine;
+	while (std::getline(lineHistoryFile, historyLine))
+		lineHistory.emplace_back(historyLine);
 }

@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 // Commandline prompt with a visible, movable cursor that can edit the line at
 // any position.
@@ -21,12 +22,18 @@ class CliPrompt
 	bool _newlineEntered{};
 	bool _foldPressed{};
 
+	std::vector<std::string> lineHistory;
+	std::vector<std::string>::const_iterator lineHistoryItr;
+	std::string lineToBeAdded;
+
 	inline void resetKeypressState() { _newlineEntered = _foldPressed = {}; }
 	void flashCursor(const std::string &line);
 	void handleBackspace(std::string &line);
 	void handleEnter(const std::string &line);
 	void handleLeft(const std::string &line);
 	void handleRight(const std::string &line);
+	void handleUp(std::string &line);
+	void handleDown(std::string &line);
 
 public:
 	// The text to print before the cursor.
@@ -40,10 +47,7 @@ public:
 		const char cursor = '_',
 		std::ostream &ostr = std::cout);
 
-	inline void resetProcessKeyboardState()
-	{
-		cursorPos = flashState = flashTimer = {};
-	}
+	void resetProcessKeyboardState();
 
 	// Processes the current state of the keyboard, and updates state as
 	// necessary.
@@ -55,4 +59,12 @@ public:
 
 	inline constexpr bool newlineEntered() const { return _newlineEntered; }
 	inline constexpr bool foldPressed() const { return _foldPressed; }
+
+	inline constexpr const std::vector<std::string> &getLineHistory()
+	{
+		return lineHistory;
+	}
+
+	void setLineHistory(const std::string &filename);
+	inline constexpr void clearLineHistory() { lineHistory.clear(); }
 };
