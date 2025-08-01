@@ -77,34 +77,55 @@ void ProcessLine(const std::string &line)
 	if (!LexLine(tokens, line, env))
 		return;
 
-	std::cerr << "\e[40m";
-	std::cerr << "tokens: ";
-	{
+	{ // debug tokens
+		std::cerr << "\e[40mtokens: ";
 		auto itr = tokens.cbegin();
 		for (; itr < tokens.cend() - 1; ++itr)
 			std::cerr << *itr << ' ';
-		std::cerr << *itr << '\n';
+		std::cerr << *itr << "\n\e[39m";
 	}
 
 	args.clear();
+	commandEnv.clear(); // Clear previous command-local env
+	std::vector<IoRedirect> redirects;
+	std::vector<EnvAssign> envAssigns;
 
-	if (!ParseTokens(tokens))
+	if (!ParseTokens(tokens, redirects, envAssigns, args))
 		return;
 
-	if (args.empty())
+	if (args.empty() && envAssigns.empty())
 	{
-		std::cerr << "\e[41mshell: empty args\e[39m\n";
+		std::cerr << "\e[41mshell: no args or env assigns\e[39m\n";
 		return;
 	}
 
-	std::cerr << "args: ";
+	// Handle environment assignments
+	if (args.empty())
 	{
+		// Standalone assignments - apply to shell env
+		for (const auto &assign : envAssigns)
+			env[assign.key] = assign.value;
+		return;
+	}
+
+	// Command with assignments - apply to command env
+	for (const auto &assign : envAssigns)
+		commandEnv[assign.key] = assign.value;
+
+	// Apply redirections (rightmost takes precedence for same fd)
+	for (const auto &redirect : redirects)
+		if (redirect.direction == IoRedirect::Direction::IN)
+			RedirectInput(redirect.fd, redirect.filename);
+		else
+			RedirectOutput(redirect.fd, redirect.filename);
+
+	{ // debug args
+		std::cerr << "\e[40margs: ";
 		auto itr = args.cbegin();
 		for (; itr < args.cend() - 1; ++itr)
 			std::cerr << '\'' << *itr << "' ";
-		std::cerr << '\'' << *itr << "'\n";
+		std::cerr << '\'' << *itr << "'\n\e[39m";
 	}
-	std::cerr << "\e[39m";
 
 	const auto &command = args[0];
 

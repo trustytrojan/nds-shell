@@ -26,7 +26,7 @@ void RedirectInput(int fd, const std::string &filename);
 void ResetStreams();
 
 inline std::string cwd;
-inline Env env;
+inline Env env, commandEnv;
 inline std::ofstream outf, errf;
 inline std::ifstream inf;
 inline std::ostream *out{&std::cout}, *err{&std::cerr};
