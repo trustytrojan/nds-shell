@@ -31,11 +31,13 @@ void Commands::lua()
 		return;
 	}
 
+	*Shell::out << "press fold/esc key to exit\n";
+
 	CliPrompt prompt{"lua> ", '_', *Shell::out};
 	std::string line;
 	prompt.resetProcessKeyboardState();
 	*Shell::out << prompt.prompt << prompt.cursor
-			  << EscapeSequences::Cursor::moveLeftOne;
+				<< EscapeSequences::Cursor::moveLeftOne;
 
 	while (pmMainLoop())
 	{
@@ -52,7 +54,7 @@ void Commands::lua()
 			line.clear();
 			prompt.resetProcessKeyboardState();
 			*Shell::out << prompt.prompt << prompt.cursor
-					  << EscapeSequences::Cursor::moveLeftOne;
+						<< EscapeSequences::Cursor::moveLeftOne;
 		}
 
 		if (prompt.foldPressed())

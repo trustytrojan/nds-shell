@@ -67,11 +67,20 @@ void Commands::curl()
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method.c_str());
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
-	// copy your OS's CA cert bundle onto the SD card
-	// (rename this string if necessary)
-	curl_easy_setopt(curl, CURLOPT_CAINFO, "tls-ca-bundle.pem");
+	// set a sane timeout so we aren't stuck connecting
+	curl_easy_setopt(
+		curl,
+		CURLOPT_CONNECTTIMEOUT,
+		atoi(Shell::GetEnv("CURL_TIMEOUT", "10").c_str()));
 
-	// by default, http response is written to stdout
+	// CA cert bundle file, set the filename using env
+	// copy one from a linux system and it works flawlessly
+	curl_easy_setopt(
+		curl,
+		CURLOPT_CAINFO,
+		Shell::GetEnv("CURL_CAFILE", "tls-ca-bundle.pem").c_str());
+
+	// write http response to *Shell::out
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
 
 	// we need a custom opensocket callback because of
@@ -84,9 +93,11 @@ void Commands::curl()
 	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, curl_errbuf);
 
 	// debug output
-	// TODO: make this optional
-	// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	// curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
+	if (Shell::HasEnv("CURL_DEBUG"))
+	{
+		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+		curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
+	}
 
 	if (const auto res = curl_easy_perform(curl); res != CURLE_OK)
 	{

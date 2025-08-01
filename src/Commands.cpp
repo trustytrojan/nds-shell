@@ -148,7 +148,8 @@ void dns()
 	const auto host = gethostbyname(Shell::args[1].c_str());
 	if (!host)
 	{
-		*Shell::err << "\e[41mdns: gethostbyname: " << strerror(errno) << "\e[39m";
+		*Shell::err << "\e[41mdns: gethostbyname: " << strerror(errno)
+					<< "\e[39m";
 		return;
 	}
 
@@ -208,6 +209,17 @@ void env()
 		*Shell::out << k << '=' << v << '\n';
 }
 
+void unset()
+{
+	if (Shell::args.size() < 2)
+	{
+		*Shell::err << "args: <envkey>\n";
+		return;
+	}
+
+	Shell::env.erase(Shell::args[1]);
+}
+
 const std::unordered_map<std::string, void (*)()> MAP{
 	{"help", help},
 	{"echo", echo},
@@ -225,6 +237,7 @@ const std::unordered_map<std::string, void (*)()> MAP{
 	{"env", env},
 	{"rename", rename},
 	{"clear", consoleClear},
+	{"unset", unset},
 	{"exit",
 	 []
 	 {

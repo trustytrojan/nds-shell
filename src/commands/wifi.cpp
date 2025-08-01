@@ -326,7 +326,8 @@ void subcommand_connect()
 
 		if (!ap)
 		{
-			*Shell::err << "\e[41mwifi: SSID '" << ssid << "' not found\e[39m\n";
+			*Shell::err << "\e[41mwifi: SSID '" << ssid
+						<< "' not found\e[39m\n";
 			return;
 		}
 	}

@@ -25,6 +25,10 @@ void RedirectOutput(int fd, const std::string &filename);
 void RedirectInput(int fd, const std::string &filename);
 void ResetStreams();
 
+bool HasEnv(const std::string &key);
+std::optional<std::string> GetEnv(const std::string &key);
+const std::string &GetEnv(const std::string &key, const std::string &_default);
+
 inline std::string cwd;
 inline Env env, commandEnv;
 inline std::ofstream outf, errf;

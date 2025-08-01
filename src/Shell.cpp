@@ -67,6 +67,27 @@ std::ostream &operator<<(std::ostream &ostr, const Token &t)
 	return ostr << (char)t.type << '(' << t.value << ')';
 }
 
+bool HasEnv(const std::string &key)
+{
+	return commandEnv.find(key) != commandEnv.cend() ||
+		   env.find(key) != env.cend();
+}
+
+std::optional<std::string> GetEnv(const std::string &key)
+{
+	if (const auto itr = commandEnv.find(key); itr != commandEnv.cend())
+		return itr->second;
+	if (const auto itr = env.find(key); itr != env.cend())
+		return itr->second;
+	return {};
+}
+
+const std::string &GetEnv(const std::string &key, const std::string &_default)
+{
+	const auto &val = GetEnv(key);
+	return val ? *val : _default;
+}
+
 void ProcessLine(const std::string &line)
 {
 	if (!line.length())
@@ -77,6 +98,7 @@ void ProcessLine(const std::string &line)
 	if (!LexLine(tokens, line, env))
 		return;
 
+	if (HasEnv("SHELL_DEBUG"))
 	{ // debug tokens
 		std::cerr << "\e[40mtokens: ";
 		auto itr = tokens.cbegin();
@@ -119,6 +141,7 @@ void ProcessLine(const std::string &line)
 		else
 			RedirectOutput(redirect.fd, redirect.filename);
 
+	if (HasEnv("SHELL_DEBUG"))
 	{ // debug args
 		std::cerr << "\e[40margs: ";
 		auto itr = args.cbegin();

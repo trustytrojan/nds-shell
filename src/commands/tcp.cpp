@@ -19,7 +19,7 @@ void Commands::tcp()
 {
 	if (Shell::args.size() != 2)
 	{
-		*Shell::err << "usage: http <ip:port>\n";
+		*Shell::err << "usage: tcp <ip:port>\n";
 		return;
 	}
 
@@ -27,7 +27,7 @@ void Commands::tcp()
 	sockaddr_in sain;
 	if (!NetUtils::ParseAddress(Shell::args[1].c_str(), 80, sain))
 	{
-		NetUtils::PrintError("http");
+		NetUtils::PrintError("tcp");
 		return;
 	}
 
@@ -38,7 +38,7 @@ void Commands::tcp()
 		perror("socket");
 		return;
 	}
-	*Shell::err << "tcp: socket: " << sock << '\n';
+	*Shell::err << "\e[40mtcp: socket: " << sock << "\n\e[39m";
 
 	if (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)) == -1)
 	{
@@ -46,7 +46,7 @@ void Commands::tcp()
 		close(sock);
 		return;
 	}
-	*Shell::err << "tcp: connected\n";
+	*Shell::err << "\e[40mtcp: connected\e[39m\n";
 
 	CliPrompt prompt{"tcp> ", '_', *Shell::out};
 	std::string lineToSend;
@@ -59,8 +59,11 @@ void Commands::tcp()
 	char buf[200]{};
 	bool shouldExit{};
 	prompt.resetProcessKeyboardState();
+
+	*Shell::out << "press fold/esc key to exit\n";
+
 	*Shell::out << prompt.prompt << prompt.cursor
-			  << EscapeSequences::Cursor::moveLeftOne;
+				<< EscapeSequences::Cursor::moveLeftOne;
 
 	while (pmMainLoop() && !shouldExit)
 	{
@@ -92,7 +95,7 @@ void Commands::tcp()
 			prompt.resetProcessKeyboardState();
 			lineToSend.clear();
 			*Shell::out << prompt.prompt << prompt.cursor
-					  << EscapeSequences::Cursor::moveLeftOne;
+						<< EscapeSequences::Cursor::moveLeftOne;
 		}
 
 		// Check for incoming data
@@ -116,7 +119,7 @@ void Commands::tcp()
 			default:
 				buf[bytesRead] = '\0';
 				*Shell::out << "\r\e[2K" << buf << '\n'
-						  << prompt.prompt << lineToSend << prompt.cursor;
+							<< prompt.prompt << lineToSend << prompt.cursor;
 				break;
 			}
 		}
@@ -128,6 +131,5 @@ void Commands::tcp()
 	}
 
 	// close() and closesocket() operate on DIFFERENT fd tables
-	// might want to tell the libnds devs about this
 	closesocket(sock);
 }
