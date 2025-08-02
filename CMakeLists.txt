@@ -5,15 +5,19 @@ cmake_policy(SET CMP0135 NEW)
 cmake_policy(SET CMP0077 NEW)
 project(nds-shell LANGUAGES CXX)
 
-set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(BUILD_SHARED_LIBS OFF)
 
+# for some reason catnip does not do this for us?
 list(APPEND CMAKE_MODULE_PATH "$ENV{DEVKITPRO}/cmake")
+
+# grab all the nds-specific settings
 include(Platform/NintendoDS)
+
+# start fetching dependencies
 include(FetchContent)
 
 ## mbedtls
@@ -53,15 +57,19 @@ set(ENABLE_IPV6 OFF)
 set(ENABLE_THREADED_RESOLVER OFF)
 set(ENABLE_ARES OFF)
 
+# newlib doesn't have these functions
 set(HAVE_ATOMIC OFF)
 set(HAVE_BASENAME OFF)
 
-# nonblock
+# lib/curlx/nonblock.c
+# - fcntl is not implemented: https://github.com/devkitPro/newlib/tree/devkitPro/libgloss/libsysbase (no fcntl.c file)
+# - setsockopt() does nothing: https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L407
+# - dswifi provides ioctl() with FIONBIO flag: https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L372
 set(HAVE_FCNTL_O_NONBLOCK OFF)
 set(HAVE_SETSOCKOPT_SO_NONBLOCK OFF)
 set(HAVE_IOCTL_FIONBIO ON)
 
-# socket api
+# socket api: https://github.com/devkitPro/dswifi/blob/master/source/sgIP/sgIP_sockets.c
 set(HAVE_SOCKET ON)
 set(HAVE_SELECT ON)
 set(HAVE_RECV ON)
@@ -100,9 +108,10 @@ FetchContent_MakeAvailable(sol2)
 
 add_compile_options(-fno-rtti -fno-exceptions)
 add_compile_definitions(SOL_EXCEPTIONS=0)
-include_directories(include ${curl_SOURCE_DIR}/include)
-link_libraries(dswifi9 fat nds9 lua_static sol2 libcurl)
+include_directories(include ${curl_SOURCE_DIR}/include /home/t/libnds/include)
+link_directories(/home/t/libnds/lib) # hopefully this is temporary, it will fail CI for now
+link_libraries(dswifi9 fat lua_static sol2 libcurl)
 
-file(GLOB_RECURSE SOURCES src/**)
+file(GLOB_RECURSE SOURCES src/*.cpp)
 add_executable(nds-shell ${SOURCES})
 nds_create_rom(nds-shell)

@@ -7,6 +7,7 @@
 #include <dswifi9.h>
 #include <fat.h>
 #include <wfc.h>
+#include <sys/iosupport.h>
 
 #include <filesystem>
 #include <fstream>
@@ -15,6 +16,7 @@
 namespace fs = std::filesystem;
 
 void subcommand_autoconnect(); // from wifi.cpp
+extern PrintConsole *stderrConsole; // from libnds/arm9/console.c
 
 namespace Shell
 {
@@ -27,10 +29,39 @@ void InitConsole()
 	vramSetBankA(VRAM_A_MAIN_BG);
 	vramSetBankC(VRAM_C_SUB_BG);
 
-	// Show console on top screen
-	static PrintConsole console;
+	// Add fd information to the stderr __handle struct
+	// newlib doesn't make use of __handle.fileStruct for the standard streams,
+	// so we can just stick whatever we want in there!
+	static auto stderr_fileno = STDERR_FILENO;
+	auto stderr_handle = __get_handle(2);
+	stderr_handle->fileStruct = &stderr_fileno;
+
+	// Use both screens as consoles, with stderr going to the bottom!!!
+	static PrintConsole topConsole, bottomConsole;
+
+	// Initialize top console as it always has been
+	consoleInit(&topConsole, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
+
+	// Use default console settings for bottom (same as consoleDemoInit() does)
+	const auto defaultConsole = consoleGetDefault();
 	consoleInit(
-		&console, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
+		&bottomConsole,
+		defaultConsole->bgLayer,
+		BgType_Text4bpp,
+		BgSize_T_256x256,
+		defaultConsole->mapBase,
+		defaultConsole->gfxBase,
+		false,
+		true);
+
+	// Limit the window height to the top edge of the keyboard
+	bottomConsole.windowHeight = 14;
+
+	// Set the bottom console as the dedicated stderr console
+	stderrConsole = &bottomConsole;
+
+	// Re-select the top console as the "stdout" console (consoleInit() changes it)
+	consoleSelect(&topConsole);
 
 	// Show keyboard on bottom screen
 	keyboardDemoInit();
@@ -50,9 +81,8 @@ void InitResources()
 	std::cout << "initializing wifi...";
 
 	if (!wlmgrInitDefault() || !wfcInit())
-		std::cerr
-			<< "\r\e[2K\e[41mwifi init failed: networking commands will not "
-			   "work\e[39m\n";
+		std::cerr << "\r\e[2K\e[41mwifi init failed: networking commands will not "
+					 "work\e[39m\n";
 	else
 	{
 		std::cout << "\r\e[2K\e[42mwifi initialized!\n\e[39mautoconnecting...";
@@ -68,8 +98,7 @@ void SourceFile(const std::string &filepath)
 
 	if (!file)
 	{
-		std::cerr << "\e[41mshell: cannot open file: " << filepath
-				  << "\e[39m\n";
+		std::cerr << "\e[41mshell: cannot open file: " << filepath << "\e[39m\n";
 		return;
 	}
 
@@ -85,8 +114,7 @@ std::ostream &operator<<(std::ostream &ostr, const Token &t)
 
 bool HasEnv(const std::string &key)
 {
-	return commandEnv.find(key) != commandEnv.cend() ||
-		   env.find(key) != env.cend();
+	return commandEnv.find(key) != commandEnv.cend() || env.find(key) != env.cend();
 }
 
 std::optional<std::string> GetEnv(const std::string &key)
@@ -215,8 +243,7 @@ void RedirectOutput(int fd, const std::string &filename)
 		outf.open(filename);
 		if (!outf)
 		{
-			*err << "\e[41mshell: cannot open file for writing: " << filename
-				 << "\e[39m\n";
+			*err << "\e[41mshell: cannot open file for writing: " << filename << "\e[39m\n";
 			return;
 		}
 		out = &outf;
@@ -226,8 +253,7 @@ void RedirectOutput(int fd, const std::string &filename)
 		errf.open(filename);
 		if (!errf)
 		{
-			*err << "\e[41mshell: cannot open file for writing: " << filename
-				 << "\e[39m\n";
+			*err << "\e[41mshell: cannot open file for writing: " << filename << "\e[39m\n";
 			return;
 		}
 		err = &errf;
@@ -239,8 +265,7 @@ void RedirectInput(int fd, const std::string &filename)
 	inf.open(filename);
 	if (!inf)
 	{
-		*err << "\e[41mshell: cannot open file for reading: " << filename
-			 << "\e[39m\n";
+		*err << "\e[41mshell: cannot open file for reading: " << filename << "\e[39m\n";
 		return;
 	}
 	if (fd == 0)

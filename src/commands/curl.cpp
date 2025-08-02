@@ -14,6 +14,8 @@ curl_debug(CURL *, curl_infotype, char *const data, const size_t size, void *)
 	return 0;
 }
 
+// this was extremely painful to discover:
+// https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L98
 static curl_socket_t
 curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr)
 {

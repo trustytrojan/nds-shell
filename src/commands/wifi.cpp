@@ -379,7 +379,7 @@ void subcommand_autoconnect()
 
 	if (status == ASSOCSTATUS_CANNOTCONNECT)
 	{
-		*Shell::err << "\e[41mwifi: connection failed\n\e[39m";
+		*Shell::err << "\e[41mwifi: autoconnect failed\n\e[39m";
 		return;
 	}
 
