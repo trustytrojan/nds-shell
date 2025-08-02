@@ -2,11 +2,11 @@ name: Build
 
 on:
   push:
-    branches:
-      - main
+    branches: main
+    paths: [src, include, CMakeLists.txt]
   pull_request:
-    branches:
-      - main
+    branches: main
+    paths: [src, include, CMakeLists.txt]
 
 jobs:
   build:
