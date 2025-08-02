@@ -44,7 +44,7 @@ struct EnvAssign
 // it would already be a feat to get the rest working first
 
 bool ParseTokens(
-    const std::vector<Token> &tokens,
-    std::vector<IoRedirect> &redirects,
-    std::vector<EnvAssign> &envAssigns,
-    std::vector<std::string> &args);
+	const std::vector<Token> &tokens,
+	std::vector<IoRedirect> &redirects,
+	std::vector<EnvAssign> &envAssigns,
+	std::vector<std::string> &args);

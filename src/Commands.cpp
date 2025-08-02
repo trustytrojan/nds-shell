@@ -255,11 +255,10 @@ const std::unordered_map<std::string, void (*)()> MAP{
 	{"clear", consoleClear},
 	{"unset", unset},
 	{"history", history},
-	{"exit",
-	 []
-	 {
-		 exit(0);
-	 }},
+	// this is better than calling exit(), as it lets us perform cleanup
+	// before our code fully returns. the power button is a hard-reset
+	// unfortunately.
+	{"exit", pmPrepareToReset},
 	{"lua", lua},
 	{"source", source}};
 

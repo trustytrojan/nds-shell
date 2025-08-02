@@ -24,7 +24,7 @@ class CliPrompt
 
 	std::vector<std::string> lineHistory;
 	std::vector<std::string>::const_iterator lineHistoryItr;
-	std::string lineToBeAdded;
+	std::string savedInputLine;
 
 	inline void resetKeypressState() { _newlineEntered = _foldPressed = {}; }
 	void flashCursor(const std::string &line);

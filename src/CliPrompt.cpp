@@ -30,7 +30,7 @@ void CliPrompt::resetProcessKeyboardState()
 {
 	cursorPos = flashState = flashTimer = {};
 	lineHistoryItr = lineHistory.cend();
-	lineToBeAdded.clear();
+	savedInputLine.clear();
 }
 
 void CliPrompt::flashCursor(const std::string &line)
@@ -79,10 +79,12 @@ void CliPrompt::handleEnter(const std::string &line)
 		ostr << ' ';
 	else
 		ostr << line[cursorPos] << '\r';
+
 	ostr << '\n';
 	_newlineEntered = true;
+
+	// don't push empty lines!
 	if (line.size())
-		// don't push empty lines!
 		lineHistory.emplace_back(line);
 }
 
@@ -114,8 +116,8 @@ void CliPrompt::handleUp(std::string &line)
 		return;
 
 	if (lineHistoryItr == lineHistory.cend())
-		// save the "new" line for if the user goes all the way down again
-		lineToBeAdded = line;
+		// save the "new" line for when the user goes all the way down again
+		savedInputLine = line;
 
 	// go up one, reset cursorPos, reprint everything
 	line = *--lineHistoryItr;
@@ -134,8 +136,8 @@ void CliPrompt::handleDown(std::string &line)
 
 	if (lineHistoryItr == lineHistory.cend())
 	{
-		// we're at the "new line to-be-added", restore it
-		line = lineToBeAdded;
+		// we're at the "new" line, restore it
+		line = savedInputLine;
 		cursorPos = line.size();
 		ostr << "\r\e[2K" << prompt << line << cursor << Cursor::moveLeftOne;
 		return;
@@ -241,8 +243,15 @@ void CliPrompt::processKeyboard(std::string &line)
 void CliPrompt::setLineHistory(const std::string &filename)
 {
 	lineHistory.clear();
+
 	std::ifstream lineHistoryFile{filename};
-	std::string historyLine;
-	while (std::getline(lineHistoryFile, historyLine))
-		lineHistory.emplace_back(historyLine);
+	if (!lineHistoryFile)
+	{
+		std::cerr << "\e[41mfailed to load line history\n\e[39m";
+		return;
+	}
+
+	std::string line;
+	while (std::getline(lineHistoryFile, line))
+		lineHistory.emplace_back(line);
 }

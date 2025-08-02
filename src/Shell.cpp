@@ -247,6 +247,17 @@ void RedirectInput(int fd, const std::string &filename)
 		in = &inf;
 }
 
+void waitUntilKeysPressed(int keys)
+{
+	while (true)
+	{
+		swiWaitForVBlank();
+		scanKeys();
+		if (keysDown() & keys)
+			return;
+	}
+}
+
 void Start()
 {
 	InitConsole();
@@ -259,9 +270,10 @@ void Start()
 	std::cout << "run 'help' for help\n\n";
 
 	prompt.setLineHistory(".ndsh_history");
-	std::string line;
 	while (pmMainLoop())
 	{
+		std::string line;
+
 		// Blocks until a line is entered
 		prompt.getLine(line);
 
@@ -270,22 +282,15 @@ void Start()
 		line.erase(line.find_last_not_of(" \t\n\r") + 1);
 
 		ProcessLine(line);
-
-		if (line.size())
-		{
-			// Save line to .ndsh_history file
-			// This happens on every entered line, possibly rethink this
-			// It's either this or nothing gets saved when power is forced off
-			// TODO: Some weird unicode characters keep getting saved when I
-			// power off the DS. These crash the whole program if ran as a line.
-			// Figure it out!
-			std::ofstream historyFile{".ndsh_history", std::ios::app};
-			if (historyFile)
-				historyFile << line << '\n';
-			else
-				std::cerr << "\e[41mshell: failed to save history\n\e[39m";
-		}
 	}
+
+	// the app must exit at this point: see docs for pmShouldReset()
+
+	// save everything afterwards; opening files in append mode corrupts them.
+	// may just be a limitation of dkp's libfat
+	std::ofstream historyFile{".ndsh_history"};
+	for (const auto &line : prompt.getLineHistory())
+		historyFile << line << '\n';
 }
 
 } // namespace Shell

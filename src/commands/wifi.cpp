@@ -163,7 +163,7 @@ _rescan:
 	return apselected;
 }
 
-void GetHiddenSSID(WlanBssDesc *ap)
+bool GetHiddenSSID(WlanBssDesc *ap)
 {
 	consoleClear();
 	char instr[64];
@@ -174,7 +174,7 @@ void GetHiddenSSID(WlanBssDesc *ap)
 	do
 	{
 		if (!fgets(instr, sizeof(instr), stdin))
-			exit(0);
+			return false;
 
 		instr[strcspn(instr, "\n")] = 0;
 		inlen = strlen(instr);
@@ -186,6 +186,8 @@ void GetHiddenSSID(WlanBssDesc *ap)
 
 	memcpy(ap->ssid, instr, inlen);
 	ap->ssid_len = inlen;
+
+	return true;
 }
 
 // Auth data must be in main RAM, not DTCM stack
@@ -245,8 +247,11 @@ bool GetPassword(WlanBssDesc *ap)
 
 int ConnectAP(WlanBssDesc *const ap)
 {
-	if (!ap->ssid_len)
-		GetHiddenSSID(ap);
+	if (!ap->ssid_len && !GetHiddenSSID(ap))
+	{
+		std::cerr << "\e[41mwifi: GetHiddenSSID failed\e[39m\n";
+		return EXIT_FAILURE;
+	}
 
 	iprintf("Connecting to '%.*s'\n", ap->ssid_len, ap->ssid);
 	ap->auth_type = authMaskToType(ap->auth_mask);
