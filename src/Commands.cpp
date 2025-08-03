@@ -296,7 +296,13 @@ void consoles_test()
 			bgShow(Shell::consoles[++focused_console].bgId);
 		}
 
-		prompts[focused_console]->processKeyboard(lines[focused_console]);
+		auto prompt = prompts[focused_console];
+		auto &con_stream = con_streams[focused_console];
+
+		prompt->processKeyboard(lines[focused_console]);
+
+		if (prompt->newlineEntered())
+			con_stream << prompt->prompt << prompt->cursor << EscapeSequences::Cursor::moveLeftOne;
 	}
 
 	// switch back to console 0 on main display
