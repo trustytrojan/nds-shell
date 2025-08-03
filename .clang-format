@@ -1,6 +1,6 @@
 BasedOnStyle: LLVM
 MaxEmptyLinesToKeep: 1
-ColumnLimit: 80
+ColumnLimit: 120
 ExperimentalAutoDetectBinPacking: true
 
 # Pack

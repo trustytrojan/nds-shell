@@ -15,6 +15,10 @@ using Env = std::unordered_map<std::string, std::string>;
 namespace Shell
 {
 
+const int NUM_CONSOLES = 7;
+inline PrintConsole consoles[NUM_CONSOLES];
+void waitUntilKeysPressed(int keys);
+
 // Initializes necessary libnds resources.
 void InitConsole();
 

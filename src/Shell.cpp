@@ -16,24 +16,50 @@ namespace fs = std::filesystem;
 
 void subcommand_autoconnect(); // from wifi.cpp
 
+extern int consoleCount; // from libnds:arm9/console.c
+
 namespace Shell
 {
 
 void InitConsole()
 {
+	putchar(consoleCount); // just a linker test
+
 	// Video initialization - We want to use both screens
 	videoSetMode(MODE_0_2D);
 	videoSetModeSub(MODE_0_2D);
 	vramSetBankA(VRAM_A_MAIN_BG);
 	vramSetBankC(VRAM_C_SUB_BG);
 
-	// Show console on top screen
-	static PrintConsole console;
-	consoleInit(
-		&console, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
+	// Init all backgrounds (main & sub) as consoles!
+	for (int i = 0; i < NUM_CONSOLES; ++i)
+	{
+		const auto mainDisplay = i < 4;
+		auto &console = consoles[i];
+		consoleInit(
+			&console,
+			i % 4, // layer
+			BgType_Text4bpp,
+			BgSize_T_256x256,
+			(mainDisplay ? 20 : 21) + (i % 4), // mapBase
+			3,		// tileBase
+			mainDisplay,
+			true); // loadGraphics
 
-	// Show keyboard on bottom screen
-	keyboardDemoInit();
+		if (!mainDisplay)
+			// Limit height to the top edge of keyboard
+			console.windowHeight = 14;
+
+		if (i != 0)
+			// Hide all the other bgs initially
+			bgHide(consoles[i].bgId);
+	}
+
+	// Start with the default
+	consoleSelect(&consoles[0]);
+
+	// Show keyboard on bottom screen (no scrolling animation)
+	keyboardDemoInit()->scrollSpeed = 0;
 	keyboardShow();
 }
 
@@ -50,9 +76,8 @@ void InitResources()
 	std::cout << "initializing wifi...";
 
 	if (!wlmgrInitDefault() || !wfcInit())
-		std::cerr
-			<< "\r\e[2K\e[41mwifi init failed: networking commands will not "
-			   "work\e[39m\n";
+		std::cerr << "\r\e[2K\e[41mwifi init failed: networking commands will not "
+					 "work\e[39m\n";
 	else
 	{
 		std::cout << "\r\e[2K\e[42mwifi initialized!\n\e[39mautoconnecting...";
@@ -68,8 +93,7 @@ void SourceFile(const std::string &filepath)
 
 	if (!file)
 	{
-		std::cerr << "\e[41mshell: cannot open file: " << filepath
-				  << "\e[39m\n";
+		std::cerr << "\e[41mshell: cannot open file: " << filepath << "\e[39m\n";
 		return;
 	}
 
@@ -85,8 +109,7 @@ std::ostream &operator<<(std::ostream &ostr, const Token &t)
 
 bool HasEnv(const std::string &key)
 {
-	return commandEnv.find(key) != commandEnv.cend() ||
-		   env.find(key) != env.cend();
+	return commandEnv.find(key) != commandEnv.cend() || env.find(key) != env.cend();
 }
 
 std::optional<std::string> GetEnv(const std::string &key)
@@ -215,8 +238,7 @@ void RedirectOutput(int fd, const std::string &filename)
 		outf.open(filename);
 		if (!outf)
 		{
-			*err << "\e[41mshell: cannot open file for writing: " << filename
-				 << "\e[39m\n";
+			*err << "\e[41mshell: cannot open file for writing: " << filename << "\e[39m\n";
 			return;
 		}
 		out = &outf;
@@ -226,8 +248,7 @@ void RedirectOutput(int fd, const std::string &filename)
 		errf.open(filename);
 		if (!errf)
 		{
-			*err << "\e[41mshell: cannot open file for writing: " << filename
-				 << "\e[39m\n";
+			*err << "\e[41mshell: cannot open file for writing: " << filename << "\e[39m\n";
 			return;
 		}
 		err = &errf;
@@ -239,8 +260,7 @@ void RedirectInput(int fd, const std::string &filename)
 	inf.open(filename);
 	if (!inf)
 	{
-		*err << "\e[41mshell: cannot open file for reading: " << filename
-			 << "\e[39m\n";
+		*err << "\e[41mshell: cannot open file for reading: " << filename << "\e[39m\n";
 		return;
 	}
 	if (fd == 0)

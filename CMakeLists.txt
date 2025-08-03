@@ -100,8 +100,9 @@ FetchContent_MakeAvailable(sol2)
 
 add_compile_options(-fno-rtti -fno-exceptions)
 add_compile_definitions(SOL_EXCEPTIONS=0)
-include_directories(include ${curl_SOURCE_DIR}/include)
-link_libraries(dswifi9 fat nds9 lua_static sol2 libcurl)
+include_directories(include ${curl_SOURCE_DIR}/include /home/t/libnds/include)
+link_directories(/home/t/libnds/lib)
+link_libraries(dswifi9 fat lua_static sol2 libcurl)
 
 file(GLOB_RECURSE SOURCES src/**)
 add_executable(nds-shell ${SOURCES})
