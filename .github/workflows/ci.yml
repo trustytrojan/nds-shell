@@ -12,9 +12,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Remove official libnds
+        run: dkp-pacman -Rdd libnds --noconfirm
 
       - name: Configure & build CMake project with Catnip
-        run: /opt/devkitpro/tools/bin/catnip -Tnds
+        run: catnip -Tnds
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

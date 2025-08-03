@@ -1,4 +1,5 @@
 # you MUST use the catnip cmake wrapper provided by devkitpro!
+# DEVKITPRO & DEVKITARM env vars are expected to be set!
 
 cmake_minimum_required(VERSION 3.13)
 cmake_policy(SET CMP0135 NEW)
