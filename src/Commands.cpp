@@ -23,9 +23,6 @@ namespace fs = std::filesystem;
 // from newlib:libgloss/libsysbase/iosupport.c
 extern const devoptab_t dotab_stdnull;
 
-// from libnds:arm9/keyboard.c
-extern Keyboard *curKeyboard;
-
 namespace Commands
 {
 

@@ -16,6 +16,23 @@ list(APPEND CMAKE_MODULE_PATH "$ENV{DEVKITPRO}/cmake")
 include(Platform/NintendoDS)
 include(FetchContent)
 
+include(ProcessorCount)
+ProcessorCount(CPU_COUNT)
+if(CPU_COUNT EQUAL 0)
+	set(CPU_COUNT 1)
+endif()
+
+## libnds (my fork)
+FetchContent_Declare(libnds URL https://github.com/trustytrojan/libnds/archive/consoles-per-fd.zip)
+FetchContent_MakeAvailable(libnds)
+execute_process(
+	COMMAND make -j${CPU_COUNT}
+	WORKING_DIRECTORY ${libnds_SOURCE_DIR}
+	COMMAND_ERROR_IS_FATAL ANY
+)
+include_directories(${libnds_SOURCE_DIR}/include)
+link_directories(${libnds_SOURCE_DIR}/lib)
+
 ## mbedtls
 set(ENABLE_PROGRAMS OFF)
 set(ENABLE_TESTING OFF)
@@ -100,8 +117,7 @@ FetchContent_MakeAvailable(sol2)
 
 add_compile_options(-fno-rtti -fno-exceptions)
 add_compile_definitions(SOL_EXCEPTIONS=0)
-include_directories(include ${curl_SOURCE_DIR}/include /home/t/libnds/include)
-link_directories(/home/t/libnds/lib)
+include_directories(include ${curl_SOURCE_DIR}/include)
 link_libraries(dswifi9 fat lua_static sol2 libcurl)
 
 file(GLOB_RECURSE SOURCES src/**)
