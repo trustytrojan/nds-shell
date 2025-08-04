@@ -6,65 +6,91 @@
 #include <string>
 #include <vector>
 
-// Commandline prompt with a visible, movable cursor that can edit the line at
-// any position.
+// Asynchronous command-line interface prompt, taking input from the
+// keypad (physical buttons) and libnds virtual keyboard. Provides:
+// - a visible, movable cursor that can edit the line at any position
+// - input line history with arrow-key & d-pad button navigation
 class CliPrompt
 {
-	// The stream to print to.
-	std::ostream &ostr;
+	std::ostream *ostr = &std::cout;
+	std::string prompt = "> ";
+	char cursor = '_';
+
+	// The input buffer, also referred to as the line buffer.
+	std::string input;
 
 	// State necessary for rendering a visible cursor
-	u32 cursorPos{};
+	u32 cursorPos{}; // relative to `input`
 	bool flashState{};
 	u8 flashTimer{};
 
-	// Keypress state
-	bool _newlineEntered{};
-	bool _foldPressed{};
+	// Keypress state. Reset on every call to `processKeyboard()`.
+	bool _enterPressed{}, _foldPressed{};
 
 	std::vector<std::string> lineHistory;
+	// an integer could be easier... but it's already done so whatever.
 	std::vector<std::string>::const_iterator lineHistoryItr;
-	std::string savedInputLine;
 
-	inline void resetKeypressState() { _newlineEntered = _foldPressed = {}; }
-	void flashCursor(const std::string &line);
-	void handleBackspace(std::string &line);
-	void handleEnter(const std::string &line);
-	void handleLeft(const std::string &line);
-	void handleRight(const std::string &line);
-	void handleUp(std::string &line);
-	void handleDown(std::string &line);
+	// Saves `line` when navigating up the line history to save what
+	// the user currently entered as the "new" line to be saved.
+	// Restores `line` when the user navigates all the way to one
+	// past the end of the line history.
+	std::string savedInput;
+
+	void resetKeypressState() { _enterPressed = _foldPressed = {}; }
+	void flashCursor();
+	void handleBackspace();
+	void handleEnter();
+	void handleLeft();
+	void handleRight();
+	void handleUp();
+	void handleDown();
 
 public:
-	// The text to print before the cursor.
-	std::string prompt;
+	// The output stream to print to.
+	void setOutputStream(std::ostream &o) { ostr = &o; }
+	void setOutputStream(std::ostream *o) { ostr = o; }
 
-	// The character to print as the cursor.
-	char cursor;
+	// Set the text to print before the cursor.
+	void setPrompt(const std::string &s) { prompt = s; }
 
-	CliPrompt(
-		const std::string &prompt = "> ",
-		const char cursor = '_',
-		std::ostream &ostr = std::cout);
+	// Set the character to print as the cursor.
+	void setCursor(char c) { cursor = c; }
 
-	void resetProcessKeyboardState();
+	// Read the input buffer.
+	const std::string &getInput() { return input; }
 
-	// Processes the current state of the keyboard, and updates state as
+	// Print the prompt and cursor, optionally with the input buffer in between.
+	void printFullPrompt(bool withInput);
+
+	// Clears state associated with the last input captured, including the input
+	// itself.
+	void prepareForNextLine();
+
+	// Processes the current state of the keyboard/keypad, updating state as
 	// necessary.
-	void processKeyboard(std::string &line);
+	void processKeyboard();
 
-	// Starts processing the keyboard every frame until the Enter key is
-	// pressed, then writes user input into `line`.
-	void getLine(std::string &line);
+	// Calls `processKeyboard()` every frame until the `Enter` key is pressed
+	// (in other words, `newlineEntered()` is `true`).
+	void processUntilEnterPressed();
 
-	inline constexpr bool newlineEntered() const { return _newlineEntered; }
-	inline constexpr bool foldPressed() const { return _foldPressed; }
+	// Returns whether the `Enter` key was pressed during the last call to
+	// `processKeyboard()`. This also indicates that a newline character (`\n`)
+	// was written to the output stream.
+	bool enterPressed() const { return _enterPressed; }
 
-	inline constexpr const std::vector<std::string> &getLineHistory()
-	{
-		return lineHistory;
-	}
+	// Returns whether the "fold" key (in the same place as the `Esc` key) was
+	// pressed during the last call to `processKeyboard()`.
+	bool foldPressed() const { return _foldPressed; }
 
+	// View the current line history.
+	const std::vector<std::string> &getLineHistory() { return lineHistory; }
+
+	// Set the current line history using the contents of the file located at
+	// `filename`.
 	void setLineHistory(const std::string &filename);
-	inline constexpr void clearLineHistory() { lineHistory.clear(); }
+
+	// Clear the line history.
+	void clearLineHistory() { lineHistory.clear(); }
 };
