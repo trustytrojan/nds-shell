@@ -272,10 +272,9 @@ void Start()
 	prompt.setLineHistory(".ndsh_history");
 	while (pmMainLoop())
 	{
-		std::string line;
-
 		// Blocks until a line is entered
-		prompt.getLine(line);
+		prompt.processUntilEnterPressed();
+		auto line = prompt.getInput();
 
 		// Trim leading and trailing whitespace
 		line.erase(0, line.find_first_not_of(" \t\n\r"));

@@ -6,34 +6,34 @@
 
 using namespace EscapeSequences;
 
-CliPrompt::CliPrompt(
-	const std::string &prompt, const char cursor, std::ostream &ostr)
-	: prompt{prompt},
-	  cursor{cursor},
-	  ostr{ostr}
+void CliPrompt::printFullPrompt(bool withInput)
 {
+	*ostr << prompt;
+	if (withInput)
+		*ostr << input;
+	*ostr << cursor << Cursor::moveLeftOne;
 }
 
-void CliPrompt::getLine(std::string &line)
+void CliPrompt::processUntilEnterPressed()
 {
-	line.clear();
-	resetProcessKeyboardState();
-	ostr << prompt << cursor << Cursor::moveLeftOne;
+	prepareForNextLine();
+	printFullPrompt(false);
 	do
 	{
-		processKeyboard(line);
+		processKeyboard();
 		swiWaitForVBlank();
-	} while (pmMainLoop() && !_newlineEntered);
+	} while (pmMainLoop() && !_enterPressed);
 }
 
-void CliPrompt::resetProcessKeyboardState()
+void CliPrompt::prepareForNextLine()
 {
 	cursorPos = flashState = flashTimer = {};
 	lineHistoryItr = lineHistory.cend();
-	savedInputLine.clear();
+	savedInput.clear();
+	input.clear();
 }
 
-void CliPrompt::flashCursor(const std::string &line)
+void CliPrompt::flashCursor()
 {
 	/**
 	 * While `cursorPos != line.size()`, the character pointed to by the cursor
@@ -41,7 +41,7 @@ void CliPrompt::flashCursor(const std::string &line)
 	 */
 	static const auto FLASH_INTERVAL = 10;
 
-	if (cursorPos == line.size())
+	if (cursorPos == input.size())
 	{
 		flashTimer = 0;
 		flashState = false;
@@ -49,67 +49,62 @@ void CliPrompt::flashCursor(const std::string &line)
 	else if (++flashTimer >= FLASH_INTERVAL)
 	{
 		flashTimer = 0;
-		((flashState = !flashState) ? (ostr << cursor)
-									: (ostr << line[cursorPos]))
+		((flashState = !flashState) ? (*ostr << cursor)
+									: (*ostr << input[cursorPos]))
 			<< Cursor::moveLeftOne;
 	}
 }
 
-void CliPrompt::handleBackspace(std::string &line)
+void CliPrompt::handleBackspace()
 {
-	if (line.empty() || cursorPos == 0)
+	if (input.empty() || cursorPos == 0)
 		return;
-	if (cursorPos == line.size())
-	{
-		line.erase(--cursorPos, 1);
-		ostr << " \b\b" << cursor << Cursor::moveLeftOne;
-	}
+	input.erase(--cursorPos, 1);
+	if (cursorPos == input.size())
+		*ostr << " \b\b" << cursor << Cursor::moveLeftOne;
 	else
-	{
-		line.erase(--cursorPos, 1);
-		ostr << "\b\e[0K" << std::string_view{line}.substr(cursorPos)
-			 << Cursor::move(
-					Cursor::MoveDirection::LEFT, line.size() - cursorPos);
-	}
+		*ostr << "\b\e[0K" << input.c_str() + cursorPos
+			  << Cursor::move(
+					 Cursor::MoveDirection::LEFT, input.size() - cursorPos);
 }
 
-void CliPrompt::handleEnter(const std::string &line)
+void CliPrompt::handleEnter()
 {
-	if (cursorPos == line.size())
-		ostr << ' ';
+	if (cursorPos == input.size())
+		*ostr << ' ';
 	else
-		ostr << line[cursorPos] << '\r';
+		*ostr << input[cursorPos] << '\r';
 
-	ostr << '\n';
-	_newlineEntered = true;
+	*ostr << '\n';
+	_enterPressed = true;
 
 	// don't push empty lines!
-	if (line.size())
-		lineHistory.emplace_back(line);
+	if (input.size())
+		lineHistory.emplace_back(input);
 }
 
-void CliPrompt::handleLeft(const std::string &line)
+void CliPrompt::handleLeft()
 {
-	if (line.length() == 0 || cursorPos == 0)
+	if (input.empty() || cursorPos == 0)
 		return;
-	if (cursorPos == line.size())
-		ostr << " \b";
+	if (cursorPos == input.size())
+		*ostr << " \b";
 	if (flashState)
-		ostr << line[cursorPos] << Cursor::moveLeftOne;
-	ostr << Cursor::moveLeftOne;
+		*ostr << input[cursorPos] << Cursor::moveLeftOne;
+	*ostr << Cursor::moveLeftOne;
 	--cursorPos;
 }
 
-void CliPrompt::handleRight(const std::string &line)
+void CliPrompt::handleRight()
 {
-	if (line.length() == 0 || cursorPos == line.size())
+	if (input.empty() || cursorPos == input.size())
 		return;
-	ostr << line[cursorPos];
-	if (++cursorPos == line.size())
-		ostr << cursor << Cursor::moveLeftOne;
+	*ostr << input[cursorPos];
+	if (++cursorPos == input.size())
+		*ostr << cursor << Cursor::moveLeftOne;
 }
 
-void CliPrompt::handleUp(std::string &line)
+void CliPrompt::handleUp()
 {
 	if (lineHistory.empty() || lineHistoryItr - 1 < lineHistory.cbegin())
 		// obviously do nothing here
@@ -117,15 +112,15 @@ void CliPrompt::handleUp(std::string &line)
 
 	if (lineHistoryItr == lineHistory.cend())
 		// save the "new" line for when the user goes all the way down again
-		savedInputLine = line;
+		savedInput = input;
 
 	// go up one, reset cursorPos, reprint everything
-	line = *--lineHistoryItr;
-	cursorPos = line.size();
-	ostr << "\r\e[2K" << prompt << line << cursor << Cursor::moveLeftOne;
+	input = *--lineHistoryItr;
+	cursorPos = input.size();
+	*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
 }
 
-void CliPrompt::handleDown(std::string &line)
+void CliPrompt::handleDown()
 {
 	if (lineHistory.empty() || lineHistoryItr + 1 > lineHistory.cend())
 		// obviously do nothing here
@@ -137,38 +132,38 @@ void CliPrompt::handleDown(std::string &line)
 	if (lineHistoryItr == lineHistory.cend())
 	{
 		// we're at the "new" line, restore it
-		line = savedInputLine;
-		cursorPos = line.size();
-		ostr << "\r\e[2K" << prompt << line << cursor << Cursor::moveLeftOne;
+		input = savedInput;
+		cursorPos = input.size();
+		*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
 		return;
 	}
 
 	// go down one, reset cursorPos, reprint everything
-	line = *lineHistoryItr;
-	cursorPos = line.size();
-	ostr << "\r\e[2K" << prompt << line << cursor << Cursor::moveLeftOne;
+	input = *lineHistoryItr;
+	cursorPos = input.size();
+	*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
 }
 
-void CliPrompt::processKeyboard(std::string &line)
+void CliPrompt::processKeyboard()
 {
 	resetKeypressState();
 
 	scanKeys();
-	const auto keysPressed = keysDownRepeat();
-	if (keysPressed & (KEY_A | KEY_START))
-		handleEnter(line);
-	if (keysPressed & KEY_B)
-		handleBackspace(line);
-	if (keysPressed & KEY_LEFT)
-		handleLeft(line);
-	if (keysPressed & KEY_RIGHT)
-		handleRight(line);
-	if (keysPressed & KEY_UP)
-		handleUp(line);
-	if (keysPressed & KEY_DOWN)
-		handleDown(line);
+	const auto keys = keysDownRepeat();
+	if (keys & (KEY_A | KEY_START))
+		handleEnter();
+	if (keys & KEY_B)
+		handleBackspace();
+	if (keys & KEY_LEFT)
+		handleLeft();
+	if (keys & KEY_RIGHT)
+		handleRight();
+	if (keys & KEY_UP)
+		handleUp();
+	if (keys & KEY_DOWN)
+		handleDown();
 
-	switch (const s8 c = keyboardUpdate())
+	switch (const auto c = keyboardUpdate())
 	{
 	case 0: // just in case
 	case NOKEY:
@@ -178,7 +173,7 @@ void CliPrompt::processKeyboard(std::string &line)
 	case DVK_CAPS:
 	case DVK_MENU:
 	case DVK_SHIFT:
-		flashCursor(line);
+		flashCursor();
 		break;
 
 	case DVK_FOLD:
@@ -186,57 +181,57 @@ void CliPrompt::processKeyboard(std::string &line)
 		break;
 
 	case DVK_ENTER:
-		if (keysPressed & KEY_A)
+		if (keys & KEY_A)
 			break;
-		handleEnter(line);
+		handleEnter();
 		break;
 
 	case DVK_BACKSPACE:
-		if (keysPressed & KEY_B)
+		if (keys & KEY_B)
 			break;
-		handleBackspace(line);
+		handleBackspace();
 		break;
 
 	case DVK_LEFT:
-		if (keysPressed & KEY_LEFT)
+		if (keys & KEY_LEFT)
 			break;
-		handleLeft(line);
+		handleLeft();
 		break;
 
 	case DVK_RIGHT:
-		if (keysPressed & KEY_RIGHT)
+		if (keys & KEY_RIGHT)
 			break;
-		handleRight(line);
+		handleRight();
 		break;
 
 	case DVK_UP:
-		if (keysPressed & KEY_UP)
+		if (keys & KEY_UP)
 			break;
-		handleUp(line);
+		handleUp();
 		break;
 
 	case DVK_DOWN:
-		if (keysPressed & KEY_DOWN)
+		if (keys & KEY_DOWN)
 			break;
-		handleDown(line);
+		handleDown();
 		break;
 
 	default:
-		if (cursorPos == line.size())
+		if (cursorPos == input.size())
 		{
-			line += c;
-			ostr << c;
+			input += c;
+			*ostr << c;
 		}
 		else
 		{
-			line.insert(line.begin() + cursorPos, c);
-			ostr << line.c_str() + cursorPos
-				 << Cursor::move(
-						Cursor::MoveDirection::LEFT,
-						line.size() - cursorPos - 1);
+			input.insert(input.begin() + cursorPos, c);
+			*ostr << input.c_str() + cursorPos
+				  << Cursor::move(
+						 Cursor::MoveDirection::LEFT,
+						 input.size() - cursorPos - 1);
 		}
-		if (++cursorPos == line.size())
-			ostr << cursor << Cursor::moveLeftOne;
+		if (++cursorPos == input.size())
+			*ostr << cursor << Cursor::moveLeftOne;
 	}
 }
 

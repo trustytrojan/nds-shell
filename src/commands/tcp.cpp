@@ -1,6 +1,5 @@
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
-#include "EscapeSequences.hpp"
 #include "NetUtils.hpp"
 #include "Shell.hpp"
 
@@ -48,9 +47,6 @@ void Commands::tcp()
 	}
 	*Shell::err << "\e[40mtcp: connected\e[39m\n";
 
-	CliPrompt prompt{"tcp> ", '_', *Shell::out};
-	std::string lineToSend;
-
 	fd_set master_set{};
 	FD_SET(sock, &master_set);
 
@@ -58,17 +54,22 @@ void Commands::tcp()
 
 	char buf[200]{};
 	bool shouldExit{};
-	prompt.resetProcessKeyboardState();
+
+	CliPrompt prompt;
+	prompt.setOutputStream(Shell::out);
+	prompt.setPrompt("tcp> ");
+	prompt.prepareForNextLine();
 
 	*Shell::out << "press fold/esc key to exit\n";
 
-	*Shell::out << prompt.prompt << prompt.cursor
-				<< EscapeSequences::Cursor::moveLeftOne;
+	// *Shell::out << prompt.prompt << prompt.cursor
+	// 			<< EscapeSequences::Cursor::moveLeftOne;
+	prompt.printFullPrompt(false);
 
 	while (pmMainLoop() && !shouldExit)
 	{
 		swiWaitForVBlank();
-		prompt.processKeyboard(lineToSend);
+		prompt.processKeyboard();
 
 		if (prompt.foldPressed())
 		{
@@ -76,9 +77,10 @@ void Commands::tcp()
 			break;
 		}
 
-		if (prompt.newlineEntered())
+		if (prompt.enterPressed())
 		{
 			*Shell::out << "\r\e[1A\e[2K";
+			const auto &lineToSend = prompt.getInput();
 			switch (send(sock, lineToSend.c_str(), lineToSend.length(), 0))
 			{
 			case -1:
@@ -92,10 +94,11 @@ void Commands::tcp()
 				shouldExit = true;
 				break;
 			}
-			prompt.resetProcessKeyboardState();
-			lineToSend.clear();
-			*Shell::out << prompt.prompt << prompt.cursor
-						<< EscapeSequences::Cursor::moveLeftOne;
+			prompt.prepareForNextLine();
+			// lineToSend.clear();
+			// *Shell::out << prompt.prompt << prompt.cursor
+			// 			<< EscapeSequences::Cursor::moveLeftOne;
+			prompt.printFullPrompt(false);
 		}
 
 		// Check for incoming data
@@ -118,8 +121,9 @@ void Commands::tcp()
 				break;
 			default:
 				buf[bytesRead] = '\0';
-				*Shell::out << "\r\e[2K" << buf << '\n'
-							<< prompt.prompt << lineToSend << prompt.cursor;
+				*Shell::out << "\r\e[2K" << buf << '\n';
+				// << prompt.prompt << lineToSend << prompt.cursor;
+				prompt.printFullPrompt(true);
 				break;
 			}
 		}

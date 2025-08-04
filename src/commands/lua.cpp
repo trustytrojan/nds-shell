@@ -1,6 +1,5 @@
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
-#include "EscapeSequences.hpp"
 #include "Shell.hpp"
 
 #include <sol/sol.hpp>
@@ -33,28 +32,33 @@ void Commands::lua()
 
 	*Shell::out << "press fold/esc key to exit\n";
 
-	CliPrompt prompt{"lua> ", '_', *Shell::out};
-	std::string line;
-	prompt.resetProcessKeyboardState();
-	*Shell::out << prompt.prompt << prompt.cursor
-				<< EscapeSequences::Cursor::moveLeftOne;
+	CliPrompt prompt;
+	prompt.setOutputStream(Shell::out);
+	prompt.setPrompt("lua> ");
+	prompt.prepareForNextLine();
+	prompt.printFullPrompt(false);
+	// *Shell::out << prompt.prompt << prompt.cursor
+				// << EscapeSequences::Cursor::moveLeftOne;
 
 	while (pmMainLoop())
 	{
 		swiWaitForVBlank();
-		prompt.processKeyboard(line);
+		prompt.processKeyboard();
 
-		if (prompt.newlineEntered())
+		if (prompt.enterPressed())
 		{
+			auto line = prompt.getInput();
+
 			if (!line.contains("print") && !line.contains("return"))
 				line = "return " + line;
 
 			*Shell::out << lua.safe_script(line).get<sol::object>() << '\n';
 
-			line.clear();
-			prompt.resetProcessKeyboardState();
-			*Shell::out << prompt.prompt << prompt.cursor
-						<< EscapeSequences::Cursor::moveLeftOne;
+			// line.clear();
+			prompt.prepareForNextLine();
+			// *Shell::out << prompt.prompt << prompt.cursor
+			// 			<< EscapeSequences::Cursor::moveLeftOne;
+			prompt.printFullPrompt(false);
 		}
 
 		if (prompt.foldPressed())
