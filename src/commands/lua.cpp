@@ -37,8 +37,6 @@ void Commands::lua()
 	prompt.setPrompt("lua> ");
 	prompt.prepareForNextLine();
 	prompt.printFullPrompt(false);
-	// *Shell::out << prompt.prompt << prompt.cursor
-				// << EscapeSequences::Cursor::moveLeftOne;
 
 	while (pmMainLoop())
 	{
@@ -54,10 +52,7 @@ void Commands::lua()
 
 			*Shell::out << lua.safe_script(line).get<sol::object>() << '\n';
 
-			// line.clear();
 			prompt.prepareForNextLine();
-			// *Shell::out << prompt.prompt << prompt.cursor
-			// 			<< EscapeSequences::Cursor::moveLeftOne;
 			prompt.printFullPrompt(false);
 		}
 

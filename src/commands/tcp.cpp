@@ -61,9 +61,6 @@ void Commands::tcp()
 	prompt.prepareForNextLine();
 
 	*Shell::out << "press fold/esc key to exit\n";
-
-	// *Shell::out << prompt.prompt << prompt.cursor
-	// 			<< EscapeSequences::Cursor::moveLeftOne;
 	prompt.printFullPrompt(false);
 
 	while (pmMainLoop() && !shouldExit)
@@ -95,9 +92,6 @@ void Commands::tcp()
 				break;
 			}
 			prompt.prepareForNextLine();
-			// lineToSend.clear();
-			// *Shell::out << prompt.prompt << prompt.cursor
-			// 			<< EscapeSequences::Cursor::moveLeftOne;
 			prompt.printFullPrompt(false);
 		}
 
@@ -122,7 +116,6 @@ void Commands::tcp()
 			default:
 				buf[bytesRead] = '\0';
 				*Shell::out << "\r\e[2K" << buf << '\n';
-				// << prompt.prompt << lineToSend << prompt.cursor;
 				prompt.printFullPrompt(true);
 				break;
 			}
