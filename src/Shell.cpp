@@ -31,32 +31,7 @@ void InitConsole()
 	vramSetBankA(VRAM_A_MAIN_BG);
 	vramSetBankC(VRAM_C_SUB_BG);
 
-	// Init all backgrounds (main & sub) as consoles!
-	for (int i = 0; i < NUM_CONSOLES; ++i)
-	{
-		const auto mainDisplay = i < 4;
-		auto &console = consoles[i];
-		consoleInit(
-			&console,
-			i % 4, // layer
-			BgType_Text4bpp,
-			BgSize_T_256x256,
-			(mainDisplay ? 20 : 21) + (i % 4), // mapBase
-			3,		// tileBase
-			mainDisplay,
-			true); // loadGraphics
-
-		if (!mainDisplay)
-			// Limit height to the top edge of keyboard
-			console.windowHeight = 14;
-
-		if (i != 0)
-			// Hide all the other bgs initially
-			bgHide(consoles[i].bgId);
-	}
-
-	// Start with the default
-	consoleSelect(&consoles[0]);
+	InitMultiConsole();
 
 	// Show keyboard on bottom screen (no scrolling animation)
 	keyboardDemoInit()->scrollSpeed = 0;
@@ -278,6 +253,12 @@ void waitUntilKeysPressed(int keys)
 	}
 }
 
+void StartPrompt(int console)
+{
+	auto &ostr = con_streams[console];
+	CliPrompt prompt;
+}
+
 void Start()
 {
 	InitConsole();
@@ -289,6 +270,9 @@ void Start()
 
 	std::cout << "run 'help' for help\n\n";
 
+
+
+	/* TODO: multicon: decide what to do with line history after getting multicon fully working
 	prompt.setLineHistory(".ndsh_history");
 	while (pmMainLoop())
 	{
@@ -311,6 +295,7 @@ void Start()
 	std::ofstream historyFile{".ndsh_history"};
 	for (const auto &line : prompt.getLineHistory())
 		historyFile << line << '\n';
+	*/
 }
 
 } // namespace Shell

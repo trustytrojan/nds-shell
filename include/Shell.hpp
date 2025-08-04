@@ -17,15 +17,16 @@ namespace Shell
 
 const int NUM_CONSOLES = 7;
 inline PrintConsole consoles[NUM_CONSOLES];
+inline int focused_console{}, focused_display{};
 void waitUntilKeysPressed(int keys);
 
-// Initializes necessary libnds resources.
 void InitConsole();
+void InitMultiConsole();
+
+inline std::ofstream con_streams[NUM_CONSOLES];
 
 // Initializes optional resources (fat, wifi).
 void InitResources();
-
-inline CliPrompt prompt;
 
 // Starts the prompt loop. Does not return.
 void Start();
