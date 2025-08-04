@@ -3,10 +3,10 @@ name: Build
 on:
   push:
     branches: main
-    paths: [src/**, include/**, CMakeLists.txt]
+    paths: [.github/workflows/*, src/**, include/**, CMakeLists.txt]
   pull_request:
     branches: main
-    paths: [src/**, include/**, CMakeLists.txt]
+    paths: [.github/workflows/*, src/**, include/**, CMakeLists.txt]
 
 jobs:
   build:
