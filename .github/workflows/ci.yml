@@ -11,28 +11,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Prevent "Processing triggers for man-db" post-install hook
-        run: sudo rm /var/lib/man-db/auto-update
-
-      - name: Install devKitPro pacman
-        run: |
-          wget https://apt.devkitpro.org/install-devkitpro-pacman
-          chmod +x ./install-devkitpro-pacman
-          sudo ./install-devkitpro-pacman
-
-      - name: Install nds-dev metapackage
-        run: sudo dkp-pacman -Sy --noconfirm nds-dev
-
       - name: Configure & build CMake project with Catnip
-        run: /opt/devkitpro/tools/bin/catnip -Tnds
-        env:
-          DEVKITPRO: /opt/devkitpro
-          DEVKITARM: /opt/devkitpro/devkitARM
+        run: catnip -Tnds
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
