@@ -89,8 +89,8 @@ void CliPrompt::handleLeft()
 		return;
 	if (cursorPos == input.size())
 		*ostr << " \b";
-	if (flashState)
-		*ostr << input[cursorPos] << Cursor::moveLeftOne;
+	// if (flashState)
+		// *ostr << input[cursorPos] << Cursor::moveLeftOne;
 	*ostr << Cursor::moveLeftOne;
 	--cursorPos;
 }
@@ -148,8 +148,8 @@ void CliPrompt::processKeyboard()
 {
 	resetKeypressState();
 
-	scanKeys();
-	const auto keys = keysDownRepeat();
+	// scanKeys();
+	const auto keys = keysDown();
 	if (keys & (KEY_A | KEY_START))
 		handleEnter();
 	if (keys & KEY_B)

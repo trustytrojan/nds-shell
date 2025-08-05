@@ -1,6 +1,7 @@
 #include "Shell.hpp"
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
+#include "EscapeSequences.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
 
@@ -11,20 +12,17 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <thread>
 
 namespace fs = std::filesystem;
 
 void subcommand_autoconnect(); // from wifi.cpp
-
-extern int consoleCount; // from libnds:arm9/console.c
 
 namespace Shell
 {
 
 void InitConsole()
 {
-	putchar(consoleCount); // just a linker test
-
 	// Video initialization - We want to use both screens
 	videoSetMode(MODE_0_2D);
 	videoSetModeSub(MODE_0_2D);
@@ -257,6 +255,98 @@ void StartPrompt(int console)
 {
 	auto &ostr = con_streams[console];
 	CliPrompt prompt;
+	prompt.setOutputStream(ostr);
+	prompt.setPrompt("con" + std::to_string(console));
+	prompt.setLineHistory(".ndsh_history");
+	prompt.printFullPrompt(false);
+
+	while (pmMainLoop())
+	{
+		threadYield();
+
+		if (focused_console != console)
+			continue;
+
+		prompt.processKeyboard();
+
+		if (prompt.enterPressed())
+		{
+			if (auto line = prompt.getInput(); line.size())
+			{
+				// Trim leading and trailing whitespace
+				line.erase(0, line.find_first_not_of(" \t\n\r"));
+				line.erase(line.find_last_not_of(" \t\n\r") + 1);
+
+				ProcessLine(line);
+			}
+
+			prompt.printFullPrompt(false);
+		}
+	}
+}
+
+void updateShownConsoles()
+{
+	if (focused_console < 4)
+		top_shown_console = focused_console;
+	else
+		bottom_shown_console = focused_console;
+}
+
+void handleKeyL()
+{
+	if (focused_console == 0)
+		return;
+
+	if (focused_console == 4)
+	{
+		// moving to top display
+		focused_display = Display::TOP;
+		if (top_shown_console != 3)
+			// 0, 1, or 2 is shown, hide it
+			bgHide(Shell::consoles[top_shown_console].bgId);
+	}
+	else
+		// only hide if on same display!
+		bgHide(Shell::consoles[focused_console].bgId);
+
+	bgShow(Shell::consoles[--focused_console].bgId);
+	updateShownConsoles();
+}
+
+void handleKeyR()
+{
+	if (focused_console == 6)
+		return;
+
+	if (focused_console == 3)
+	{
+		// moving to bottom display
+		focused_display = Display::BOTTOM;
+		if (bottom_shown_console != 4)
+			// 5 or 6 is shown, hide it
+			bgHide(Shell::consoles[bottom_shown_console].bgId);
+	}
+	else
+		// only hide if on same display!
+		bgHide(Shell::consoles[focused_console].bgId);
+
+	bgShow(Shell::consoles[++focused_console].bgId);
+	updateShownConsoles();
+}
+
+void toggleFocusedDisplay()
+{
+	focused_display = (Display) !(bool)focused_display;
+
+	if (focused_display == Display::TOP)
+	{ // we are switching to the top
+		focused_console = top_shown_console;
+	}
+	else if (focused_display == Display::BOTTOM)
+	{ // we are switching to the bottom
+		focused_console = bottom_shown_console;
+	}
 }
 
 void Start()
@@ -270,7 +360,37 @@ void Start()
 
 	std::cout << "run 'help' for help\n\n";
 
+	// Threads created with the C/C++ APIs are minimum priority by default.
+	// The main thread is higher. Make sure we can yield to the others.
+	threadGetSelf()->prio = THREAD_MIN_PRIO;
 
+	// Start prompt threads
+	std::thread threads[NUM_CONSOLES];
+	for (int i = 0; i < NUM_CONSOLES; ++i)
+		threads[i] = std::thread{StartPrompt, i};
+
+	/*
+	The main thread will synchronize to VBlank and handle console switching.
+	We also create the prompt threads for each console and manage them.
+	*/
+	while (pmMainLoop())
+	{
+		swiWaitForVBlank();
+		scanKeys();
+
+		const auto keys = keysDown();
+
+		if (keys & KEY_SELECT)
+			toggleFocusedDisplay();
+
+		if (keys & KEY_L)
+			handleKeyL();
+
+		if (keys & KEY_R)
+			handleKeyR();
+
+		threadYield();
+	}
 
 	/* TODO: multicon: decide what to do with line history after getting multicon fully working
 	prompt.setLineHistory(".ndsh_history");

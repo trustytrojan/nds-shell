@@ -221,20 +221,20 @@ void unset()
 	Shell::env.erase(Shell::args[1]);
 }
 
-void history()
-{
-	if (Shell::args.size() == 2 && Shell::args[1] == "-c")
-	{
-		Shell::prompt.clearLineHistory();
-		std::error_code ec;
-		if (!fs::remove("/.ndsh_history", ec))
-			*Shell::err << "\e[41mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
-		return;
-	}
+// void history()
+// {
+// 	if (Shell::args.size() == 2 && Shell::args[1] == "-c")
+// 	{
+// 		Shell::prompt.clearLineHistory();
+// 		std::error_code ec;
+// 		if (!fs::remove("/.ndsh_history", ec))
+// 			*Shell::err << "\e[41mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
+// 		return;
+// 	}
 
-	for (const auto &line : Shell::prompt.getLineHistory())
-		*Shell::out << line << '\n';
-}
+// 	for (const auto &line : Shell::prompt.getLineHistory())
+// 		*Shell::out << line << '\n';
+// }
 
 void devices()
 {
@@ -248,7 +248,7 @@ void devices()
 	*Shell::out << '\n';
 }
 
-void consoles_test()
+/*void consoles_test()
 {
 	consoleClear();
 
@@ -316,7 +316,7 @@ void consoles_test()
 	// free our custom prompts
 	for (int i = 0; i < Shell::NUM_CONSOLES; ++i)
 		delete prompts[i];
-}
+}*/
 
 const std::unordered_map<std::string, void (*)()> MAP{
 	{"help", help},
@@ -336,9 +336,9 @@ const std::unordered_map<std::string, void (*)()> MAP{
 	{"rename", rename},
 	{"clear", consoleClear},
 	{"unset", unset},
-	{"history", history},
+	// {"history", history},
 	{"devices", devices},
-	{"contest", consoles_test},
+	// {"contest", consoles_test},
 	// this is better than calling exit(), as it lets us perform cleanup
 	// before our code fully returns. the power button is a hard-reset
 	// unfortunately.

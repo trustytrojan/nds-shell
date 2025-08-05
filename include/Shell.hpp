@@ -15,9 +15,16 @@ using Env = std::unordered_map<std::string, std::string>;
 namespace Shell
 {
 
+enum class Display
+{
+	TOP,
+	BOTTOM
+};
+
 const int NUM_CONSOLES = 7;
 inline PrintConsole consoles[NUM_CONSOLES];
-inline int focused_console{}, focused_display{};
+inline u8 focused_console{}, top_shown_console{}, bottom_shown_console{4};
+inline Display focused_display{};
 void waitUntilKeysPressed(int keys);
 
 void InitConsole();
@@ -30,6 +37,7 @@ void InitResources();
 
 // Starts the prompt loop. Does not return.
 void Start();
+void StartPrompt(int console);
 
 void ProcessLine(const std::string &line);
 void SourceFile(const std::string &filepath);

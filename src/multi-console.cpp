@@ -95,7 +95,7 @@ void InitMultiConsole()
 		// Open a stream to the device!
 		auto &ostr = con_streams[i];
 		ostr.rdbuf()->pubsetbuf(nullptr, 0);
-		ostr.open(dot->name);
+		ostr.open(std::string{dot->name} + ':');
 		if (!ostr)
 		{
 			std::cerr << "\e[41mmulticon: failed to open " << dot->name << "!\e[39m\n";
