@@ -27,4 +27,4 @@ struct Token
 };
 
 bool LexLine(
-	std::vector<Token> &tokens, const std::string &line, const Env &env);
+	std::vector<Token> &tokens, const std::string_view &line, const Env &env);

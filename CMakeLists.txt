@@ -7,7 +7,7 @@ cmake_policy(SET CMP0077 NEW)
 project(nds-shell LANGUAGES CXX)
 
 set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
@@ -99,7 +99,7 @@ set(SOL2_ENABLE_INSTALL OFF)
 FetchContent_Declare(sol2 URL https://github.com/ThePhD/sol2/archive/develop.zip)
 FetchContent_MakeAvailable(sol2)
 
-add_compile_options(-fno-rtti -fno-exceptions)
+add_compile_options(-fno-rtti -fno-exceptions -Wno-psabi)
 add_compile_definitions(SOL_EXCEPTIONS=0)
 include_directories(include ${curl_SOURCE_DIR}/include)
 link_libraries(dswifi9 fat lua_static sol2 libcurl)

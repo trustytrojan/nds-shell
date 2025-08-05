@@ -1,7 +1,7 @@
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
+#include "Consoles.hpp"
 #include "NetUtils.hpp"
-#include "Shell.hpp"
 
 #include <dswifi9.h>
 #include <wfc.h>
@@ -14,19 +14,21 @@
 
 #include <iostream>
 
-void Commands::tcp()
+void Commands::tcp(const Context &ctx)
 {
-	if (Shell::args.size() != 2)
+	if (ctx.args.size() != 2)
 	{
-		*Shell::err << "usage: tcp <ip:port>\n";
+		ctx.err << "usage: tcp <ip:port>\n";
 		return;
 	}
 
+	const auto debugMessages = ctx.env.contains("TCP_DEBUG");
+
 	// parse the address
 	sockaddr_in sain;
-	if (!NetUtils::ParseAddress(Shell::args[1].c_str(), 80, sain))
+	if (const auto rc = NetUtils::ParseAddress(sain, ctx.args[1]); rc != NetUtils::Error::NO_ERROR)
 	{
-		NetUtils::PrintError("tcp");
+		ctx.err << "\e[41mtcp: " << NetUtils::StrError(rc) << "\e[39m\n";
 		return;
 	}
 
@@ -34,18 +36,24 @@ void Commands::tcp()
 	const auto sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == -1)
 	{
-		perror("socket");
+		ctx.err << "\e[41mtcp: socket: " << strerror(errno) << "\e[39m\n";
 		return;
 	}
-	*Shell::err << "\e[40mtcp: socket: " << sock << "\n\e[39m";
+
+	if (debugMessages)
+		ctx.err << "\e[40mtcp: socket: " << sock << "\n\e[39m";
 
 	if (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)) == -1)
 	{
-		perror("connect");
+		ctx.err << "\e[41mtcp: connect: " << strerror(errno) << "\e[39m\n";
 		close(sock);
 		return;
 	}
-	*Shell::err << "\e[40mtcp: connected\e[39m\n";
+
+	if (debugMessages)
+		ctx.err << "\e[40mtcp: connected\e[39m\n";
+
+	// TODO: get rid of the select() impl, use non-blocking sockets instead
 
 	fd_set master_set{};
 	FD_SET(sock, &master_set);
@@ -56,73 +64,78 @@ void Commands::tcp()
 	bool shouldExit{};
 
 	CliPrompt prompt;
-	prompt.setOutputStream(Shell::out);
+	prompt.setOutputStream(ctx.out);
 	prompt.setPrompt("tcp> ");
 	prompt.prepareForNextLine();
 
-	*Shell::out << "press fold/esc key to exit\n";
+	ctx.out << "press fold/esc key to exit\n";
 	prompt.printFullPrompt(false);
 
 	while (pmMainLoop() && !shouldExit)
 	{
-		swiWaitForVBlank();
-		prompt.processKeyboard();
+		threadYield();
 
-		if (prompt.foldPressed())
+		if (ctx.shell.console == Consoles::focused_console)
 		{
-			*Shell::out << "\r\e[2Ktcp: fold key pressed\n";
-			break;
-		}
+			// NOTE: we only need to prevent the PROMPT from processing the keyboard
+			// when not focused! everything else is allowed to run!
 
-		if (prompt.enterPressed())
-		{
-			*Shell::out << "\r\e[1A\e[2K";
-			const auto &lineToSend = prompt.getInput();
-			switch (send(sock, lineToSend.c_str(), lineToSend.length(), 0))
+			prompt.processKeyboard();
+
+			if (prompt.foldPressed())
 			{
-			case -1:
-				*Shell::err << "\e[41m";
-				perror("send");
-				*Shell::err << "\e[39m";
-				shouldExit = true;
-				break;
-			case 0:
-				*Shell::out << "\r\e[2Ktcp: remote end disconnected\n";
-				shouldExit = true;
+				if (debugMessages)
+					ctx.out << "\r\e[2K\e[40mtcp: fold key pressed\e[39m\n";
 				break;
 			}
-			prompt.prepareForNextLine();
-			prompt.printFullPrompt(false);
+
+			if (prompt.enterPressed())
+			{
+				ctx.out << "\r\e[1A\e[2K";
+				const auto &lineToSend = prompt.getInput();
+				switch (send(sock, lineToSend.c_str(), lineToSend.length(), 0))
+				{
+				case -1:
+					ctx.err << "\e[41mtcp: send: " << strerror(errno) << "\e[39m\n";
+					shouldExit = true;
+					break;
+				case 0:
+					ctx.out << "\r\e[2Ktcp: remote end disconnected\n";
+					shouldExit = true;
+					break;
+				}
+				prompt.prepareForNextLine();
+				prompt.printFullPrompt(false);
+			}
 		}
 
 		// Check for incoming data
 		readfds = master_set;
 		static timeval timeout{};
-		const auto selectResult =
-			select(sock + 1, &readfds, nullptr, nullptr, &timeout);
+		const auto selectResult = select(sock + 1, &readfds, nullptr, nullptr, &timeout);
 
 		if (selectResult > 0 && FD_ISSET(sock, &readfds))
 		{
 			switch (const auto bytesRead = recv(sock, buf, sizeof(buf) - 1, 0))
 			{
 			case -1:
-				perror("recv");
+				ctx.err << "\e[41mtcp: recv: " << strerror(errno) << "\e[39m\n";
 				shouldExit = true;
 				break;
 			case 0:
-				*Shell::out << "\r\e[2Ktcp: remote end disconnected\n";
+				ctx.out << "\r\e[2Ktcp: remote end disconnected\n";
 				shouldExit = true;
 				break;
 			default:
 				buf[bytesRead] = '\0';
-				*Shell::out << "\r\e[2K" << buf << '\n';
+				ctx.out << "\r\e[2K" << buf << '\n';
 				prompt.printFullPrompt(true);
 				break;
 			}
 		}
 		else if (selectResult == -1)
 		{
-			perror("select");
+			ctx.err << "\e[41mtcp: select: " << strerror(errno) << "\e[39m\n";
 			shouldExit = true;
 		}
 	}

@@ -35,10 +35,11 @@ Command-local env assignments are only recorded up to the
 first command argument (executable/command name). After that,
 they are treated as strings.
 */
-struct EnvAssign
-{
-	std::string key, value;
-};
+// struct EnvAssign
+// {
+// 	std::string key, value;
+// };
+using EnvAssign = std::pair<std::string, std::string>;
 
 // maybe let's not support pipelines yet, as this has concurrency considerations
 // it would already be a feat to get the rest working first

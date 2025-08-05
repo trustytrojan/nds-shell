@@ -1,7 +1,9 @@
-#include "Shell.hpp"
+#include "Consoles.hpp"
 
 #include <nds/arm9/console.h>
 #include <sys/iosupport.h>
+
+#include <iostream>
 
 /*
 This file exists in case libnds PR #70 isn't merged.
@@ -32,10 +34,30 @@ int con_open(struct _reent *, void *, const char *, int, int)
 
 extern const devoptab_t dotab_stdnull; // from newlib:iosupport.c
 
-namespace Shell
+namespace Consoles
 {
 
-void InitMultiConsole()
+void Init()
+{
+	// Video initialization - We want to use both screens
+	videoSetMode(MODE_0_2D);
+	videoSetModeSub(MODE_0_2D);
+	vramSetBankA(VRAM_A_MAIN_BG);
+	vramSetBankC(VRAM_C_SUB_BG);
+
+	InitMulti();
+
+	// Show keyboard on bottom screen (no scrolling animation)
+	keyboardDemoInit()->scrollSpeed = 0;
+	keyboardShow();
+}
+
+void InitSingle()
+{
+	// handle the simple one-console initialization like back in the old days
+}
+
+void InitMulti()
 {
 	// Just for my sanity, prevent a segfault in newlib:iosupport.c:AddDevice()
 	for (int i = 16; i < STD_MAX; ++i)
@@ -93,7 +115,7 @@ void InitMultiConsole()
 		AddDevice(dot);
 
 		// Open a stream to the device!
-		auto &ostr = con_streams[i];
+		auto &ostr = streams[i];
 		ostr.rdbuf()->pubsetbuf(nullptr, 0);
 		ostr.open(std::string{dot->name} + ':');
 		if (!ostr)
@@ -101,12 +123,74 @@ void InitMultiConsole()
 			std::cerr << "\e[41mmulticon: failed to open " << dot->name << "!\e[39m\n";
 			continue;
 		}
-
-		ostr << "\e[42mnds-shell (" << dot->name << ")\e[39m\n\n";
 	}
 
 	// Keep first console selected. Not necessary since new_con_write handles selection, but do it just in case.
 	consoleSelect(&consoles[0]);
 }
 
-} // namespace Shell
+void updateShownConsoles()
+{
+	if (focused_console < 4)
+		top_shown_console = focused_console;
+	else
+		bottom_shown_console = focused_console;
+}
+
+void handleKeyL()
+{
+	if (focused_console == 0)
+		return;
+
+	if (focused_console == 4)
+	{
+		// moving to top display
+		focused_display = Display::TOP;
+		if (top_shown_console != 3)
+			// 0, 1, or 2 is shown, hide it
+			bgHide(consoles[top_shown_console].bgId);
+	}
+	else
+		// only hide if on same display!
+		bgHide(consoles[focused_console].bgId);
+
+	bgShow(consoles[--focused_console].bgId);
+	updateShownConsoles();
+}
+
+void handleKeyR()
+{
+	if (focused_console == 6)
+		return;
+
+	if (focused_console == 3)
+	{
+		// moving to bottom display
+		focused_display = Display::BOTTOM;
+		if (bottom_shown_console != 4)
+			// 5 or 6 is shown, hide it
+			bgHide(consoles[bottom_shown_console].bgId);
+	}
+	else
+		// only hide if on same display!
+		bgHide(consoles[focused_console].bgId);
+
+	bgShow(consoles[++focused_console].bgId);
+	updateShownConsoles();
+}
+
+void toggleFocusedDisplay()
+{
+	focused_display = (Display) !(bool)focused_display;
+
+	if (focused_display == Display::TOP)
+	{ // we are switching to the top
+		focused_console = top_shown_console;
+	}
+	else if (focused_display == Display::BOTTOM)
+	{ // we are switching to the bottom
+		focused_console = bottom_shown_console;
+	}
+}
+
+} // namespace Consoles

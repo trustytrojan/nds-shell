@@ -22,7 +22,6 @@ class CliPrompt
 	// State necessary for rendering a visible cursor
 	u32 cursorPos{}; // relative to `input`
 	bool flashState{};
-	u8 flashTimer{};
 
 	// Keypress state. Reset on every call to `processKeyboard()`.
 	bool _enterPressed{}, _foldPressed{};
@@ -47,6 +46,8 @@ class CliPrompt
 	void handleDown();
 
 public:
+	CliPrompt() { prepareForNextLine(); }
+
 	// The output stream to print to.
 	void setOutputStream(std::ostream &o) { ostr = &o; }
 	void setOutputStream(std::ostream *o) { ostr = o; }
@@ -58,7 +59,7 @@ public:
 	void setCursor(char c) { cursor = c; }
 
 	// Read the input buffer.
-	const std::string &getInput() { return input; }
+	const std::string &getInput() const { return input; }
 
 	// Print the prompt and cursor, optionally with the input buffer in between.
 	void printFullPrompt(bool withInput);
@@ -71,10 +72,6 @@ public:
 	// necessary.
 	void processKeyboard();
 
-	// Calls `processKeyboard()` every frame until the `Enter` key is pressed
-	// (in other words, `newlineEntered()` is `true`).
-	void processUntilEnterPressed();
-
 	// Returns whether the `Enter` key was pressed during the last call to
 	// `processKeyboard()`. This also indicates that a newline character (`\n`)
 	// was written to the output stream.
@@ -85,7 +82,7 @@ public:
 	bool foldPressed() const { return _foldPressed; }
 
 	// View the current line history.
-	const std::vector<std::string> &getLineHistory() { return lineHistory; }
+	const std::vector<std::string> &getLineHistory() const { return lineHistory; }
 
 	// Set the current line history using the contents of the file located at
 	// `filename`.

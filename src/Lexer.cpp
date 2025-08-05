@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-using StrItr = std::string::const_iterator;
+using StrItr = std::string_view::const_iterator;
 
 void EscapeInUnquotedString(StrItr &itr, std::string &currentToken)
 {
@@ -113,7 +113,7 @@ bool LexSingleQuoteString(
 }
 
 bool LexLine(
-	std::vector<Token> &tokens, const std::string &line, const Env &env)
+	std::vector<Token> &tokens, const std::string_view &line, const Env &env)
 {
 	tokens.clear();
 

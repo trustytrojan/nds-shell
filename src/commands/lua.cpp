@@ -1,6 +1,7 @@
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
-#include "Shell.hpp"
+#include "Consoles.hpp"
+// #include "Shell.hpp"
 
 #include <sol/sol.hpp>
 
@@ -19,28 +20,32 @@ std::ostream &operator<<(std::ostream &ostr, const sol::object &obj)
 	}
 }
 
-void Commands::lua()
+void Commands::lua(const Context &ctx)
 {
 	sol::state lua;
 	lua.open_libraries();
 
-	if (Shell::args.size() > 1)
+	if (ctx.args.size() > 1)
 	{
-		lua.safe_script_file(Shell::args[1]);
+		lua.safe_script_file(ctx.args[1]);
 		return;
 	}
 
-	*Shell::out << "press fold/esc key to exit\n";
+	ctx.out << "press fold/esc key to exit\n";
 
 	CliPrompt prompt;
-	prompt.setOutputStream(Shell::out);
+	prompt.setOutputStream(ctx.out);
 	prompt.setPrompt("lua> ");
 	prompt.prepareForNextLine();
 	prompt.printFullPrompt(false);
 
 	while (pmMainLoop())
 	{
-		swiWaitForVBlank();
+		threadYield();
+
+		if (ctx.shell.console != Consoles::focused_console)
+			continue;
+
 		prompt.processKeyboard();
 
 		if (prompt.enterPressed())
@@ -50,7 +55,7 @@ void Commands::lua()
 			if (!line.contains("print") && !line.contains("return"))
 				line = "return " + line;
 
-			*Shell::out << lua.safe_script(line).get<sol::object>() << '\n';
+			ctx.out << lua.safe_script(line).get<sol::object>() << '\n';
 
 			prompt.prepareForNextLine();
 			prompt.printFullPrompt(false);
@@ -58,7 +63,7 @@ void Commands::lua()
 
 		if (prompt.foldPressed())
 		{
-			*Shell::out << "\r\e[2K";
+			ctx.out << "\r\e[2K";
 			break;
 		}
 	}
