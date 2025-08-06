@@ -1,6 +1,5 @@
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
-#include "Consoles.hpp"
 #include "NetUtils.hpp"
 
 #include <dswifi9.h>

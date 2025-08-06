@@ -1,6 +1,6 @@
 #include "Commands.hpp"
 #include "NetUtils.hpp"
-#include "ShellClass.hpp"
+#include "Shell.hpp"
 
 #include <dswifi9.h>
 #include <nds.h>
