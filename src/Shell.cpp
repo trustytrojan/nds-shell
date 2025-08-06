@@ -24,6 +24,15 @@ Shell::Shell(const int console)
 	prompt.setLineHistory(".ndsh_history");
 }
 
+Shell::~Shell()
+{
+	// save everything afterwards; opening files in append mode corrupts them.
+	// may just be a limitation of dkp's libfat
+	std::ofstream historyFile{".ndsh_history"};
+	for (const auto &line : prompt.getLineHistory())
+		historyFile << line << '\n';
+}
+
 void Shell::SourceFile(const std::string &filepath)
 {
 	std::ifstream file{filepath};
@@ -202,11 +211,9 @@ void Shell::StartPrompt()
 			prompt.prepareForNextLine();
 			prompt.printFullPrompt(false);
 		}
-	}
 
-	// save everything afterwards; opening files in append mode corrupts them.
-	// may just be a limitation of dkp's libfat
-	std::ofstream historyFile{".ndsh_history"};
-	for (const auto &line : prompt.getLineHistory())
-		historyFile << line << '\n';
+		if (prompt.foldPressed())
+			// fold key exits, just like the other commands
+			break;
+	}
 }

@@ -41,6 +41,7 @@ public:
 	const int console;
 
 	Shell(int console);
+	~Shell();
 	void StartPrompt();
 	void ProcessLine(std::string_view line);
 	void SourceFile(const std::string &path);

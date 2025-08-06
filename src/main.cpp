@@ -1,7 +1,6 @@
 #include "Consoles.hpp"
 #include "Shell.hpp"
 
-#include <algorithm>
 #include <dswifi9.h>
 #include <fat.h>
 #include <nds.h>
@@ -45,10 +44,14 @@ void PrintGreeting(int console, bool clearScreen = true)
 	ostr << "\e[42mnds-shell (con" << console << ")\e[39m\n\nPress START to start a shell\n\n";
 }
 
+bool running[Consoles::NUM_CONSOLES]{};
+
 void ShellThread(int console)
 {
+	running[console] = true;
 	Shell{console}.StartPrompt();
 	PrintGreeting(console);
+	running[console] = false;
 }
 
 int main()
@@ -58,8 +61,9 @@ int main()
 	Consoles::Init();
 	InitResources();
 
-	// Threads created with the C/C++ APIs are minimum priority by default.
-	// The main thread is higher. Make sure we can yield to the others.
+	// Threads created with the C/C++ APIs are minimum priority by default:
+	// https://github.com/devkitPro/calico/blob/6d437b7651ba5c95036a90f534c30079bb926945/source/system/newlib_syscalls.c#L166
+	// The main thread is higher initially. Make sure we can yield to the others.
 	threadGetSelf()->prio = THREAD_MIN_PRIO;
 
 	// Print initial greeting on all consoles
@@ -67,7 +71,6 @@ int main()
 	for (int i = 1; i < Consoles::NUM_CONSOLES; ++i)
 		PrintGreeting(i);
 
-	// Need to keep them alive here, detach() doesn't work
 	std::thread shellThreads[Consoles::NUM_CONSOLES];
 
 	// Main thread: Handle console switching and key scanning.
@@ -82,8 +85,15 @@ int main()
 		const auto down = keysDown();
 		const auto console = Consoles::GetFocusedConsole();
 
-		if ((down & KEY_START) && !shellThreads[console].native_handle())
+		if ((down & KEY_START) && !running[console])
+		{
+			// std::thread has no way of knowing whether the thread is stopped,
+			// so we have to tell it ourselves
+			auto &thread = shellThreads[console];
+			if (thread.joinable())
+				thread.join();
 			shellThreads[console] = std::thread{ShellThread, console};
+		}
 		else if (down & KEY_L)
 			Consoles::switchConsoleLeft();
 		else if (down & KEY_R)
@@ -93,5 +103,7 @@ int main()
 	}
 
 	// Let all the shells exit naturally, to save line history, etc
-	std::ranges::for_each(shellThreads, [](auto &t) { t.join(); });
+	for (auto &thread : shellThreads)
+		if (thread.joinable())
+			thread.join();
 }
