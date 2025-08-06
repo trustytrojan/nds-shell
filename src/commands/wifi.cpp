@@ -60,7 +60,6 @@ static std::span<WlanBssDesc> ScanAPs(const Commands::Context &ctx)
 	while (pmMainLoop() && !(aplist = wfcGetScanBssList(&count)))
 	{
 		threadYield();
-		scanKeys();
 
 		if (keysDown() & KEY_START)
 		{
@@ -86,14 +85,14 @@ int GetHiddenSSID(const Commands::Context &ctx, WlanBssDesc &ap)
 	{
 		threadYield();
 
-		if (ctx.shell.console != Consoles::focused_console)
+		if (!ctx.shell.IsFocused())
 			continue;
 
 		if (keysDown() & KEY_START)
 			// user canceled
 			return USER_CANCEL;
 
-		prompt.processKeyboard();
+		prompt.update();
 
 		if (prompt.enterPressed())
 		{
@@ -135,14 +134,14 @@ int GetPassword(const Commands::Context &ctx, WlanBssDesc &ap)
 	{
 		threadYield();
 
-		if (ctx.shell.console != Consoles::focused_console)
+		if (!ctx.shell.IsFocused())
 			continue;
 
 		if (keysDown() & KEY_START)
 			// user canceled
 			return USER_CANCEL;
 
-		prompt.processKeyboard();
+		prompt.update();
 
 		if (prompt.enterPressed())
 		{
@@ -195,7 +194,6 @@ static int WaitForConnection(std::ostream &out)
 		 status = Wifi_AssocStatus())
 	{
 		threadYield();
-		scanKeys();
 
 		if (keysDown() & KEY_START)
 			// user canceled

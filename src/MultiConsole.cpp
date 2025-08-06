@@ -3,6 +3,7 @@
 #include <nds/arm9/console.h>
 #include <sys/iosupport.h>
 
+#include <fstream>
 #include <iostream>
 
 /*
@@ -55,6 +56,17 @@ void Init()
 void InitSingle()
 {
 	// handle the simple one-console initialization like back in the old days
+}
+
+// The fun stuff
+PrintConsole consoles[NUM_CONSOLES];
+std::ofstream streams[NUM_CONSOLES];
+
+std::ostream &GetStream(u8 console)
+{
+	if (console < 0 || console >= NUM_CONSOLES)
+		return std::cout;
+	return streams[console];
 }
 
 void InitMulti()
@@ -129,6 +141,20 @@ void InitMulti()
 	consoleSelect(&consoles[0]);
 }
 
+// Console/display switching state
+Display focused_display{};
+u8 focused_console{}, top_shown_console{}, bottom_shown_console{4};
+
+u8 GetFocusedConsole()
+{
+	return focused_console;
+}
+
+bool IsFocused(u8 console)
+{
+	return console == focused_console;
+}
+
 void updateShownConsoles()
 {
 	if (focused_console < 4)
@@ -137,7 +163,7 @@ void updateShownConsoles()
 		bottom_shown_console = focused_console;
 }
 
-void handleKeyL()
+void switchConsoleLeft()
 {
 	if (focused_console == 0)
 		return;
@@ -158,7 +184,7 @@ void handleKeyL()
 	updateShownConsoles();
 }
 
-void handleKeyR()
+void switchConsoleRight()
 {
 	if (focused_console == 6)
 		return;

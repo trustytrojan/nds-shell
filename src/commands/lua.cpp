@@ -43,10 +43,10 @@ void Commands::lua(const Context &ctx)
 	{
 		threadYield();
 
-		if (ctx.shell.console != Consoles::focused_console)
+		if (!ctx.shell.IsFocused())
 			continue;
 
-		prompt.processKeyboard();
+		prompt.update();
 
 		if (prompt.enterPressed())
 		{

@@ -15,12 +15,12 @@ std::ostream &operator<<(std::ostream &ostr, const Token &t)
 }
 
 Shell::Shell(const int console)
-	: ostr{Consoles::streams[console]},
+	: ostr{Consoles::GetStream(console)},
 	  console{console}
 {
 	if (fs::exists(".ndshrc"))
 		SourceFile(".ndshrc");
-	prompt.setOutputStream(Consoles::streams[console]);
+	prompt.setOutputStream(ostr);
 	prompt.setLineHistory(".ndsh_history");
 }
 
@@ -187,17 +187,14 @@ void Shell::StartPrompt()
 	prompt.prepareForNextLine();
 	prompt.printFullPrompt(false);
 
-	while (pmMainLoop())
+	while (pmMainLoop() && !shouldExit)
 	{
 		threadYield();
 
-		if (shouldExit)
-			break;
-
-		if (Consoles::focused_console != console)
+		if (!Consoles::IsFocused(console))
 			continue;
 
-		prompt.processKeyboard();
+		prompt.update();
 
 		if (prompt.enterPressed())
 		{

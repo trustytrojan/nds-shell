@@ -1,6 +1,7 @@
 #include "Consoles.hpp"
 #include "ShellClass.hpp"
 
+#include <algorithm>
 #include <dswifi9.h>
 #include <fat.h>
 #include <nds.h>
@@ -12,7 +13,7 @@ void subcommand_autoconnect(std::ostream &ostr); // from wifi.cpp
 
 void InitResources()
 {
-	auto &ostr = Consoles::streams[0];
+	auto &ostr = Consoles::GetStream(0);
 
 	ostr << "initializing filesystem...";
 
@@ -36,41 +37,18 @@ void InitResources()
 	ostr << '\n';
 }
 
-void ConsoleThread(int console)
+void PrintGreeting(int console, bool clearScreen = true)
 {
-	bool printed{}, firstPrint{true};
-	auto &ostr = Consoles::streams[console];
+	auto &ostr = Consoles::GetStream(console);
+	if (clearScreen)
+		ostr << "\e[2J\e[H"; // Clear screen and move cursor to home
+	ostr << "\e[42mnds-shell (con" << console << ")\e[39m\n\nPress START to start a shell\n\n";
+}
 
-	while (pmMainLoop())
-	{
-		threadYield();
-
-		if (Consoles::focused_console != console && !firstPrint)
-			// we want the console prompt shown on all consoles initially
-			continue;
-
-		if (!printed)
-		{
-			// we need to show the resource initialization on con0
-			// only clear screen after it's been used
-			if (!firstPrint)
-				ostr << "\e[2J\e[H";
-
-			ostr << "\e[42mnds-shell (con" << console << ")\e[39m\n\nPress START to start a shell";
-			printed = true;
-			firstPrint = false;
-		}
-
-		// main thread already called scanKeys(), let's trust it
-		const auto keys = keysDown();
-
-		if (keysDown() & KEY_START)
-		{
-			ostr << "\r\e[2K";
-			Shell{console}.StartPrompt();
-			printed = false;
-		}
-	}
+void ShellThread(int console)
+{
+	Shell{console}.StartPrompt();
+	PrintGreeting(console);
 }
 
 int main()
@@ -84,28 +62,36 @@ int main()
 	// The main thread is higher. Make sure we can yield to the others.
 	threadGetSelf()->prio = THREAD_MIN_PRIO;
 
-	// Start shell threads
-	std::thread threads[Consoles::NUM_CONSOLES];
-	for (int i = 0; i < Consoles::NUM_CONSOLES; ++i)
-		threads[i] = std::thread{ConsoleThread, i};
+	// Print initial greeting on all consoles
+	PrintGreeting(0, false); // Don't clear con0, InitResources output is there
+	for (int i = 1; i < Consoles::NUM_CONSOLES; ++i)
+		PrintGreeting(i);
+
+	// Need to keep them alive here, detach() doesn't work
+	std::thread shellThreads[Consoles::NUM_CONSOLES];
 
 	// Main thread: Handle console switching and key scanning.
 	while (pmMainLoop())
 	{
 		threadYield();
+
+		// This only needs to be called here and not in other threads,
+		// since they all are run sequentially.
 		scanKeys();
 
-		const auto keys = keysDown();
+		const auto down = keysDown();
+		const auto console = Consoles::GetFocusedConsole();
 
-		if (keys & KEY_SELECT)
+		if ((down & KEY_START) && !shellThreads[console].native_handle())
+			shellThreads[console] = std::thread{ShellThread, console};
+		else if (down & KEY_L)
+			Consoles::switchConsoleLeft();
+		else if (down & KEY_R)
+			Consoles::switchConsoleRight();
+		else if (down & KEY_SELECT)
 			Consoles::toggleFocusedDisplay();
-
-		if (keys & KEY_L)
-			Consoles::handleKeyL();
-
-		if (keys & KEY_R)
-			Consoles::handleKeyR();
 	}
 
-	// TODO: save line history?
+	// Let all the shells exit naturally, to save line history, etc
+	std::ranges::for_each(shellThreads, [](auto &t) { t.join(); });
 }

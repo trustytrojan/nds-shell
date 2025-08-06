@@ -249,6 +249,11 @@ void exit(const Context &ctx)
 	ctx.shell.SetShouldExit();
 }
 
+void poweroff(const Context &ctx)
+{
+	pmPrepareToReset();
+}
+
 void help(const Context &);
 
 const Map MAP{
@@ -277,7 +282,8 @@ const Map MAP{
 	{"devices", devices},
 	{"exit", exit},
 	{"lua", lua},
-	{"source", source}};
+	{"source", source},
+	{"poweroff", poweroff}};
 
 void help(const Context &ctx)
 {

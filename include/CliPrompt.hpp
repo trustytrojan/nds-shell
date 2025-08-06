@@ -6,12 +6,20 @@
 #include <string>
 #include <vector>
 
+struct MyTickTask : TickTask
+{
+	bool &flashState;
+};
+
 // Asynchronous command-line interface prompt, taking input from the
 // keypad (physical buttons) and libnds virtual keyboard. Provides:
 // - a visible, movable cursor that can edit the line at any position
 // - input line history with arrow-key & d-pad button navigation
 class CliPrompt
 {
+	MyTickTask mtt{.flashState = flashState};
+	bool mttRunning{};
+
 	std::ostream *ostr = &std::cout;
 	std::string prompt = "> ";
 	char cursor = '_';
@@ -45,6 +53,13 @@ class CliPrompt
 	void handleUp();
 	void handleDown();
 
+	// Returns whether an event was run via a keypad press.
+	bool processKeypad();
+
+	// Processes the current state of the keyboard/keypad, updating state as
+	// necessary.
+	void processKeyboard();
+
 public:
 	CliPrompt() { prepareForNextLine(); }
 
@@ -68,9 +83,9 @@ public:
 	// itself.
 	void prepareForNextLine();
 
-	// Processes the current state of the keyboard/keypad, updating state as
-	// necessary.
-	void processKeyboard();
+	// Processes the current state of the keypad, then the keyboard, and updates
+	// state as necessary.
+	void update();
 
 	// Returns whether the `Enter` key was pressed during the last call to
 	// `processKeyboard()`. This also indicates that a newline character (`\n`)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CliPrompt.hpp"
+#include "Consoles.hpp"
 
 #include <nds.h>
 
@@ -14,10 +15,6 @@ using Env = std::unordered_map<std::string, std::string>;
 
 class Shell
 {
-public:
-	const int console;
-
-private:
 	std::ostream &ostr;
 
 	// global environment
@@ -41,11 +38,14 @@ private:
 	void ResetStreams();
 
 public:
+	const int console;
+
 	Shell(int console);
 	void StartPrompt();
 	void ProcessLine(std::string_view line);
 	void SourceFile(const std::string &path);
 	void SetShouldExit() { shouldExit = true; }
+	bool IsFocused() const { return Consoles::IsFocused(console); }
 
 	// For POSIX shell "builtin" commands like cd, history, unset, etc.
 	void SetEnv(const std::string &key, const std::string &value) { env.insert_or_assign(key, value); }

@@ -2,7 +2,7 @@
 
 #include <nds.h>
 
-#include <fstream>
+#include <iostream>
 
 namespace Consoles
 {
@@ -15,16 +15,15 @@ enum class Display
 
 const int NUM_CONSOLES = 7;
 
-inline PrintConsole consoles[NUM_CONSOLES];
-inline u8 focused_console{}, top_shown_console{}, bottom_shown_console{4};
-inline Display focused_display{};
-inline std::ofstream streams[NUM_CONSOLES];
-
 void Init();
 void InitMulti();
 
 void toggleFocusedDisplay();
-void handleKeyL();
-void handleKeyR();
+void switchConsoleLeft();
+void switchConsoleRight();
+
+u8 GetFocusedConsole();
+bool IsFocused(u8 console);
+std::ostream &GetStream(u8 console);
 
 } // namespace Consoles

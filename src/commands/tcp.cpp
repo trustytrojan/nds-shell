@@ -75,12 +75,12 @@ void Commands::tcp(const Context &ctx)
 	{
 		threadYield();
 
-		if (ctx.shell.console == Consoles::focused_console)
+		if (ctx.shell.IsFocused())
 		{
 			// NOTE: we only need to prevent the PROMPT from processing the keyboard
 			// when not focused! everything else is allowed to run!
 
-			prompt.processKeyboard();
+			prompt.update();
 
 			if (prompt.foldPressed())
 			{
