@@ -3,7 +3,6 @@
 #include <nds.h>
 
 #include <fstream>
-#include <thread>
 
 namespace Consoles
 {

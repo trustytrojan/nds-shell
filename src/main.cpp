@@ -18,7 +18,7 @@ void InitResources()
 
 	if (!fatInitDefault())
 		ostr << "\r\e[2K\e[41mfat init failed: filesystem commands will "
-					 "not work\e[39m\n";
+				"not work\e[39m\n";
 	else
 		ostr << "\r\e[2K\e[42mfilesystem intialized!\n";
 
@@ -26,7 +26,7 @@ void InitResources()
 
 	if (!wlmgrInitDefault() || !wfcInit())
 		ostr << "\r\e[2K\e[41mwifi init failed: networking commands will not "
-					 "work\e[39m\n";
+				"work\e[39m\n";
 	else
 	{
 		ostr << "\r\e[2K\e[42mwifi initialized!\n\e[39mautoconnecting...";

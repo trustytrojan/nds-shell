@@ -99,7 +99,7 @@ set(SOL2_ENABLE_INSTALL OFF)
 FetchContent_Declare(sol2 URL https://github.com/ThePhD/sol2/archive/develop.zip)
 FetchContent_MakeAvailable(sol2)
 
-add_compile_options(-fno-rtti -fno-exceptions -Wno-psabi)
+add_compile_options(-fno-rtti -fno-exceptions)
 add_compile_definitions(SOL_EXCEPTIONS=0)
 include_directories(include ${curl_SOURCE_DIR}/include)
 link_libraries(dswifi9 fat lua_static sol2 libcurl)

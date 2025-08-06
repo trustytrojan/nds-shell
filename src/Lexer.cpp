@@ -45,18 +45,13 @@ void EscapeInDoubleQuoteString(StrItr &itr, std::string &currentToken)
 	}
 }
 
-void InsertVariable(
-	StrItr &itr,
-	const StrItr &lineEnd,
-	std::string &currentToken,
-	const Env &env)
+void InsertVariable(StrItr &itr, const StrItr &lineEnd, std::string &currentToken, const Env &env)
 {
 	// `itr` is pointing at the initial `$`
 	// subtitute variables in the lexing phase to avoid the reiteration overhead
 	// during parsing
 	std::string varname;
-	for (++itr; (isalnum(*itr) || *itr == '_') && *itr != '"' && itr < lineEnd;
-		 ++itr)
+	for (++itr; (isalnum(*itr) || *itr == '_') && *itr != '"' && itr < lineEnd; ++itr)
 		varname += *itr;
 	if (const auto envItr{env.find(varname)}; envItr != env.cend())
 		currentToken += envItr->second;
@@ -64,11 +59,7 @@ void InsertVariable(
 		   // they might need it
 }
 
-bool LexDoubleQuoteString(
-	StrItr &itr,
-	const StrItr &lineEnd,
-	std::string &currentToken,
-	const Env &env)
+bool LexDoubleQuoteString(StrItr &itr, const StrItr &lineEnd, std::string &currentToken, const Env &env)
 {
 	// When called, itr is pointing at the opening `"`, so increment before
 	// looping.
@@ -96,8 +87,7 @@ bool LexDoubleQuoteString(
 	return true;
 }
 
-bool LexSingleQuoteString(
-	StrItr &itr, const StrItr &lineEnd, std::string &currentToken)
+bool LexSingleQuoteString(StrItr &itr, const StrItr &lineEnd, std::string &currentToken)
 {
 	// Nothing can be escaped in single-quote strings.
 	for (++itr; *itr != '\'' && itr < lineEnd; ++itr)
@@ -112,8 +102,7 @@ bool LexSingleQuoteString(
 	return true;
 }
 
-bool LexLine(
-	std::vector<Token> &tokens, const std::string_view &line, const Env &env)
+bool LexLine(std::vector<Token> &tokens, const std::string_view &line, const Env &env)
 {
 	tokens.clear();
 
