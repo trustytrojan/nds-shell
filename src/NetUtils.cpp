@@ -2,30 +2,34 @@
 
 #include <netdb.h>
 
-#include <iostream>
 #include <string.h>
 #include <sys/socket.h>
+
+std::ostream &operator<<(std::ostream &ostr, const in_addr &ip)
+{
+	return ostr << (ip.s_addr & 0xFF) << '.' << ((ip.s_addr >> 8) & 0xFF) << '.' << ((ip.s_addr >> 16) & 0xFF) << '.'
+				<< ((ip.s_addr >> 24) & 0xFF);
+}
 
 namespace NetUtils
 {
 
-Error error;
-
-void PrintError(const std::string &s)
+const char *StrError(const Error error)
 {
-	std::cerr << "\e[41m" << s << ": ";
 	switch (error)
 	{
+	case Error::NO_ERROR:
+		return "success";
 	case Error::PARSE_ERROR:
-		std::cerr << "parse error";
-		break;
+		return "parse error";
 	case Error::PORT_REQUIRED:
-		std::cerr << "port required";
+		return "port required";
 	}
-	std::cerr << "\e[39m\n";
+
+	return "";
 }
 
-bool ParseAddress(const char *addr, const int defaultPort, sockaddr_in &sain)
+Error ParseAddress(sockaddr_in &sain, const char *addr, const int defaultPort)
 {
 	// ipv4
 	sain.sin_family = AF_INET;
@@ -35,10 +39,7 @@ bool ParseAddress(const char *addr, const int defaultPort, sockaddr_in &sain)
 	if (!colonPtr)
 	{
 		if (defaultPort < 0)
-		{
-			error = Error::PORT_REQUIRED;
-			return false;
-		}
+			return Error::PORT_REQUIRED;
 
 		sain.sin_port = htons(defaultPort);
 	}
@@ -54,15 +55,17 @@ bool ParseAddress(const char *addr, const int defaultPort, sockaddr_in &sain)
 		const auto host = gethostbyname(addr);
 
 		if (!host)
-		{
-			error = Error::PARSE_ERROR;
-			return false;
-		}
+			return Error::PARSE_ERROR;
 
 		sain.sin_addr = *(in_addr *)host->h_addr_list[0];
 	}
 
-	return true;
+	return Error::NO_ERROR;
+}
+
+Error ParseAddress(sockaddr_in &sain, const std::string &addr, const int defaultPort)
+{
+	return ParseAddress(sain, addr.c_str(), defaultPort);
 }
 
 } // namespace NetUtils

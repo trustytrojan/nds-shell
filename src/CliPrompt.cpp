@@ -14,23 +14,18 @@ void CliPrompt::printFullPrompt(bool withInput)
 	*ostr << cursor << Cursor::moveLeftOne;
 }
 
-void CliPrompt::processUntilEnterPressed()
-{
-	prepareForNextLine();
-	printFullPrompt(false);
-	do
-	{
-		processKeyboard();
-		swiWaitForVBlank();
-	} while (pmMainLoop() && !_enterPressed);
-}
-
 void CliPrompt::prepareForNextLine()
 {
-	cursorPos = flashState = flashTimer = {};
+	cursorPos = flashState = {};
 	lineHistoryItr = lineHistory.cend();
 	savedInput.clear();
 	input.clear();
+}
+
+void flashCursorTickTask(TickTask *t)
+{
+	auto &mtt = *(MyTickTask *)t;
+	mtt.flashState = !mtt.flashState;
 }
 
 void CliPrompt::flashCursor()
@@ -39,20 +34,11 @@ void CliPrompt::flashCursor()
 	 * While `cursorPos != line.size()`, the character pointed to by the cursor
 	 * will flash between `line[cursorPos]` and `this->cursor`.
 	 */
-	static const auto FLASH_INTERVAL = 10;
 
 	if (cursorPos == input.size())
-	{
-		flashTimer = 0;
 		flashState = false;
-	}
-	else if (++flashTimer >= FLASH_INTERVAL)
-	{
-		flashTimer = 0;
-		((flashState = !flashState) ? (*ostr << cursor)
-									: (*ostr << input[cursorPos]))
-			<< Cursor::moveLeftOne;
-	}
+	else
+		*ostr << (flashState ? cursor : input[cursorPos]) << Cursor::moveLeftOne;
 }
 
 void CliPrompt::handleBackspace()
@@ -64,8 +50,7 @@ void CliPrompt::handleBackspace()
 		*ostr << " \b\b" << cursor << Cursor::moveLeftOne;
 	else
 		*ostr << "\b\e[0K" << input.c_str() + cursorPos
-			  << Cursor::move(
-					 Cursor::MoveDirection::LEFT, input.size() - cursorPos);
+			  << Cursor::move(Cursor::MoveDirection::LEFT, input.size() - cursorPos);
 }
 
 void CliPrompt::handleEnter()
@@ -87,10 +72,23 @@ void CliPrompt::handleLeft()
 {
 	if (input.empty() || cursorPos == 0)
 		return;
+
 	if (cursorPos == input.size())
+	{ // above to move off last char
+		// remove static cursor
 		*ostr << " \b";
+
+		if (!mttRunning)
+		{
+			tickTaskStart(&mtt, flashCursorTickTask, ticksFromHz(6), ticksFromHz(6));
+			mttRunning = true;
+		}
+	}
+
 	if (flashState)
+		// prevent leaving behind cursors over the input
 		*ostr << input[cursorPos] << Cursor::moveLeftOne;
+
 	*ostr << Cursor::moveLeftOne;
 	--cursorPos;
 }
@@ -99,14 +97,25 @@ void CliPrompt::handleRight()
 {
 	if (input.empty() || cursorPos == input.size())
 		return;
+
 	*ostr << input[cursorPos];
+
 	if (++cursorPos == input.size())
+	{
+		// at end of line, reprint cursor
 		*ostr << cursor << Cursor::moveLeftOne;
+
+		if (mttRunning)
+		{
+			tickTaskStop(&mtt);
+			mttRunning = false;
+		}
+	}
 }
 
 void CliPrompt::handleUp()
 {
-	if (lineHistory.empty() || lineHistoryItr - 1 < lineHistory.cbegin())
+	if (lineHistory.empty() || lineHistoryItr == lineHistory.cbegin())
 		// obviously do nothing here
 		return;
 
@@ -122,7 +131,7 @@ void CliPrompt::handleUp()
 
 void CliPrompt::handleDown()
 {
-	if (lineHistory.empty() || lineHistoryItr + 1 > lineHistory.cend())
+	if (lineHistory.empty() || lineHistoryItr == lineHistory.cend())
 		// obviously do nothing here
 		return;
 
@@ -138,31 +147,36 @@ void CliPrompt::handleDown()
 		return;
 	}
 
-	// go down one, reset cursorPos, reprint everything
+	// reset cursorPos, reprint everything
 	input = *lineHistoryItr;
 	cursorPos = input.size();
 	*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
 }
 
-void CliPrompt::processKeyboard()
+bool CliPrompt::processKeypad()
 {
-	resetKeypressState();
+	const auto keys = keysDown();
 
-	scanKeys();
-	const auto keys = keysDownRepeat();
 	if (keys & (KEY_A | KEY_START))
 		handleEnter();
-	if (keys & KEY_B)
+	else if (keys & KEY_B)
 		handleBackspace();
-	if (keys & KEY_LEFT)
+	else if (keys & KEY_LEFT)
 		handleLeft();
-	if (keys & KEY_RIGHT)
+	else if (keys & KEY_RIGHT)
 		handleRight();
-	if (keys & KEY_UP)
+	else if (keys & KEY_UP)
 		handleUp();
-	if (keys & KEY_DOWN)
+	else if (keys & KEY_DOWN)
 		handleDown();
+	else
+		return false;
 
+	return true;
+}
+
+void CliPrompt::processKeyboard()
+{
 	// this needs to be cast to a char for printing
 	// keep it signed because of the negative value enums to check against!
 	switch (const s8 c = keyboardUpdate())
@@ -183,38 +197,26 @@ void CliPrompt::processKeyboard()
 		break;
 
 	case DVK_ENTER:
-		if (keys & KEY_A)
-			break;
 		handleEnter();
 		break;
 
 	case DVK_BACKSPACE:
-		if (keys & KEY_B)
-			break;
 		handleBackspace();
 		break;
 
 	case DVK_LEFT:
-		if (keys & KEY_LEFT)
-			break;
 		handleLeft();
 		break;
 
 	case DVK_RIGHT:
-		if (keys & KEY_RIGHT)
-			break;
 		handleRight();
 		break;
 
 	case DVK_UP:
-		if (keys & KEY_UP)
-			break;
 		handleUp();
 		break;
 
 	case DVK_DOWN:
-		if (keys & KEY_DOWN)
-			break;
 		handleDown();
 		break;
 
@@ -228,13 +230,22 @@ void CliPrompt::processKeyboard()
 		{
 			input.insert(input.begin() + cursorPos, c);
 			*ostr << input.c_str() + cursorPos
-				  << Cursor::move(
-						 Cursor::MoveDirection::LEFT,
-						 input.size() - cursorPos - 1);
+				  << Cursor::move(Cursor::MoveDirection::LEFT, input.size() - cursorPos - 1);
 		}
 		if (++cursorPos == input.size())
 			*ostr << cursor << Cursor::moveLeftOne;
 	}
+}
+
+void CliPrompt::update()
+{
+	resetKeypressState();
+
+	// only one input device can fire events at a time to reduce multithreaded issues
+	if (processKeypad()) // handled an event:
+		return;
+
+	processKeyboard();
 }
 
 void CliPrompt::setLineHistory(const std::string &filename)

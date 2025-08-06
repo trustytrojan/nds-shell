@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CliPrompt.hpp"
+#include "Consoles.hpp"
 
 #include <nds.h>
 
@@ -12,38 +13,44 @@
 
 using Env = std::unordered_map<std::string, std::string>;
 
-namespace Shell
+class Shell
 {
+	std::ostream &ostr;
 
-// Initializes necessary libnds resources.
-void InitConsole();
+	// global environment
+	Env env;
 
-// Initializes optional resources (fat, wifi).
-void InitResources();
+	// for redirections
+	std::ofstream outf, errf;
+	std::ifstream inf;
 
-inline CliPrompt prompt;
+	// to pass to commands
+	std::ostream *out{&ostr}, *err{&ostr};
+	std::istream *in{&std::cin}; // please do NOT use normal stdin for ANYTHING 😭
+	std::vector<std::string> args;
 
-// Starts the prompt loop. Does not return.
-void Start();
+	CliPrompt prompt;
 
-void ProcessLine(const std::string &line);
-void SourceFile(const std::string &filepath);
-void RedirectOutput(int fd, const std::string &filename);
-void RedirectInput(int fd, const std::string &filename);
-void ResetStreams();
+	bool shouldExit{};
 
-bool HasEnv(const std::string &key);
-std::optional<std::string> GetEnv(const std::string &key);
-std::string GetEnv(const std::string &key, const std::string &_default);
+	void RedirectOutput(int fd, const std::string &filename);
+	void RedirectInput(int fd, const std::string &filename);
+	void ResetStreams();
 
-inline std::string cwd;
-inline Env env, commandEnv;
-inline std::ofstream outf, errf;
-inline std::ifstream inf;
-inline std::ostream *out{&std::cout}, *err{&std::cerr};
-inline std::istream *in{&std::cin};
+public:
+	const int console;
 
-// A command's arguments
-inline std::vector<std::string> args;
+	Shell(int console);
+	~Shell();
+	void StartPrompt();
+	void ProcessLine(std::string_view line);
+	void SourceFile(const std::string &path);
+	void SetShouldExit() { shouldExit = true; }
+	bool IsFocused() const { return Consoles::IsFocused(console); }
 
-}; // namespace Shell
+	// For POSIX shell "builtin" commands like cd, history, unset, etc.
+	void SetEnv(const std::string &key, const std::string &value) { env.insert_or_assign(key, value); }
+	void UnsetEnv(const std::string &key) { env.erase(key); }
+	const std::vector<std::string> &GetLineHistory() const { return prompt.getLineHistory(); }
+	void ClearLineHistory() { prompt.clearLineHistory(); }
+};

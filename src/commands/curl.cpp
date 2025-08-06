@@ -1,60 +1,58 @@
 #include "Commands.hpp"
-#include "Shell.hpp"
 
 #include <algorithm>
 #include <curl/curl.h>
 #include <iostream>
 
-static int
-curl_debug(CURL *, curl_infotype, char *const data, const size_t size, void *)
+static int curl_debug(CURL *, curl_infotype, char *const data, const size_t size, void *userp)
 {
-	*Shell::err << "\e[40m";
-	Shell::err->write(data, size);
-	*Shell::err << "\e[39m";
+	auto &ostr = *reinterpret_cast<std::ostream *>(userp);
+	ostr << "\e[40m";
+	ostr.write(data, size);
+	ostr << "\e[39m";
 	return 0;
 }
 
-static curl_socket_t
-curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr)
+static curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr)
 {
 	return socket(addr->family, addr->socktype, 0);
 }
 
-size_t
-curl_write(char *const buffer, const size_t size, const size_t nitems, void *)
+size_t curl_write(char *const buffer, const size_t size, const size_t nitems, void *userp)
 {
+	auto &ostr = *reinterpret_cast<std::ostream *>(userp);
 	// manually put chars because putting a char* can cause a memory error here:
 	// https://github.com/devkitPro/libnds/blob/6194b32d8f94e2ebc8078e64bf213ffc13ba1985/source/arm9/console.c#L223
 	// looks like they didn't check for null chars in the loop condition
 	const auto bytes = size * nitems;
 	const char *const endp = buffer + bytes;
 	for (const char *p = buffer; *p && p < endp; ++p)
-		*Shell::out << *p;
+		ostr << *p;
 	return bytes;
 }
 
-void Commands::curl()
+void Commands::curl(const Context &ctx)
 {
-	if (Shell::args.size() < 2)
+	if (ctx.args.size() < 2)
 	{
-		*Shell::err << "usage: curl [method] <url>\n";
+		ctx.err << "usage: curl [method] <url>\n";
 		return;
 	}
 
 	// grab arguments
 	std::string method = "GET";
-	if (Shell::args.size() >= 3)
+	if (ctx.args.size() >= 3)
 	{ // method is optional
-		method.resize(Shell::args[1].length());
-		std::ranges::transform(Shell::args[1], method.begin(), toupper);
+		method.resize(ctx.args[1].length());
+		std::ranges::transform(ctx.args[1], method.begin(), toupper);
 	}
 
-	const auto &url = Shell::args.back();
+	const auto &url = ctx.args.back();
 
 	const auto curl = curl_easy_init();
 	if (!curl)
 	{
-		*Shell::err << "\e[41mhttp: curl_easy_init failed\e[39m\n";
+		ctx.err << "\e[41mhttp: curl_easy_init failed\e[39m\n";
 		return;
 	}
 
@@ -62,18 +60,15 @@ void Commands::curl()
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
 	// set a timeout so we aren't stuck connecting/reading
-	const auto timeout = atoi(Shell::GetEnv("CURL_TIMEOUT", "10").c_str());
+	const auto timeout = atoi(ctx.GetEnv("CURL_TIMEOUT", "10").c_str());
 	curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
 	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, timeout);
 
 	// CA cert bundle file, set the filename using env
 	// copy one from a linux system and it works flawlessly
-	curl_easy_setopt(
-		curl,
-		CURLOPT_CAINFO,
-		Shell::GetEnv("CURL_CAFILE", "tls-ca-bundle.pem").c_str());
+	curl_easy_setopt(curl, CURLOPT_CAINFO, ctx.GetEnv("CURL_CAFILE", "tls-ca-bundle.pem").c_str());
 
-	// write http response to *Shell::out
+	// write http response to ctx.out
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
 
 	// we need a custom opensocket callback because of
@@ -86,17 +81,14 @@ void Commands::curl()
 	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, curl_errbuf);
 
 	// debug output
-	if (Shell::HasEnv("CURL_DEBUG"))
+	if (ctx.env.contains("CURL_DEBUG"))
 	{
 		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 		curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
 	}
 
 	if (const auto res = curl_easy_perform(curl); res != CURLE_OK)
-	{
-		*Shell::err << "\e[41mhttp: curl: " << curl_easy_strerror(res) << ": "
-					<< curl_errbuf << "\e[39m\n";
-	}
+		ctx.err << "\e[41mhttp: curl: " << curl_easy_strerror(res) << ": " << curl_errbuf << "\e[39m\n";
 
 	curl_easy_cleanup(curl);
 }

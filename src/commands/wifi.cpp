@@ -1,9 +1,12 @@
 #include "Commands.hpp"
-#include "Shell.hpp"
 
 #include <dswifi9.h>
 #include <nds.h>
 #include <wfc.h>
+
+#include <algorithm>
+
+constexpr int USER_CANCEL = 2;
 
 static const char *const signalStrength[] = {
 	"   ",
@@ -33,8 +36,7 @@ static const char *const connStatus[] = {
 
 static inline WlanBssAuthType authMaskToType(unsigned mask)
 {
-	return mask ? (WlanBssAuthType)(31 - __builtin_clz(mask))
-				: WlanBssAuthType_Open;
+	return mask ? (WlanBssAuthType)(31 - __builtin_clz(mask)) : WlanBssAuthType_Open;
 }
 
 static const WlanBssScanFilter filter = {
@@ -42,252 +44,168 @@ static const WlanBssScanFilter filter = {
 	.target_bssid = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 };
 
-static WlanBssDesc *GetAPList(unsigned *const count)
+static std::span<WlanBssDesc> ScanAPs(const Commands::Context &ctx)
 {
 	if (!wfcBeginScan(&filter))
 	{
-		*Shell::err << "\e[41mwifi: GetAPList: wfcBeginScan failed\e[39m\n";
-		return NULL;
+		ctx.err << "\e[41mwifi: GetAPList: wfcBeginScan failed\e[39m\n";
+		return {};
 	}
 
-	*Shell::out << "Scanning APs...\n";
+	ctx.out << "Scanning APs... Press START to cancel\n";
 	WlanBssDesc *aplist{};
+	unsigned count;
 
-	while (pmMainLoop() && !(aplist = wfcGetScanBssList(count)))
+	while (pmMainLoop() && !(aplist = wfcGetScanBssList(&count)))
 	{
-		swiWaitForVBlank();
-		scanKeys();
+		threadYield();
 
 		if (keysDown() & KEY_START)
 		{
-			*Shell::err << "\e[2Jwifi: connection canceled\n";
-			return NULL;
+			ctx.err << "wifi: connection canceled\n";
+			return {};
 		}
 	}
 
-	return aplist;
+	return {aplist, count};
 }
 
-static WlanBssDesc *FindAPInteractive(void)
+int GetHiddenSSID(const Commands::Context &ctx, WlanBssDesc &ap)
 {
-	consoleClear();
+	ctx.out << "Hidden SSID required. Press START key to cancel\n";
 
-	int selected = 0;
-	int i;
-	int displaytop = 0;
-	unsigned count = 0;
-	WlanBssDesc *aplist = NULL;
-	WlanBssDesc *apselected = NULL;
+	CliPrompt prompt;
+	prompt.setPrompt("SSID: ");
+	prompt.prepareForNextLine();
+	prompt.printFullPrompt(false);
 
-	static const WlanBssScanFilter filter = {
-		.channel_mask = UINT32_MAX,
-		.target_bssid = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-	};
-
-_rescan:
-	aplist = GetAPList(&count);
-
-	if (!aplist || !count)
-	{
-		iprintf("No APs detected\n");
-		return NULL;
-	}
-
-	while (pmMainLoop())
-	{
-		swiWaitForVBlank();
-		scanKeys();
-
-		u32 pressed = keysDownRepeat();
-		if (pressed & KEY_START)
-		{
-			*Shell::err << "\e[2Jwifi: connection canceled\n";
-			return NULL;
-		}
-		if (pressed & KEY_A)
-		{
-			apselected = &aplist[selected];
-			break;
-		}
-
-		consoleClear();
-
-		if (pressed & KEY_R)
-			goto _rescan;
-
-		iprintf("%u APs detected (R = rescan)\n\n", count);
-
-		int displayend = displaytop + 10;
-		if (displayend > count)
-			displayend = count;
-
-		// display the APs to the user
-		for (i = displaytop; i < displayend; i++)
-		{
-			WlanBssDesc *ap = &aplist[i];
-			ap->ssid[sizeof(ap->ssid) - 1] = '\0';
-
-			// display the name of the AP
-			iprintf(
-				"%s%.29s\n  %s Type:%s\n",
-				i == selected ? "*" : " ",
-				ap->ssid_len ? ap->ssid : "-- Hidden SSID --",
-				signalStrength[wlanCalcSignalStrength(ap->rssi)],
-				authTypes[authMaskToType(ap->auth_mask)]);
-		}
-
-		// move the selection asterisk
-		if (pressed & KEY_UP)
-		{
-			selected--;
-			if (selected < 0)
-				selected = 0;
-
-			if (selected < displaytop)
-				displaytop = selected;
-		}
-
-		if (pressed & KEY_DOWN)
-		{
-			selected++;
-			if (selected >= count)
-				selected = count - 1;
-
-			displaytop = selected - 9;
-			if (displaytop < 0)
-				displaytop = 0;
-		}
-	}
-
-	consoleClear();
-	return apselected;
-}
-
-bool GetHiddenSSID(WlanBssDesc *ap)
-{
-	consoleClear();
-	char instr[64];
-	uint inlen;
-
-	iprintf("Enter hidden SSID name\n");
 	bool ok;
 	do
 	{
-		if (!fgets(instr, sizeof(instr), stdin))
-			return false;
+		threadYield();
 
-		instr[strcspn(instr, "\n")] = 0;
-		inlen = strlen(instr);
+		if (!ctx.shell.IsFocused())
+			continue;
 
-		ok = inlen && inlen <= WLAN_MAX_SSID_LEN;
-		if (!ok)
-			iprintf("Invalid SSID\n");
-	} while (!ok);
+		if (keysDown() & KEY_START)
+			// user canceled
+			return USER_CANCEL;
 
-	memcpy(ap->ssid, instr, inlen);
-	ap->ssid_len = inlen;
+		prompt.update();
 
-	return true;
+		if (prompt.enterPressed())
+		{
+			const auto &input = prompt.getInput();
+
+			ok = input.size() && input.size() <= WLAN_MAX_SSID_LEN;
+
+			if (!ok)
+			{
+				ctx.err << "\e[41mwifi: Invalid SSID\n";
+				prompt.prepareForNextLine();
+				prompt.printFullPrompt(false);
+			}
+		}
+	} while (!ok && pmMainLoop());
+
+	const auto &input = prompt.getInput();
+	input.copy(ap.ssid, input.size());
+	ap.ssid_len = input.size();
+
+	return EXIT_SUCCESS;
 }
 
 // Auth data must be in main RAM, not DTCM stack
 static WlanAuthData auth{};
 
-bool GetPassword(WlanBssDesc *ap)
+int GetPassword(const Commands::Context &ctx, WlanBssDesc &ap)
 {
-	char instr[64];
-	uint inlen;
-	iprintf("Enter %s key\n", authTypes[ap->auth_type]);
+	ctx.out << authTypes[ap.auth_type] << " detected. Password required. Press START to cancel\n";
+
+	CliPrompt prompt;
+	prompt.setOutputStream(ctx.out);
+	prompt.setPrompt("Password: ");
+	prompt.prepareForNextLine();
+	prompt.printFullPrompt(false);
 
 	bool ok;
 	do
 	{
-		if (!fgets(instr, sizeof(instr), stdin))
-		{
-			*Shell::err << "\e[41mwifi: GetPassword: fgets failed\e[39m\n";
-			return false;
-		}
+		threadYield();
 
-		instr[strcspn(instr, "\n")] = 0;
-		inlen = strlen(instr);
+		if (!ctx.shell.IsFocused())
+			continue;
 
-		ok = true;
-		if (ap->auth_type < WlanBssAuthType_WPA_PSK_TKIP)
+		if (keysDown() & KEY_START)
+			// user canceled
+			return USER_CANCEL;
+
+		prompt.update();
+
+		if (prompt.enterPressed())
 		{
-			if (inlen == WLAN_WEP_40_LEN)
-				ap->auth_type = WlanBssAuthType_WEP_40;
-			else if (inlen == WLAN_WEP_104_LEN)
-				ap->auth_type = WlanBssAuthType_WEP_104;
-			else if (inlen == WLAN_WEP_128_LEN)
-				ap->auth_type = WlanBssAuthType_WEP_128;
-			else
+			const auto &input = prompt.getInput();
+			ok = true;
+			if (ap.auth_type < WlanBssAuthType_WPA_PSK_TKIP)
+			{
+				if (input.size() == WLAN_WEP_40_LEN)
+					ap.auth_type = WlanBssAuthType_WEP_40;
+				else if (input.size() == WLAN_WEP_104_LEN)
+					ap.auth_type = WlanBssAuthType_WEP_104;
+				else if (input.size() == WLAN_WEP_128_LEN)
+					ap.auth_type = WlanBssAuthType_WEP_128;
+				else
+					ok = false;
+			}
+			else if (input.size() < 1 || input.size() >= WLAN_WPA_PSK_LEN)
+			{
 				ok = false;
-		}
-		else if (inlen < 1 || inlen >= WLAN_WPA_PSK_LEN)
-		{
-			ok = false;
-		}
+			}
 
-		if (!ok)
-			iprintf("Invalid key!\n");
-	} while (!ok);
+			if (!ok)
+			{
+				ctx.err << "\e[41mwifi: Invalid key!\e[39m\n";
+				prompt.prepareForNextLine();
+				prompt.printFullPrompt(false);
+			}
+		}
+	} while (!ok && pmMainLoop());
 
-	if (ap->auth_type < WlanBssAuthType_WPA_PSK_TKIP)
+	const auto &input = prompt.getInput();
+
+	if (ap.auth_type < WlanBssAuthType_WPA_PSK_TKIP)
 	{
-		memcpy(auth.wep_key, instr, inlen);
+		memcpy(auth.wep_key, input.c_str(), input.size());
 	}
 	else
 	{
-		iprintf("Deriving PMK, please wait\n");
-		wfcDeriveWpaKey(&auth, ap->ssid, ap->ssid_len, instr, inlen);
+		ctx.out << "Deriving PMK, please wait\n";
+		wfcDeriveWpaKey(&auth, ap.ssid, ap.ssid_len, input.c_str(), input.size());
 	}
 
-	return true;
+	return 0;
 }
 
-int ConnectAP(WlanBssDesc *const ap)
+static int WaitForConnection(std::ostream &out)
 {
-	if (!ap->ssid_len && !GetHiddenSSID(ap))
-	{
-		std::cerr << "\e[41mwifi: GetHiddenSSID failed\e[39m\n";
-		return EXIT_FAILURE;
-	}
-
-	iprintf("Connecting to '%.*s'\n", ap->ssid_len, ap->ssid);
-	ap->auth_type = authMaskToType(ap->auth_mask);
-	memset(&auth, 0, sizeof(auth));
-
-	if (ap->auth_type != WlanBssAuthType_Open && !GetPassword(ap))
-	{
-		*Shell::err << "\e[41mwifi: GetPassword failed\e[39m\n";
-		return EXIT_FAILURE;
-	}
-
-	if (!wfcBeginConnect(ap, &auth))
-	{
-		*Shell::err << "\e[41mwifi: wfcBeginConnect failed\e[39m\n";
-		return EXIT_FAILURE;
-	}
-
 	auto status = Wifi_AssocStatus(), prevStatus = -1;
-	for (; pmMainLoop() && status != ASSOCSTATUS_ASSOCIATED &&
-		   status != ASSOCSTATUS_CANNOTCONNECT;
+	for (; pmMainLoop() && status != ASSOCSTATUS_ASSOCIATED && status != ASSOCSTATUS_CANNOTCONNECT;
 		 status = Wifi_AssocStatus())
 	{
-		swiWaitForVBlank();
-		scanKeys();
+		threadYield();
 
 		if (keysDown() & KEY_START)
-			return 2; // user canceled
+			// user canceled
+			return USER_CANCEL;
 
 		if (status != prevStatus)
 		{
-			*Shell::out << "\r\e[2K" << connStatus[status];
+			out << "\r\e[2K" << connStatus[status];
 			prevStatus = status;
 		}
 	}
 
-	*Shell::out << "\r\e[2K" << connStatus[status] << '\n';
+	out << "\r\e[2K" << connStatus[status] << '\n';
 
 	if (status == ASSOCSTATUS_CANNOTCONNECT)
 		return EXIT_FAILURE;
@@ -295,120 +213,171 @@ int ConnectAP(WlanBssDesc *const ap)
 	return EXIT_SUCCESS;
 }
 
-void subcommand_connect()
+int ConnectAP(const Commands::Context &ctx, WlanBssDesc &ap)
 {
-	*Shell::out << "Press Start to cancel\n";
+	if (!ap.ssid_len)
+	{
+		const auto rc = GetHiddenSSID(ctx, ap);
+		if (rc == EXIT_FAILURE)
+			std::cerr << "\e[41mwifi: GetHiddenSSID failed\e[39m\n";
+		return EXIT_FAILURE;
+	}
+
+	ap.ssid[ap.ssid_len] = '\0';
+	ctx.out << "Connecting to '" << ap.ssid << "'\n";
+
+	ap.auth_type = authMaskToType(ap.auth_mask);
+	auth = {};
+
+	if (ap.auth_type != WlanBssAuthType_Open)
+	{
+		if (const auto rc = GetPassword(ctx, ap))
+		{
+			if (rc == EXIT_FAILURE)
+				ctx.err << "\e[41mwifi: GetPassword failed\e[39m\n";
+			return rc;
+		}
+	}
+
+	if (!wfcBeginConnect(&ap, &auth))
+	{
+		ctx.err << "\e[41mwifi: wfcBeginConnect failed\e[39m\n";
+		return EXIT_FAILURE;
+	}
+
+	return WaitForConnection(ctx.out);
+}
+
+void subcommand_connect(const Commands::Context &ctx)
+{
+	if (ctx.args.size() < 3)
+	{
+		ctx.err << "wifi: connect: SSID required\n";
+		return;
+	}
+
+	ctx.out << "Press Start to cancel\n";
 	WlanBssDesc *ap{};
 
-	if (Shell::args.size() == 2)
+	const auto &ssid = ctx.args[2];
+	const auto aplist = ScanAPs(ctx);
+
+	if (aplist.empty())
 	{
-		ap = FindAPInteractive();
+		ctx.err << "\e[41mwifi: No APs detected\e[39m\n";
+		return;
 	}
-	else
+
+	// this is a projection: map each AP to it's SSID string_view then check against `ssid`
+	const auto it = std::ranges::find(aplist, ssid, [](auto &bss) { return std::string_view{bss.ssid, bss.ssid_len}; });
+
+	if (it == aplist.end())
 	{
-		const auto &ssid = Shell::args[2];
-
-		unsigned count;
-		const auto aplist = GetAPList(&count);
-
-		if (!aplist || !count)
-		{
-			*Shell::err << "No APs detected\n";
-			return;
-		}
-
-		for (int i = 0; i < count; ++i)
-		{
-			if (!*aplist[i].ssid || !aplist[i].ssid_len)
-				continue;
-
-			if (!strncmp(aplist[i].ssid, ssid.c_str(), aplist[i].ssid_len))
-			{
-				ap = aplist + i;
-				break;
-			}
-		}
-
-		if (!ap)
-		{
-			*Shell::err << "\e[41mwifi: SSID '" << ssid
-						<< "' not found\e[39m\n";
-			return;
-		}
+		ctx.err << "\e[41mwifi: SSID '" << ssid << "' not found\e[39m\n";
+		return;
 	}
+
+	ap = it.base();
 
 	if (!ap)
 	{
-		*Shell::err << "\e[41mwifi: ap is null\e[39m\n";
+		// This now cleanly handles user cancellation from FindAPInteractive
+		// or other potential null-pointer cases.
 		return;
 	}
 
-	switch (ConnectAP(ap))
+	switch (ConnectAP(ctx, *ap))
 	{
+	case EXIT_SUCCESS:
+		ctx.out << "\e[42mwifi: connection successful\e[39m\n";
+		break;
 	case EXIT_FAILURE:
-		*Shell::out << "\e[41mwifi: connection failed.\e[39m\n";
-		return;
-	case 2:
-		*Shell::out << "wifi: connection canceled\n";
-		return;
+		ctx.err << "\e[41mwifi: connection failed\e[39m\n";
+		break;
+	case USER_CANCEL:
+		ctx.out << "wifi: connection canceled\n";
 	}
-
-	*Shell::out << "\e[42mwifi: connection successful\e[39m\n";
 }
 
-void subcommand_autoconnect()
+void subcommand_autoconnect(std::ostream &ostr)
 {
 	Wifi_AutoConnect();
 
-	auto status = Wifi_AssocStatus(), prevStatus = -1;
-	for (; pmMainLoop() && status != ASSOCSTATUS_ASSOCIATED &&
-		   status != ASSOCSTATUS_CANNOTCONNECT;
-		 status = Wifi_AssocStatus())
+	switch (WaitForConnection(ostr))
 	{
-		swiWaitForVBlank();
-		scanKeys();
-
-		if (status != prevStatus)
-		{
-			*Shell::out << "\r\e[2K" << connStatus[status];
-			prevStatus = status;
-		}
+	case EXIT_SUCCESS:
+		ostr << "\e[42mwifi: autoconnect successful\e[39m\n";
+		break;
+	case EXIT_FAILURE:
+		ostr << "\e[41mwifi: autoconnect failed\n\e[39m";
+		break;
+	case USER_CANCEL:
+		ostr << "wifi: autoconnect canceled\n";
 	}
+}
 
-	*Shell::out << "\r\e[2K";
+void subcommand_status(const Commands::Context &ctx)
+{
+	const auto status = Wifi_AssocStatus();
+	ctx.out << connStatus[status];
 
-	if (status == ASSOCSTATUS_CANNOTCONNECT)
+	if (status == ASSOCSTATUS_ASSOCIATED)
 	{
-		*Shell::err << "\e[41mwifi: connection failed\n\e[39m";
+		const auto *ap = wfcGetActiveSlot();
+		if (ap && ap->ssid_len > 0)
+			ctx.out << ": " << std::string_view{ap->ssid, ap->ssid_len};
+	}
+	ctx.out << '\n';
+}
+
+void subcommand_scan(const Commands::Context &ctx)
+{
+	const auto aplist = ScanAPs(ctx);
+
+	if (aplist.empty())
+	{
+		// ScanAPs already prints messages on failure or cancellation,
+		// but not if no APs are found.
+		ctx.err << "\e[41mwifi: No APs detected\e[39m\n";
 		return;
 	}
 
-	*Shell::out << "\e[42mwifi: connection successful\e[39m\n";
+	ctx.out << aplist.size() << " APs detected:\n";
+	for (const auto &ap : aplist)
+	{
+		if (!ap.ssid_len)
+			continue;
+		ctx.out << signalStrength[wlanCalcSignalStrength(ap.rssi)] << " " << std::string_view{ap.ssid, ap.ssid_len}
+				<< '\n';
+	}
 }
 
 static const auto subcommandsString = R"(subcommands:
-  con[nect] [ssid]
+  con[nect] <ssid>
   dis[connect]
   auto[connect]
   stat[us]
+  scan
 )";
 
-void Commands::wifi()
+void Commands::wifi(const Context &ctx)
 {
-	if (Shell::args.size() == 1)
+	if (ctx.args.size() == 1)
 	{
-		*Shell::out << subcommandsString;
+		ctx.out << subcommandsString;
 		return;
 	}
 
-	const auto &subcommand = Shell::args[1];
+	const auto &subcommand = ctx.args[1];
 
 	if (subcommand.starts_with("con"))
-		subcommand_connect();
+		subcommand_connect(ctx);
 	else if (subcommand.starts_with("dis") && Wifi_DisconnectAP())
-		*Shell::err << "\e[41mwifi: Wifi_DisconnectAP failed\e[39m\n";
+		ctx.err << "\e[41mwifi: Wifi_DisconnectAP failed\e[39m\n";
 	else if (subcommand.starts_with("stat"))
-		*Shell::out << connStatus[Wifi_AssocStatus()] << '\n';
+		subcommand_status(ctx);
 	else if (subcommand.starts_with("auto"))
-		subcommand_autoconnect();
+		subcommand_autoconnect(ctx.out);
+	else if (subcommand.starts_with("scan"))
+		subcommand_scan(ctx);
 }

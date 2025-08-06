@@ -6,12 +6,20 @@
 #include <string>
 #include <vector>
 
+struct MyTickTask : TickTask
+{
+	bool &flashState;
+};
+
 // Asynchronous command-line interface prompt, taking input from the
 // keypad (physical buttons) and libnds virtual keyboard. Provides:
 // - a visible, movable cursor that can edit the line at any position
 // - input line history with arrow-key & d-pad button navigation
 class CliPrompt
 {
+	MyTickTask mtt{.flashState = flashState};
+	bool mttRunning{};
+
 	std::ostream *ostr = &std::cout;
 	std::string prompt = "> ";
 	char cursor = '_';
@@ -22,7 +30,6 @@ class CliPrompt
 	// State necessary for rendering a visible cursor
 	u32 cursorPos{}; // relative to `input`
 	bool flashState{};
-	u8 flashTimer{};
 
 	// Keypress state. Reset on every call to `processKeyboard()`.
 	bool _enterPressed{}, _foldPressed{};
@@ -46,7 +53,16 @@ class CliPrompt
 	void handleUp();
 	void handleDown();
 
+	// Returns whether an event was run via a keypad press.
+	bool processKeypad();
+
+	// Processes the current state of the keyboard/keypad, updating state as
+	// necessary.
+	void processKeyboard();
+
 public:
+	CliPrompt() { prepareForNextLine(); }
+
 	// The output stream to print to.
 	void setOutputStream(std::ostream &o) { ostr = &o; }
 	void setOutputStream(std::ostream *o) { ostr = o; }
@@ -58,7 +74,7 @@ public:
 	void setCursor(char c) { cursor = c; }
 
 	// Read the input buffer.
-	const std::string &getInput() { return input; }
+	const std::string &getInput() const { return input; }
 
 	// Print the prompt and cursor, optionally with the input buffer in between.
 	void printFullPrompt(bool withInput);
@@ -67,13 +83,9 @@ public:
 	// itself.
 	void prepareForNextLine();
 
-	// Processes the current state of the keyboard/keypad, updating state as
-	// necessary.
-	void processKeyboard();
-
-	// Calls `processKeyboard()` every frame until the `Enter` key is pressed
-	// (in other words, `newlineEntered()` is `true`).
-	void processUntilEnterPressed();
+	// Processes the current state of the keypad, then the keyboard, and updates
+	// state as necessary.
+	void update();
 
 	// Returns whether the `Enter` key was pressed during the last call to
 	// `processKeyboard()`. This also indicates that a newline character (`\n`)
@@ -85,7 +97,7 @@ public:
 	bool foldPressed() const { return _foldPressed; }
 
 	// View the current line history.
-	const std::vector<std::string> &getLineHistory() { return lineHistory; }
+	const std::vector<std::string> &getLineHistory() const { return lineHistory; }
 
 	// Set the current line history using the contents of the file located at
 	// `filename`.

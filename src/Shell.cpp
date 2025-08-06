@@ -1,113 +1,63 @@
 #include "Shell.hpp"
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
+#include "Consoles.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
 
-#include <dswifi9.h>
-#include <fat.h>
-#include <wfc.h>
-
 #include <filesystem>
-#include <fstream>
-#include <iostream>
 
 namespace fs = std::filesystem;
-
-void subcommand_autoconnect(); // from wifi.cpp
-
-namespace Shell
-{
-
-void InitConsole()
-{
-	// Video initialization - We want to use both screens
-	videoSetMode(MODE_0_2D);
-	videoSetModeSub(MODE_0_2D);
-	vramSetBankA(VRAM_A_MAIN_BG);
-	vramSetBankC(VRAM_C_SUB_BG);
-
-	// Show console on top screen
-	static PrintConsole console;
-	consoleInit(
-		&console, 3, BgType_Text4bpp, BgSize_T_256x256, 31, 0, true, true);
-
-	// Show keyboard on bottom screen
-	keyboardDemoInit();
-	keyboardShow();
-}
-
-void InitResources()
-{
-	std::cout << "initializing filesystem...";
-
-	if (!fatInitDefault())
-		std::cerr << "\r\e[2K\e[41mfat init failed: filesystem commands will "
-					 "not work\e[39m\n";
-	else
-		std::cout << "\r\e[2K\e[42mfilesystem intialized!\n";
-
-	std::cout << "initializing wifi...";
-
-	if (!wlmgrInitDefault() || !wfcInit())
-		std::cerr
-			<< "\r\e[2K\e[41mwifi init failed: networking commands will not "
-			   "work\e[39m\n";
-	else
-	{
-		std::cout << "\r\e[2K\e[42mwifi initialized!\n\e[39mautoconnecting...";
-		subcommand_autoconnect();
-	}
-
-	std::cout << '\n';
-}
-
-void SourceFile(const std::string &filepath)
-{
-	std::ifstream file{filepath};
-
-	if (!file)
-	{
-		std::cerr << "\e[41mshell: cannot open file: " << filepath
-				  << "\e[39m\n";
-		return;
-	}
-
-	std::string line;
-	while (std::getline(file, line) && !line.starts_with("return"))
-		Shell::ProcessLine(line);
-}
 
 std::ostream &operator<<(std::ostream &ostr, const Token &t)
 {
 	return ostr << (char)t.type << '(' << t.value << ')';
 }
 
-bool HasEnv(const std::string &key)
+Shell::Shell(const int console)
+	: ostr{Consoles::GetStream(console)},
+	  console{console}
 {
-	return commandEnv.find(key) != commandEnv.cend() ||
-		   env.find(key) != env.cend();
+	if (fs::exists(".ndshrc"))
+		SourceFile(".ndshrc");
+	prompt.setOutputStream(ostr);
+	prompt.setLineHistory(".ndsh_history");
 }
 
-std::optional<std::string> GetEnv(const std::string &key)
+Shell::~Shell()
 {
-	if (const auto itr = commandEnv.find(key); itr != commandEnv.cend())
-		return itr->second;
-	if (const auto itr = env.find(key); itr != env.cend())
-		return itr->second;
-	return {};
+	// save everything afterwards; opening files in append mode corrupts them.
+	// may just be a limitation of dkp's libfat
+	std::ofstream historyFile{".ndsh_history"};
+	for (const auto &line : prompt.getLineHistory())
+		historyFile << line << '\n';
 }
 
-std::string GetEnv(const std::string &key, const std::string &_default)
+void Shell::SourceFile(const std::string &filepath)
 {
-	const auto val = GetEnv(key);
-	return val ? *val : _default;
+	std::ifstream file{filepath};
+
+	if (!file)
+	{
+		ostr << "\e[41mshell: cannot open file: " << filepath << "\e[39m\n";
+		return;
+	}
+
+	std::string line;
+	while (std::getline(file, line) && !line.starts_with("return"))
+		ProcessLine(line);
 }
 
-void ProcessLine(const std::string &line)
+void Shell::ProcessLine(std::string_view line)
 {
 	if (line.empty())
-		// don't process empty lines
+		return;
+
+	// Trim leading and trailing whitespace
+	const auto first_non_whitespace = line.find_first_not_of(" \t\n\r");
+	line = line.substr(first_non_whitespace, line.find_last_not_of(" \t\n\r") - first_non_whitespace + 1);
+
+	if (line.empty())
 		return;
 
 	std::vector<Token> tokens;
@@ -115,17 +65,16 @@ void ProcessLine(const std::string &line)
 	if (!LexLine(tokens, line, env))
 		return;
 
-	if (HasEnv("SHELL_DEBUG"))
+	if (env.contains("SHELL_DEBUG"))
 	{ // debug tokens
-		std::cerr << "\e[40mtokens: ";
+		ostr << "\e[40mtokens: ";
 		auto itr = tokens.cbegin();
 		for (; itr < tokens.cend() - 1; ++itr)
-			std::cerr << *itr << ' ';
-		std::cerr << *itr << "\n\e[39m";
+			ostr << *itr << ' ';
+		ostr << *itr << "\n\e[39m";
 	}
 
-	args.clear();
-	commandEnv.clear(); // Clear previous command-local env
+	std::vector<std::string> args;
 	std::vector<IoRedirect> redirects;
 	std::vector<EnvAssign> envAssigns;
 
@@ -134,7 +83,7 @@ void ProcessLine(const std::string &line)
 
 	if (args.empty() && envAssigns.empty())
 	{
-		std::cerr << "\e[41mshell: no args or env assigns\e[39m\n";
+		ostr << "\e[41mshell: no args or env assigns\e[39m\n";
 		return;
 	}
 
@@ -142,25 +91,25 @@ void ProcessLine(const std::string &line)
 
 	if (args.empty())
 	{ // Standalone assignments - apply to shell env and return
-		for (const auto &assign : envAssigns)
-			env[assign.key] = assign.value;
+		env.insert_range(envAssigns);
 		return;
 	}
 
-	if (HasEnv("SHELL_DEBUG"))
+	if (env.contains("SHELL_DEBUG"))
 	{ // debug args
-		std::cerr << "\e[40margs: ";
+		ostr << "\e[40margs: ";
 		auto itr = args.cbegin();
 		for (; itr < args.cend() - 1; ++itr)
-			std::cerr << '\'' << *itr << "' ";
-		std::cerr << '\'' << *itr << "'\n\e[39m";
+			ostr << '\'' << *itr << "' ";
+		ostr << '\'' << *itr << "'\n\e[39m";
 	}
 
-	// Command with assignments - apply to command env and continue
-	for (const auto &assign : envAssigns)
-		commandEnv[assign.key] = assign.value;
+	// Command with env assignments. Copy shell env then assign to it.
+	Env commandEnv{env};
+	commandEnv.insert_range(envAssigns);
 
 	// Apply redirections (rightmost takes precedence for same fd)
+	ResetStreams(); // always reset first
 	for (const auto &redirect : redirects)
 		if (redirect.direction == IoRedirect::Direction::IN)
 			RedirectInput(redirect.fd, redirect.filename);
@@ -169,54 +118,49 @@ void ProcessLine(const std::string &line)
 
 	const auto &command = args[0];
 
+	// ostr << "\e[40mcommand: '" << command << "'\n";
+
 	if (const auto withExtension{command + ".ndsh"}; fs::exists(withExtension))
 	{ // Treat .ndsh files as commands!
 		SourceFile(withExtension);
 		return;
 	}
 
-	const auto commandItr = Commands::MAP.find(command);
-
-	if (commandItr == Commands::MAP.cend())
-	{
-		std::cerr << "\e[41mshell: unknown command\e[39m\n";
-		return;
-	}
-
-	commandItr->second();
-	ResetStreams();
+	if (const auto itr = Commands::MAP.find(command); itr != Commands::MAP.cend())
+		itr->second({*out, *err, *in, args, commandEnv, *this});
+	else
+		ostr << "\e[41mshell: unknown command\e[39m\n";
 }
 
-void ResetStreams()
+void Shell::ResetStreams()
 {
-	if (in != &std::cin)
+	if (in == &inf)
 	{
-		reinterpret_cast<std::ifstream *>(in)->close();
+		inf.close();
 		in = &std::cin;
 	}
 
-	if (out != &std::cout)
+	if (out == &outf)
 	{
-		reinterpret_cast<std::ofstream *>(out)->close();
-		out = &std::cout;
+		outf.close();
+		out = &ostr;
 	}
 
-	if (err != &std::cerr)
+	if (err == &errf)
 	{
-		reinterpret_cast<std::ofstream *>(err)->close();
-		err = &std::cerr;
+		errf.close();
+		err = &ostr;
 	}
 }
 
-void RedirectOutput(int fd, const std::string &filename)
+void Shell::RedirectOutput(int fd, const std::string &filename)
 {
 	if (fd == 1)
 	{
 		outf.open(filename);
 		if (!outf)
 		{
-			*err << "\e[41mshell: cannot open file for writing: " << filename
-				 << "\e[39m\n";
+			ostr << "\e[41mshell: cannot open file for writing: " << filename << "\e[39m\n";
 			return;
 		}
 		out = &outf;
@@ -226,70 +170,50 @@ void RedirectOutput(int fd, const std::string &filename)
 		errf.open(filename);
 		if (!errf)
 		{
-			*err << "\e[41mshell: cannot open file for writing: " << filename
-				 << "\e[39m\n";
+			ostr << "\e[41mshell: cannot open file for writing: " << filename << "\e[39m\n";
 			return;
 		}
 		err = &errf;
 	}
 }
 
-void RedirectInput(int fd, const std::string &filename)
+void Shell::RedirectInput(int fd, const std::string &filename)
 {
 	inf.open(filename);
 	if (!inf)
 	{
-		*err << "\e[41mshell: cannot open file for reading: " << filename
-			 << "\e[39m\n";
+		ostr << "\e[41mshell: cannot open file for reading: " << filename << "\e[39m\n";
 		return;
 	}
 	if (fd == 0)
 		in = &inf;
 }
 
-void waitUntilKeysPressed(int keys)
+void Shell::StartPrompt()
 {
-	while (true)
+	ostr << "\e[46mgithub.com/trustytrojan/nds-shell\e[39m\n\nrun 'help' for help\n\n";
+
+	prompt.prepareForNextLine();
+	prompt.printFullPrompt(false);
+
+	while (pmMainLoop() && !shouldExit)
 	{
-		swiWaitForVBlank();
-		scanKeys();
-		if (keysDown() & keys)
-			return;
+		threadYield();
+
+		if (!Consoles::IsFocused(console))
+			continue;
+
+		prompt.update();
+
+		if (prompt.enterPressed())
+		{
+			ProcessLine(prompt.getInput());
+			prompt.prepareForNextLine();
+			prompt.printFullPrompt(false);
+		}
+
+		if (prompt.foldPressed())
+			// fold key exits, just like the other commands
+			break;
 	}
 }
-
-void Start()
-{
-	InitConsole();
-	std::cout << "\e[46mgithub.com/trustytrojan/nds-shell\e[39m\n\n";
-	InitResources();
-
-	if (fs::exists(".ndshrc"))
-		SourceFile(".ndshrc");
-
-	std::cout << "run 'help' for help\n\n";
-
-	prompt.setLineHistory(".ndsh_history");
-	while (pmMainLoop())
-	{
-		// Blocks until a line is entered
-		prompt.processUntilEnterPressed();
-		auto line = prompt.getInput();
-
-		// Trim leading and trailing whitespace
-		line.erase(0, line.find_first_not_of(" \t\n\r"));
-		line.erase(line.find_last_not_of(" \t\n\r") + 1);
-
-		ProcessLine(line);
-	}
-
-	// the app must exit at this point: see docs for pmShouldReset()
-
-	// save everything afterwards; opening files in append mode corrupts them.
-	// may just be a limitation of dkp's libfat
-	std::ofstream historyFile{".ndsh_history"};
-	for (const auto &line : prompt.getLineHistory())
-		historyFile << line << '\n';
-}
-
-} // namespace Shell

@@ -1,4 +1,5 @@
 # you MUST use the catnip cmake wrapper provided by devkitpro!
+# DEVKITPRO & DEVKITARM env vars are expected to be set!
 
 cmake_minimum_required(VERSION 3.13)
 cmake_policy(SET CMP0135 NEW)
@@ -6,7 +7,7 @@ cmake_policy(SET CMP0077 NEW)
 project(nds-shell LANGUAGES CXX)
 
 set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
@@ -101,7 +102,7 @@ FetchContent_MakeAvailable(sol2)
 add_compile_options(-fno-rtti -fno-exceptions)
 add_compile_definitions(SOL_EXCEPTIONS=0)
 include_directories(include ${curl_SOURCE_DIR}/include)
-link_libraries(dswifi9 fat nds9 lua_static sol2 libcurl)
+link_libraries(dswifi9 fat lua_static sol2 libcurl)
 
 file(GLOB_RECURSE SOURCES src/**)
 add_executable(nds-shell ${SOURCES})
