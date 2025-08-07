@@ -45,8 +45,8 @@ set(CURL_DISABLE_INSTALL ON)
 set(CURL_DISABLE_BINDLOCAL ON)
 set(CURL_DISABLE_SOCKETPAIR ON)
 
-set(CURL_USE_MBEDTLS ON) # disables openssl by implication
-set(MBEDTLS_LIBRARIES mbedx509 mbedcrypto mbedtls) # may not be necessary
+set(CURL_USE_MBEDTLS ON)
+set(MBEDTLS_LIBRARIES mbedx509 mbedcrypto mbedtls)
 
 set(ENABLE_CURL_MANUAL OFF)
 set(ENABLE_UNIX_SOCKETS OFF)
@@ -96,13 +96,26 @@ execute_process(
 
 ## sol2
 set(SOL2_ENABLE_INSTALL OFF)
+add_compile_definitions(SOL_EXCEPTIONS=0)
 FetchContent_Declare(sol2 URL https://github.com/ThePhD/sol2/archive/develop.zip)
 FetchContent_MakeAvailable(sol2)
 
+## libssh2
+set(CRYPTO_BACKEND mbedTLS)
+set(ENABLE_ZLIB_COMPRESSION OFF)
+set(CLEAR_MEMORY OFF)
+set(BUILD_EXAMPLES OFF)
+set(BUILD_TESTING OFF)
+set(MBEDTLS_INCLUDE_DIR ${mbedtls_SOURCE_DIR}/include)
+set(MBEDCRYPTO_LIBRARY mbedcrypto)
+add_compile_definitions(LIBSSH2_MBEDTLS _3DS)
+FetchContent_Declare(libssh2 URL https://github.com/trustytrojan/libssh2/archive/1.11.1-nds.zip)
+FetchContent_MakeAvailable(libssh2)
+
+## nds-shell
 add_compile_options(-fno-rtti -fno-exceptions)
-add_compile_definitions(SOL_EXCEPTIONS=0)
-include_directories(include ${curl_SOURCE_DIR}/include)
-link_libraries(dswifi9 fat lua_static sol2 libcurl)
+include_directories(include)
+link_libraries(dswifi9 fat lua_static sol2 libcurl libssh2)
 
 file(GLOB_RECURSE SOURCES src/**)
 add_executable(nds-shell ${SOURCES})

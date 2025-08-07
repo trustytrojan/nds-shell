@@ -12,7 +12,7 @@ bool ParseInputRedirect(
 
 	if (nextItr == tokensEnd || nextItr->type != Token::Type::STRING)
 	{
-		std::cerr << "\e[41mshell: filename expected after `<`\e[39m\n";
+		std::cerr << "\e[91mshell: filename expected after `<`\e[39m\n";
 		return false;
 	}
 
@@ -20,7 +20,7 @@ bool ParseInputRedirect(
 
 	if (!std::filesystem::exists(filename))
 	{
-		std::cerr << "\e[41mshell: file `" << filename << "` does not exist\e[39m\n";
+		std::cerr << "\e[91mshell: file `" << filename << "` does not exist\e[39m\n";
 		return false;
 	}
 
@@ -38,7 +38,7 @@ bool ParseInputRedirect(
 
 	if (prevItr->type != Token::Type::STRING || !std::ranges::all_of(fdStr, isdigit))
 	{
-		std::cerr << "\e[41mshell: integer expected before `<`\e[39m\n";
+		std::cerr << "\e[91mshell: integer expected before `<`\e[39m\n";
 		return false;
 	}
 
@@ -57,7 +57,7 @@ bool ParseOutputRedirect(
 
 	if (nextItr == tokensEnd || nextItr->type != Token::Type::STRING)
 	{
-		std::cerr << "\e[41mshell: filename expected after `>`\e[39m\n";
+		std::cerr << "\e[91mshell: filename expected after `>`\e[39m\n";
 		return false;
 	}
 
@@ -77,7 +77,7 @@ bool ParseOutputRedirect(
 
 	if (prevItr->type != Token::Type::STRING || !std::ranges::all_of(fdStr, isdigit))
 	{
-		std::cerr << "\e[41mshell: integer expected before `<`\e[39m\n";
+		std::cerr << "\e[91mshell: integer expected before `<`\e[39m\n";
 		return false;
 	}
 

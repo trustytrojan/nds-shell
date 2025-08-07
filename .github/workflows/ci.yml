@@ -14,6 +14,12 @@ jobs:
     container: devkitpro/devkitarm:latest
 
     steps:
+      - name: Uninstall system libnds, build and install my fork
+        run: |
+          sudo dkp-pacman -Rdd libnds --noconfirm
+          git clone https://github.com/trustytrojan/libnds -b ansi-colors
+          sudo make install
+
       - name: Checkout code
         uses: actions/checkout@v4
 

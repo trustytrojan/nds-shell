@@ -17,19 +17,19 @@ void InitResources()
 	ostr << "initializing filesystem...";
 
 	if (!fatInitDefault())
-		ostr << "\r\e[2K\e[41mfat init failed: filesystem commands will "
+		ostr << "\r\e[2K\e[91mfat init failed: filesystem commands will "
 				"not work\e[39m\n";
 	else
-		ostr << "\r\e[2K\e[42mfilesystem intialized!\n";
+		ostr << "\r\e[2K\e[92mfilesystem intialized!\n";
 
 	ostr << "initializing wifi...";
 
 	if (!wlmgrInitDefault() || !wfcInit())
-		ostr << "\r\e[2K\e[41mwifi init failed: networking commands will not "
+		ostr << "\r\e[2K\e[91mwifi init failed: networking commands will not "
 				"work\e[39m\n";
 	else
 	{
-		ostr << "\r\e[2K\e[42mwifi initialized!\n\e[39mautoconnecting...";
+		ostr << "\r\e[2K\e[92mwifi initialized!\n\e[39mautoconnecting...";
 		subcommand_autoconnect(ostr);
 	}
 
@@ -41,7 +41,7 @@ void PrintGreeting(int console, bool clearScreen = true)
 	auto &ostr = Consoles::GetStream(console);
 	if (clearScreen)
 		ostr << "\e[2J\e[H"; // Clear screen and move cursor to home
-	ostr << "\e[42mnds-shell (con" << console << ")\e[39m\n\nPress START to start a shell\n\n";
+	ostr << "\e[92mnds-shell (con" << console << ")\e[39m\n\nPress START to start a shell\n\n";
 }
 
 bool running[Consoles::NUM_CONSOLES]{};
