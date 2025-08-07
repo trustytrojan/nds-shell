@@ -19,7 +19,7 @@ jobs:
           sudo dkp-pacman -Rdd libnds --noconfirm
           git clone https://github.com/trustytrojan/libnds -b ansi-colors
           cd libnds
-          sudo make install
+          sudo -E make install -j$(nproc)
 
       - name: Checkout code
         uses: actions/checkout@v4
