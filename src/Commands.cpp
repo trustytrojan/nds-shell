@@ -37,7 +37,7 @@ void ls(const Context &ctx)
 
 	if (!fs::exists(path))
 	{
-		ctx.err << "\e[41mpath does not exist\e[39m\n";
+		ctx.err << "\e[91mpath does not exist\e[39m\n";
 		return;
 	}
 
@@ -45,7 +45,7 @@ void ls(const Context &ctx)
 	{
 		const auto filename = entry.path().filename().string();
 		if (entry.is_directory())
-			ctx.out << "\e[44m" << filename << "\e[39m ";
+			ctx.out << "\e[94m" << filename << "\e[39m ";
 		else
 			ctx.out << filename << ' ';
 		ctx.out << '\n';
@@ -64,7 +64,7 @@ void cd(const Context &ctx)
 
 	if (!fs::exists(path))
 	{
-		ctx.err << "\e[41mpath does not exist\e[39m\n";
+		ctx.err << "\e[91mpath does not exist\e[39m\n";
 		return;
 	}
 
@@ -80,7 +80,7 @@ void cat(const Context &ctx)
 			// this gets you stuck in the cat command,
 			// unless i make stdin nonblocking and use threads
 			// so you can "ctrl+c" by pressing the fold key
-			ctx.err << "\e[41mcat: not using stdin\e[39m\n";
+			ctx.err << "\e[91mcat: not using stdin\e[39m\n";
 			return;
 		}
 
@@ -91,12 +91,12 @@ void cat(const Context &ctx)
 	std::error_code ec;
 	if (!fs::exists(ctx.args[1], ec) && !ec)
 	{
-		ctx.err << "\e[41mcat: file does not exist: " << ctx.args[1] << "\e[39m\n";
+		ctx.err << "\e[91mcat: file does not exist: " << ctx.args[1] << "\e[39m\n";
 		return;
 	}
 	else if (ec)
 	{
-		ctx.err << "\e[41mcat: " << ec.message() << "\e[39m\n";
+		ctx.err << "\e[91mcat: " << ec.message() << "\e[39m\n";
 		return;
 	}
 
@@ -104,7 +104,7 @@ void cat(const Context &ctx)
 
 	if (!file)
 	{
-		ctx.err << "\e[41mcat: cannot open file: " << ctx.args[1] << "\e[39m\n";
+		ctx.err << "\e[91mcat: cannot open file: " << ctx.args[1] << "\e[39m\n";
 		return;
 	}
 
@@ -123,7 +123,7 @@ void rm(const Context &ctx)
 	{
 		std::error_code ec;
 		if (!fs::remove(ctx.args[1], ec))
-			ctx.err << "\e[41mrm: failed to remove: '" << ctx.args[1] << "': " << ec.message() << "\e[39m\n";
+			ctx.err << "\e[91mrm: failed to remove: '" << ctx.args[1] << "': " << ec.message() << "\e[39m\n";
 	}
 }
 
@@ -145,7 +145,7 @@ void dns(const Context &ctx)
 	const auto host = gethostbyname(ctx.args[1].c_str());
 	if (!host)
 	{
-		ctx.err << "\e[41mdns: gethostbyname: " << strerror(errno) << "\e[39m";
+		ctx.err << "\e[91mdns: gethostbyname: " << strerror(errno) << "\e[39m";
 		return;
 	}
 
@@ -191,7 +191,7 @@ void rename(const Context &ctx)
 	std::error_code ec;
 	fs::rename(ctx.args[1], ctx.args[2], ec);
 	if (ec)
-		ctx.err << "\e[41mrename: " << ec.message() << "\e[39m\n";
+		ctx.err << "\e[91mrename: " << ec.message() << "\e[39m\n";
 }
 
 void pwd(const Context &ctx)
@@ -223,7 +223,7 @@ void history(const Context &ctx)
 		ctx.shell.ClearLineHistory();
 		std::error_code ec;
 		if (!fs::remove("/.ndsh_history", ec))
-			ctx.err << "\e[41mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
+			ctx.err << "\e[91mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
 		return;
 	}
 
@@ -283,7 +283,8 @@ const Map MAP{
 	{"exit", exit},
 	{"lua", lua},
 	{"source", source},
-	{"poweroff", poweroff}};
+	{"poweroff", poweroff},
+	{"ssh", ssh}};
 
 void help(const Context &ctx)
 {

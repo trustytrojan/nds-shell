@@ -27,7 +27,7 @@ void Commands::tcp(const Context &ctx)
 	sockaddr_in sain;
 	if (const auto rc = NetUtils::ParseAddress(sain, ctx.args[1]); rc != NetUtils::Error::NO_ERROR)
 	{
-		ctx.err << "\e[41mtcp: " << NetUtils::StrError(rc) << "\e[39m\n";
+		ctx.err << "\e[91mtcp: " << NetUtils::StrError(rc) << "\e[39m\n";
 		return;
 	}
 
@@ -35,22 +35,22 @@ void Commands::tcp(const Context &ctx)
 	const auto sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == -1)
 	{
-		ctx.err << "\e[41mtcp: socket: " << strerror(errno) << "\e[39m\n";
+		ctx.err << "\e[91mtcp: socket: " << strerror(errno) << "\e[39m\n";
 		return;
 	}
 
 	if (debugMessages)
-		ctx.err << "\e[40mtcp: socket: " << sock << "\n\e[39m";
+		ctx.err << "\e[90mtcp: socket: " << sock << "\n\e[39m";
 
 	if (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)) == -1)
 	{
-		ctx.err << "\e[41mtcp: connect: " << strerror(errno) << "\e[39m\n";
+		ctx.err << "\e[91mtcp: connect: " << strerror(errno) << "\e[39m\n";
 		close(sock);
 		return;
 	}
 
 	if (debugMessages)
-		ctx.err << "\e[40mtcp: connected\e[39m\n";
+		ctx.err << "\e[90mtcp: connected\e[39m\n";
 
 	// TODO: get rid of the select() impl, use non-blocking sockets instead
 
@@ -84,7 +84,7 @@ void Commands::tcp(const Context &ctx)
 			if (prompt.foldPressed())
 			{
 				if (debugMessages)
-					ctx.out << "\r\e[2K\e[40mtcp: fold key pressed\e[39m\n";
+					ctx.out << "\r\e[2K\e[90mtcp: fold key pressed\e[39m\n";
 				break;
 			}
 
@@ -95,7 +95,7 @@ void Commands::tcp(const Context &ctx)
 				switch (send(sock, lineToSend.c_str(), lineToSend.length(), 0))
 				{
 				case -1:
-					ctx.err << "\e[41mtcp: send: " << strerror(errno) << "\e[39m\n";
+					ctx.err << "\e[91mtcp: send: " << strerror(errno) << "\e[39m\n";
 					shouldExit = true;
 					break;
 				case 0:
@@ -118,7 +118,7 @@ void Commands::tcp(const Context &ctx)
 			switch (const auto bytesRead = recv(sock, buf, sizeof(buf) - 1, 0))
 			{
 			case -1:
-				ctx.err << "\e[41mtcp: recv: " << strerror(errno) << "\e[39m\n";
+				ctx.err << "\e[91mtcp: recv: " << strerror(errno) << "\e[39m\n";
 				shouldExit = true;
 				break;
 			case 0:
@@ -134,7 +134,7 @@ void Commands::tcp(const Context &ctx)
 		}
 		else if (selectResult == -1)
 		{
-			ctx.err << "\e[41mtcp: select: " << strerror(errno) << "\e[39m\n";
+			ctx.err << "\e[91mtcp: select: " << strerror(errno) << "\e[39m\n";
 			shouldExit = true;
 		}
 	}

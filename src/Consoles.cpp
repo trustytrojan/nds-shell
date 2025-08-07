@@ -109,7 +109,7 @@ void InitMulti()
 			// Sanity check
 			if (dot != devoptab_list[STD_ERR])
 			{
-				std::cerr << "\e[41mmulticon: stdout & stderr devices are not the same!\e[39m\n";
+				std::cerr << "\e[91mmulticon: stdout & stderr devices are not the same!\e[39m\n";
 				return;
 			}
 		}
@@ -132,7 +132,7 @@ void InitMulti()
 		ostr.open(std::string{dot->name} + ':');
 		if (!ostr)
 		{
-			std::cerr << "\e[41mmulticon: failed to open " << dot->name << "!\e[39m\n";
+			std::cerr << "\e[91mmulticon: failed to open " << dot->name << "!\e[39m\n";
 			continue;
 		}
 	}

@@ -255,7 +255,7 @@ void CliPrompt::setLineHistory(const std::string &filename)
 	std::ifstream lineHistoryFile{filename};
 	if (!lineHistoryFile)
 	{
-		std::cerr << "\e[41mfailed to load line history\n\e[39m";
+		std::cerr << "\e[91mfailed to load line history\n\e[39m";
 		return;
 	}
 
