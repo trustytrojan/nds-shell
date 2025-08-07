@@ -18,6 +18,7 @@ jobs:
         run: |
           sudo dkp-pacman -Rdd libnds --noconfirm
           git clone https://github.com/trustytrojan/libnds -b ansi-colors
+          cd libnds
           sudo make install
 
       - name: Checkout code
