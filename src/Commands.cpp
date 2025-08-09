@@ -283,7 +283,8 @@ const Map MAP{
 	{"exit", exit},
 	{"lua", lua},
 	{"source", source},
-	{"poweroff", poweroff}};
+	{"poweroff", poweroff},
+	{"telnet", telnet}};
 
 void help(const Context &ctx)
 {
