@@ -10,6 +10,16 @@
 
 void subcommand_autoconnect(std::ostream &ostr); // from wifi.cpp
 
+static bool fsInit{}, wifiInit{};
+
+bool Shell::wifiInitialized() {
+	return wifiInit;
+}
+
+bool Shell::fsInitialized() {
+	return fsInit;
+}
+
 void InitResources()
 {
 	auto &ostr = Consoles::GetStream(0);
@@ -17,10 +27,15 @@ void InitResources()
 	ostr << "initializing filesystem...";
 
 	if (!fatInitDefault())
+	{
 		ostr << "\r\e[2K\e[91mfat init failed: filesystem commands will "
-				"not work\e[39m\n";
+				"not work\n";
+	}
 	else
+	{
 		ostr << "\r\e[2K\e[92mfilesystem intialized!\n";
+		fsInit = true;
+	}
 
 	ostr << "initializing wifi...";
 
@@ -30,6 +45,7 @@ void InitResources()
 	else
 	{
 		ostr << "\r\e[2K\e[92mwifi initialized!\n\e[39mautoconnecting...";
+		wifiInit = true;
 		subcommand_autoconnect(ostr);
 	}
 

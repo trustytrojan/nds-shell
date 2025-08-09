@@ -11,7 +11,7 @@ void CliPrompt::printFullPrompt(bool withInput)
 	*ostr << prompt;
 	if (withInput)
 		*ostr << input;
-	*ostr << cursor << Cursor::moveLeftOne;
+	//*ostr << cursor << Cursor::moveLeftOne;
 }
 
 void CliPrompt::prepareForNextLine()
@@ -22,24 +22,20 @@ void CliPrompt::prepareForNextLine()
 	input.clear();
 }
 
-void flashCursorTickTask(TickTask *t)
-{
-	auto &mtt = *(MyTickTask *)t;
-	mtt.flashState = !mtt.flashState;
-}
+// void flashCursorTickTask(TickTask *t)
+// {
+// 	auto &mtt = *(MyTickTask *)t;
+// 	mtt.flashState = !mtt.flashState;
+// }
 
-void CliPrompt::flashCursor()
-{
-	/**
-	 * While `cursorPos != line.size()`, the character pointed to by the cursor
-	 * will flash between `line[cursorPos]` and `this->cursor`.
-	 */
-
-	if (cursorPos == input.size())
-		flashState = false;
-	else
-		*ostr << (flashState ? cursor : input[cursorPos]) << Cursor::moveLeftOne;
-}
+// void CliPrompt::flashCursor()
+// {
+// 	/**
+// 	 * While `cursorPos != line.size()`, the character pointed to by the cursor
+// 	 * will flash between `line[cursorPos]` and `this->cursor`.
+// 	 */
+// 	*ostr << (flashState ? cursor : input[cursorPos]) << Cursor::moveLeftOne;
+// }
 
 void CliPrompt::handleBackspace()
 {
@@ -47,9 +43,11 @@ void CliPrompt::handleBackspace()
 		return;
 	input.erase(--cursorPos, 1);
 	if (cursorPos == input.size())
-		*ostr << " \b\b" << cursor << Cursor::moveLeftOne;
+		// *ostr << " \b\b" << cursor << Cursor::moveLeftOne;
+		// *ostr << "\b \b";
+		*ostr << Cursor::moveLeftOne << ' ' << Cursor::moveLeftOne;
 	else
-		*ostr << "\b\e[0K" << input.c_str() + cursorPos
+		*ostr << Cursor::moveLeftOne << "\e[0K" << input.c_str() + cursorPos
 			  << Cursor::move(Cursor::MoveDirection::LEFT, input.size() - cursorPos);
 }
 
@@ -75,19 +73,19 @@ void CliPrompt::handleLeft()
 
 	if (cursorPos == input.size())
 	{ // above to move off last char
-		// remove static cursor
-		*ostr << " \b";
+	  // remove static cursor
+	  // *ostr << " \b";
 
-		if (!mttRunning)
-		{
-			tickTaskStart(&mtt, flashCursorTickTask, ticksFromHz(6), ticksFromHz(6));
-			mttRunning = true;
-		}
+		// if (!mttRunning)
+		// {
+		// 	tickTaskStart(&mtt, flashCursorTickTask, ticksFromHz(6), ticksFromHz(6));
+		// 	mttRunning = true;
+		// }
 	}
 
-	if (flashState)
-		// prevent leaving behind cursors over the input
-		*ostr << input[cursorPos] << Cursor::moveLeftOne;
+	// if (flashState)
+	// prevent leaving behind cursors over the input
+	// *ostr << input[cursorPos] << Cursor::moveLeftOne;
 
 	*ostr << Cursor::moveLeftOne;
 	--cursorPos;
@@ -98,18 +96,19 @@ void CliPrompt::handleRight()
 	if (input.empty() || cursorPos == input.size())
 		return;
 
-	*ostr << input[cursorPos];
+	// *ostr << input[cursorPos];
+	*ostr << Cursor::moveRightOne;
 
 	if (++cursorPos == input.size())
 	{
 		// at end of line, reprint cursor
-		*ostr << cursor << Cursor::moveLeftOne;
+		// *ostr << cursor << Cursor::moveLeftOne;
 
-		if (mttRunning)
-		{
-			tickTaskStop(&mtt);
-			mttRunning = false;
-		}
+		// if (mttRunning)
+		// {
+		// 	tickTaskStop(&mtt);
+		// 	mttRunning = false;
+		// }
 	}
 }
 
@@ -126,7 +125,7 @@ void CliPrompt::handleUp()
 	// go up one, reset cursorPos, reprint everything
 	input = *--lineHistoryItr;
 	cursorPos = input.size();
-	*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
+	*ostr << "\r\e[2K" << prompt << input; //<< cursor << Cursor::moveLeftOne;
 }
 
 void CliPrompt::handleDown()
@@ -143,14 +142,14 @@ void CliPrompt::handleDown()
 		// we're at the "new" line, restore it
 		input = savedInput;
 		cursorPos = input.size();
-		*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
+		*ostr << "\r\e[2K" << prompt << input; // << cursor << Cursor::moveLeftOne;
 		return;
 	}
 
 	// reset cursorPos, reprint everything
 	input = *lineHistoryItr;
 	cursorPos = input.size();
-	*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
+	*ostr << "\r\e[2K" << prompt << input; // << cursor << Cursor::moveLeftOne;
 }
 
 bool CliPrompt::processKeypad()
@@ -189,7 +188,7 @@ void CliPrompt::processKeyboard()
 	case DVK_CAPS:
 	case DVK_MENU:
 	case DVK_SHIFT:
-		flashCursor();
+		// flashCursor();
 		break;
 
 	case DVK_FOLD:
@@ -232,8 +231,9 @@ void CliPrompt::processKeyboard()
 			*ostr << input.c_str() + cursorPos
 				  << Cursor::move(Cursor::MoveDirection::LEFT, input.size() - cursorPos - 1);
 		}
-		if (++cursorPos == input.size())
-			*ostr << cursor << Cursor::moveLeftOne;
+		++cursorPos;
+		// if (++cursorPos == input.size())
+		// *ostr << cursor << Cursor::moveLeftOne;
 	}
 }
 

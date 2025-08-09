@@ -6,7 +6,7 @@ using StrItr = std::string_view::const_iterator;
 
 void EscapeInUnquotedString(StrItr &itr, std::string &currentToken)
 {
-	// `itr` is pointing at the initial backslash.
+	// `itr` is pointing at the initial `\`.
 	// Only escape spaces, backslashes, and equals.
 	// Otherwise, omit the backslash.
 	switch (*(++itr))
@@ -25,10 +25,42 @@ void EscapeInUnquotedString(StrItr &itr, std::string &currentToken)
 	}
 }
 
+void EscapeInDollarSignSinqleQuoteString(StrItr &itr, std::string &currentToken)
+{
+	// `itr` is pointing at the initial `\`.
+	switch (*(++itr))
+	{
+	case '"':
+		currentToken += '"';
+		break;
+	case '\\':
+		currentToken += '\\';
+		break;
+	case '$':
+		// yes, for some odd reason, (ba)sh doesn't consume the `\` in this case.
+		currentToken += "\\$";
+		break;
+	case 'n':
+		currentToken += '\n';
+		break;
+	case 'e':
+		currentToken += '\e';
+		break;
+	case 't':
+		currentToken += '\t';
+		break;
+	case 'b':
+		currentToken += '\b';
+		break;
+	case 'r':
+		currentToken += '\r';
+		break;
+	}
+}
+
 void EscapeInDoubleQuoteString(StrItr &itr, std::string &currentToken)
 {
-	// `itr` is pointing at the initial backslash.
-	// Only escape backslashes, double-quotes, and dollar signs.
+	// `itr` is pointing at the initial `\`.
 	switch (*(++itr))
 	{
 	case '"':
@@ -47,7 +79,8 @@ void EscapeInDoubleQuoteString(StrItr &itr, std::string &currentToken)
 
 void InsertVariable(StrItr &itr, const StrItr &lineEnd, std::string &currentToken, const Env &env)
 {
-	// `itr` is pointing at the initial `$`
+	// bash treats $1, $2, etc as special variables, we won't for now.
+	// `itr` is pointing at the `$`.
 	// subtitute variables in the lexing phase to avoid the reiteration overhead
 	// during parsing
 	std::string varname;
@@ -61,8 +94,7 @@ void InsertVariable(StrItr &itr, const StrItr &lineEnd, std::string &currentToke
 
 bool LexDoubleQuoteString(StrItr &itr, const StrItr &lineEnd, std::string &currentToken, const Env &env)
 {
-	// When called, itr is pointing at the opening `"`, so increment before
-	// looping.
+	// itr is pointing at the opening `"`.
 	for (++itr; *itr != '"' && itr < lineEnd; ++itr)
 		switch (*itr)
 		{
@@ -87,11 +119,39 @@ bool LexDoubleQuoteString(StrItr &itr, const StrItr &lineEnd, std::string &curre
 	return true;
 }
 
-bool LexSingleQuoteString(StrItr &itr, const StrItr &lineEnd, std::string &currentToken)
+// NOTHING can be escaped in '' strings.
+// don't believe me? run `echo '\'hi\''` and it will print `\hi'` go into "finish the string" mode.
+bool LexSingleQuoteString(StrItr &itr, const StrItr &lineEnd, std::string &currentToken, bool withEscapes = false)
 {
-	// Nothing can be escaped in single-quote strings.
+	// `itr` is pointing at the opening `'`.
 	for (++itr; *itr != '\'' && itr < lineEnd; ++itr)
 		currentToken += *itr;
+
+	if (itr == lineEnd)
+	{
+		std::cerr << "\e[91mshell: closing `'` not found\e[39m\n";
+		return false;
+	}
+
+	return true;
+}
+
+// this is for the $'' form of string literal. unlike "" and '', it will escape characters
+// like newline (\n), escape (\e), tab (\t), backspace (\b), carriage return (\r) etc.
+// like '', it does not perform variable substitution.
+bool LexDollarSignSingleQuoteString(StrItr &itr, const StrItr &lineEnd, std::string &currentToken)
+{
+	// `itr` is pointing at the opening `'`.
+	for (++itr; *itr != '\'' && itr < lineEnd; ++itr)
+		switch (*itr)
+		{
+		case '\\':
+			EscapeInDollarSignSinqleQuoteString(itr, currentToken);
+			break;
+
+		default:
+			currentToken += *itr;
+		}
 
 	if (itr == lineEnd)
 	{
@@ -153,9 +213,18 @@ bool LexLine(std::vector<Token> &tokens, const std::string_view &line, const Env
 			break;
 
 		case '$':
-			// bash treats $1, $2, etc as special variables, we won't for now.
-			InsertVariable(itr, lineEnd, currentToken, env);
+		{
+			const auto next = *(itr + 1);
+			if (next == '\'')
+				LexDollarSignSingleQuoteString(++itr, lineEnd, currentToken);
+			else if (next == '"')
+				// noticed this when playing around with ba(sh):
+				// $"" strings are treated the same as "", so just consume the `$`.
+				LexDoubleQuoteString(++itr, lineEnd, currentToken, env);
+			else
+				InsertVariable(itr, lineEnd, currentToken, env);
 			break;
+		}
 
 		case ';':
 			pushAndClearIfNotEmpty();

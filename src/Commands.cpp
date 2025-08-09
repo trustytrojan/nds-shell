@@ -33,6 +33,12 @@ std::string Context::GetEnv(const std::string &key, const std::string &_default)
 
 void ls(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[91mshell: fs not initialized!\e[39m\n";
+		return;
+	}
+
 	const auto &path = (ctx.args.size() == 1) ? ctx.GetEnv("PWD") : ctx.args[1];
 
 	if (!fs::exists(path))
@@ -54,6 +60,12 @@ void ls(const Context &ctx)
 
 void cd(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[91mshell: fs not initialized!\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() == 1)
 	{
 		ctx.shell.SetEnv("PWD", "/");
@@ -73,18 +85,15 @@ void cd(const Context &ctx)
 
 void cat(const Context &ctx)
 {
-	if (ctx.args.size() == 1)
+	if (!Shell::fsInitialized())
 	{
-		if (&ctx.in == &std::cin)
-		{
-			// this gets you stuck in the cat command,
-			// unless i make stdin nonblocking and use threads
-			// so you can "ctrl+c" by pressing the fold key
-			ctx.err << "\e[91mcat: not using stdin\e[39m\n";
-			return;
-		}
+		ctx.err << "\e[91mshell: fs not initialized!\e[39m\n";
+		return;
+	}
 
-		ctx.out << ctx.in.rdbuf();
+	if (ctx.args.size() < 2)
+	{
+		ctx.err << "args: <filepath>\n";
 		return;
 	}
 
@@ -113,6 +122,12 @@ void cat(const Context &ctx)
 
 void rm(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[91mshell: fs not initialized!\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() == 1)
 	{
 		ctx.err << "args: <filepaths...>\n";
@@ -129,6 +144,7 @@ void rm(const Context &ctx)
 
 void echo(const Context &ctx)
 {
+	// TODO: add -e flag
 	for (auto itr = ctx.args.cbegin() + 1; itr < ctx.args.cend(); ++itr)
 		ctx.out << *itr << ' ';
 	ctx.out << '\n';
@@ -182,6 +198,12 @@ void source(const Context &ctx)
 
 void rename(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[91mshell: fs not initialized!\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() < 3)
 	{
 		ctx.err << "args: <oldpath> <newpath>\n";
@@ -221,6 +243,13 @@ void history(const Context &ctx)
 	if (ctx.args.size() == 2 && ctx.args[1] == "-c")
 	{
 		ctx.shell.ClearLineHistory();
+
+		if (!Shell::fsInitialized())
+		{
+			ctx.err << "\e[91mshell: fs not initialized!\e[39m\n";
+			return;
+		}
+
 		std::error_code ec;
 		if (!fs::remove("/.ndsh_history", ec))
 			ctx.err << "\e[91mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";

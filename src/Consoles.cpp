@@ -1,5 +1,6 @@
 #include "Consoles.hpp"
 
+#include <fcntl.h>
 #include <nds/arm9/console.h>
 #include <sys/iosupport.h>
 
@@ -35,6 +36,8 @@ int con_open(struct _reent *, void *, const char *, int, int)
 
 extern const devoptab_t dotab_stdnull; // from newlib:iosupport.c
 
+void PrintGreeting(int console, bool clearScreen = true);
+
 namespace Consoles
 {
 
@@ -51,6 +54,9 @@ void Init()
 	// Show keyboard on bottom screen (no scrolling animation)
 	keyboardDemoInit()->scrollSpeed = 0;
 	keyboardShow();
+
+	// TODO: make the keyboard have tcsetattr-like apis for disabling
+	// canonical mode (device-local line buffering)!
 }
 
 void InitSingle()
@@ -75,6 +81,10 @@ void InitMulti()
 	for (int i = 16; i < STD_MAX; ++i)
 		devoptab_list[i] = &dotab_stdnull;
 
+	/*
+	TODO: MAKE NDS-SHELL ONLY HAVE 3 CONSOLES FOR THE NEW CONSOLE REWORK
+	*/
+
 	// Init all backgrounds (main & sub) as consoles!
 	for (int i = 0; i < NUM_CONSOLES; ++i)
 	{
@@ -85,16 +95,17 @@ void InitMulti()
 			i % 4, // layer
 			BgType_Text4bpp,
 			BgSize_T_256x256,
-			(mainDisplay ? 20 : 21) + (i % 4), // mapBase
-			3,								   // tileBase
+			(mainDisplay ? 20 : 21) + 2 * (i % 4), // mapBase
+			3,									   // tileBase
 			mainDisplay,
-			true); // loadGraphics
+			true,  // loadGraphics
+			true); // ansiBgColors
 
 		if (!mainDisplay)
 			// Limit height to the top edge of keyboard
 			console.windowHeight = 14;
 
-		if (i != 0 && i != 4)
+		if (i != 0 && i != 1)
 			// Only show the first bg of each display initially
 			bgHide(consoles[i].bgId);
 
@@ -103,14 +114,14 @@ void InitMulti()
 
 		if (i == 0)
 		{ // First console, already attached to STD_OUT and STD_ERR.
-			// Grab the devive through devoptab_list since it's `static` in console.c
+			// Grab the device through devoptab_list since it's `static` in console.c
 			dot = (devoptab_t *)devoptab_list[STD_OUT];
 
 			// Sanity check
 			if (dot != devoptab_list[STD_ERR])
 			{
 				std::cerr << "\e[91mmulticon: stdout & stderr devices are not the same!\e[39m\n";
-				return;
+				__builtin_trap();
 			}
 		}
 		else
@@ -142,8 +153,8 @@ void InitMulti()
 }
 
 // Console/display switching state
-Display focused_display{};
-u8 focused_console{}, top_shown_console{}, bottom_shown_console{4};
+static Display focused_display{};
+static u8 focused_console{}, top_shown_console{}, bottom_shown_console{4};
 
 u8 GetFocusedConsole()
 {
@@ -182,6 +193,7 @@ void switchConsoleLeft()
 
 	bgShow(consoles[--focused_console].bgId);
 	updateShownConsoles();
+	consoleSelect(consoles + focused_console);
 }
 
 void switchConsoleRight()
@@ -203,6 +215,7 @@ void switchConsoleRight()
 
 	bgShow(consoles[++focused_console].bgId);
 	updateShownConsoles();
+	consoleSelect(consoles + focused_console);
 }
 
 void toggleFocusedDisplay()
@@ -217,6 +230,8 @@ void toggleFocusedDisplay()
 	{ // we are switching to the bottom
 		focused_console = bottom_shown_console;
 	}
+
+	consoleSelect(consoles + focused_console);
 }
 
 } // namespace Consoles

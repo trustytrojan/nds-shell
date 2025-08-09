@@ -197,9 +197,7 @@ void Commands::ssh(const Context &ctx)
 			nbytes = libssh2_channel_read(channel, buffer, sizeof(buffer));
 			if (nbytes > 0)
 			{
-				// ctx.out.write(buffer, nbytes);
-				for (char c : std::string_view{buffer, (size_t)nbytes})
-					ctx.out << c; // prevent console from parsing escape sequences, let us see all the characters
+				ctx.out.write(buffer, nbytes);
 			}
 			else if (nbytes < 0 && nbytes != LIBSSH2_ERROR_EAGAIN)
 			{
@@ -210,17 +208,58 @@ void Commands::ssh(const Context &ctx)
 
 			if (ctx.shell.IsFocused())
 			{
-				// Check for keyboard input and send it
 				int key = keyboardUpdate();
-				if (key > 0)
+				if (key > 0 || key < 0) // handle all keys, including special
 				{
-					char c = (char)key;
-					ssize_t nwritten = libssh2_channel_write(channel, &c, 1);
-					if (nwritten < 0 && nwritten != LIBSSH2_ERROR_EAGAIN)
+					std::string seq;
+					switch (key)
 					{
-						libssh2_session_last_error(session, &err_msg, NULL, 0);
-						ctx.err << "Error writing to channel: " << err_msg << std::endl;
+					case DVK_TAB:
+						seq = "\t";
 						break;
+					case DVK_BACKSPACE:
+						seq = "\x7f"; // DEL (common for terminals)
+						break;
+					case DVK_ENTER:
+						seq = "\r"; // CR for SSH
+						break;
+					case DVK_UP:
+						seq = "\e[A";
+						break;
+					case DVK_DOWN:
+						seq = "\e[B";
+						break;
+					case DVK_RIGHT:
+						seq = "\e[C";
+						break;
+					case DVK_LEFT:
+						seq = "\e[D";
+						break;
+					case DVK_CTRL:
+					case DVK_ALT:
+					case DVK_SHIFT:
+					case DVK_CAPS:
+					case DVK_MENU:
+					case DVK_FOLD:
+						// Ignore or handle as needed
+						break;
+					case DVK_SPACE:
+						seq = " ";
+						break;
+					default:
+						if (key > 0 && key < 128)
+							seq = static_cast<char>(key);
+						break;
+					}
+					if (!seq.empty())
+					{
+						ssize_t nwritten = libssh2_channel_write(channel, seq.data(), seq.size());
+						if (nwritten < 0 && nwritten != LIBSSH2_ERROR_EAGAIN)
+						{
+							libssh2_session_last_error(session, &err_msg, NULL, 0);
+							ctx.err << "Error writing to channel: " << err_msg << std::endl;
+							break;
+						}
 					}
 				}
 			}

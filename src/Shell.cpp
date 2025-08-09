@@ -18,23 +18,33 @@ Shell::Shell(const int console)
 	: ostr{Consoles::GetStream(console)},
 	  console{console}
 {
-	if (fs::exists(".ndshrc"))
+	if (fsInitialized() && fs::exists(".ndshrc"))
 		SourceFile(".ndshrc");
 	prompt.setOutputStream(ostr);
-	prompt.setLineHistory(".ndsh_history");
+	if (fsInitialized())
+		prompt.setLineHistory(".ndsh_history");
 }
 
 Shell::~Shell()
 {
 	// save everything afterwards; opening files in append mode corrupts them.
 	// may just be a limitation of dkp's libfat
-	std::ofstream historyFile{".ndsh_history"};
-	for (const auto &line : prompt.getLineHistory())
-		historyFile << line << '\n';
+	if (fsInitialized())
+	{
+		std::ofstream historyFile{".ndsh_history"};
+		for (const auto &line : prompt.getLineHistory())
+			historyFile << line << '\n';
+	}
 }
 
 void Shell::SourceFile(const std::string &filepath)
 {
+	if (!fsInitialized())
+	{
+		ostr << "\e[91mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	std::ifstream file{filepath};
 
 	if (!file)
@@ -120,7 +130,7 @@ void Shell::ProcessLine(std::string_view line)
 
 	// ostr << "\e[90mcommand: '" << command << "'\n";
 
-	if (const auto withExtension{command + ".ndsh"}; fs::exists(withExtension))
+	if (const auto withExtension{command + ".ndsh"}; fsInitialized() && fs::exists(withExtension))
 	{ // Treat .ndsh files as commands!
 		SourceFile(withExtension);
 		return;
