@@ -1,3 +1,1 @@
-SHELL_DEBUG=1
-wifi con hotspot
-ipinfo
+CURL_DEBUG=1

@@ -13,6 +13,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(BUILD_SHARED_LIBS OFF)
 
+option(NDSH_THREADING "Enable multithreading for multiconsole support" ON)
+
 list(APPEND CMAKE_MODULE_PATH "$ENV{DEVKITPRO}/cmake")
 include(Platform/NintendoDS)
 include(FetchContent)
@@ -96,13 +98,21 @@ execute_process(
 
 ## sol2
 set(SOL2_ENABLE_INSTALL OFF)
+add_compile_definitions(SOL_EXCEPTIONS=0)
 FetchContent_Declare(sol2 URL https://github.com/ThePhD/sol2/archive/develop.zip)
 FetchContent_MakeAvailable(sol2)
 
+## nds-shell
 add_compile_options(-fno-rtti -fno-exceptions)
-add_compile_definitions(SOL_EXCEPTIONS=0)
-include_directories(include ${curl_SOURCE_DIR}/include)
+include_directories(include)
 link_libraries(dswifi9 fat lua_static sol2 libcurl)
+
+if(NDSH_THREADING)
+	add_compile_definitions(NDSH_THREADING)
+	message("threading on")
+else()
+	message("threading off!!!!!!!!")
+endif()
 
 file(GLOB_RECURSE SOURCES src/**)
 add_executable(nds-shell ${SOURCES})

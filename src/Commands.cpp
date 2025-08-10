@@ -33,6 +33,12 @@ std::string Context::GetEnv(const std::string &key, const std::string &_default)
 
 void ls(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	const auto &path = (ctx.args.size() == 1) ? ctx.GetEnv("PWD") : ctx.args[1];
 
 	if (!fs::exists(path))
@@ -54,6 +60,12 @@ void ls(const Context &ctx)
 
 void cd(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() == 1)
 	{
 		ctx.shell.SetEnv("PWD", "/");
@@ -73,6 +85,12 @@ void cd(const Context &ctx)
 
 void cat(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() == 1)
 	{
 		if (&ctx.in == &std::cin)
@@ -89,7 +107,7 @@ void cat(const Context &ctx)
 	}
 
 	std::error_code ec;
-	if (!fs::exists(ctx.args[1], ec) && !ec)
+	if (!fs::exists(ctx.GetEnv("PWD") + '/' + ctx.args[1], ec) && !ec)
 	{
 		ctx.err << "\e[41mcat: file does not exist: " << ctx.args[1] << "\e[39m\n";
 		return;
@@ -113,6 +131,12 @@ void cat(const Context &ctx)
 
 void rm(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() == 1)
 	{
 		ctx.err << "args: <filepaths...>\n";
@@ -171,6 +195,12 @@ void ipinfo(const Context &ctx)
 
 void source(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() < 2)
 	{
 		ctx.err << "args: <filepath>\n";
@@ -182,6 +212,12 @@ void source(const Context &ctx)
 
 void rename(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() < 3)
 	{
 		ctx.err << "args: <oldpath> <newpath>\n";
@@ -221,9 +257,12 @@ void history(const Context &ctx)
 	if (ctx.args.size() == 2 && ctx.args[1] == "-c")
 	{
 		ctx.shell.ClearLineHistory();
-		std::error_code ec;
-		if (!fs::remove("/.ndsh_history", ec))
-			ctx.err << "\e[41mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
+		if (Shell::fsInitialized())
+		{
+			std::error_code ec;
+			if (!fs::remove("/.ndsh_history", ec))
+				ctx.err << "\e[41mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
+		}
 		return;
 	}
 

@@ -1,5 +1,6 @@
 #include "CliPrompt.hpp"
 #include "EscapeSequences.hpp"
+#include "Shell.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -155,6 +156,9 @@ void CliPrompt::handleDown()
 
 bool CliPrompt::processKeypad()
 {
+#ifndef NDSH_THREADING
+	scanKeys();
+#endif
 	const auto keys = keysDown();
 
 	if (keys & (KEY_A | KEY_START))
@@ -251,6 +255,9 @@ void CliPrompt::update()
 void CliPrompt::setLineHistory(const std::string &filename)
 {
 	lineHistory.clear();
+
+	if (!Shell::fsInitialized())
+		return;
 
 	std::ifstream lineHistoryFile{filename};
 	if (!lineHistoryFile)

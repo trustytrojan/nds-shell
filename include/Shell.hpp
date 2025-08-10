@@ -15,6 +15,10 @@ using Env = std::unordered_map<std::string, std::string>;
 
 class Shell
 {
+public:
+	static bool fsInitialized();
+
+private:
 	std::ostream &ostr;
 
 	// global environment

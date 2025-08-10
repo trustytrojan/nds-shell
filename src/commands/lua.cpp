@@ -39,7 +39,11 @@ void Commands::lua(const Context &ctx)
 
 	while (pmMainLoop())
 	{
+#ifdef NDSH_THREADING
 		threadYield();
+#else
+		swiWaitForVBlank();
+#endif
 
 		if (!ctx.shell.IsFocused())
 			continue;
