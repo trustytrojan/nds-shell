@@ -2,6 +2,7 @@
 
 #include <curl/curl.h>
 
+#ifdef CURL_DEBUG
 static int curl_debug(CURL *, curl_infotype type, char *const data, const size_t size, void *userp)
 {
 	if (type != CURLINFO_TEXT)
@@ -13,6 +14,7 @@ static int curl_debug(CURL *, curl_infotype type, char *const data, const size_t
 	ostr << "\e[39m";
 	return 0;
 }
+#endif
 
 static curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr)
 {
@@ -70,6 +72,7 @@ void Commands::curl(const Context &ctx)
 	char curl_errbuf[CURL_ERROR_SIZE]{};
 	curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, curl_errbuf);
 
+#ifdef CURL_DEBUG
 	// debug output
 	if (ctx.env.contains("CURL_DEBUG"))
 	{
@@ -77,6 +80,7 @@ void Commands::curl(const Context &ctx)
 		curl_easy_setopt(easy, CURLOPT_DEBUGFUNCTION, curl_debug);
 		curl_easy_setopt(easy, CURLOPT_DEBUGDATA, &ctx.err);
 	}
+#endif
 
 #ifdef NDSH_THREADING
 	// use a multi to make the easy nonblocking!
