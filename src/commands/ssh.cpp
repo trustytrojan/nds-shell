@@ -1,4 +1,5 @@
 #include "Commands.hpp"
+#include "NetUtils.hpp"
 #include <libssh2.h>
 #include <nds.h>
 
@@ -15,15 +16,14 @@ void Commands::ssh(const Context &ctx)
 {
 	if (ctx.args.size() < 2)
 	{
-		ctx.err << "usage: ssh <address>" << std::endl;
+		ctx.err << "usage: ssh <address>\n";
 		return;
 	}
 
-	std::string address_arg = ctx.args[1];
-	std::string user;
-	std::string address;
+	const auto &address_arg = ctx.args[1];
+	std::string user, address;
 
-	size_t at_pos = address_arg.find('@');
+	const auto at_pos = address_arg.find('@');
 	if (at_pos != std::string::npos)
 	{
 		user = address_arg.substr(0, at_pos);
@@ -43,33 +43,28 @@ void Commands::ssh(const Context &ctx)
 	{
 		if (libssh2_init(0))
 		{
-			ctx.err << "libssh2 initialization failed" << std::endl;
+			ctx.err << "libssh2 initialization failed\n";
 			break;
 		}
 
 		// Create socket and connect
-		struct hostent *host = gethostbyname(address.c_str());
-		if (!host)
+		sockaddr_in sin;
+		if (const auto err = NetUtils::ParseAddress(sin, address, 22); err != NetUtils::Error::NO_ERROR)
 		{
-			ctx.err << "Could not resolve host: " << address << std::endl;
+			ctx.err << "Could not parse address: " << NetUtils::StrError(err) << '\n';
 			break;
 		}
 
 		sock = socket(AF_INET, SOCK_STREAM, 0);
 		if (sock < 0)
 		{
-			ctx.err << "Failed to create socket: " << strerror(errno) << std::endl;
+			ctx.err << "Failed to create socket: " << strerror(errno) << '\n';
 			break;
 		}
 
-		struct sockaddr_in sin;
-		sin.sin_family = AF_INET;
-		sin.sin_port = htons(22);
-		sin.sin_addr = *(struct in_addr *)host->h_addr_list[0];
-
 		if (connect(sock, (struct sockaddr *)(&sin), sizeof(struct sockaddr_in)) != 0)
 		{
-			ctx.err << "Failed to connect to " << address << ": " << strerror(errno) << std::endl;
+			ctx.err << "Failed to connect to " << address << ": " << strerror(errno) << '\n';
 			break;
 		}
 
@@ -77,7 +72,7 @@ void Commands::ssh(const Context &ctx)
 		session = libssh2_session_init();
 		if (!session)
 		{
-			ctx.err << "Failed to create libssh2 session" << std::endl;
+			ctx.err << "Failed to create libssh2 session\n";
 			break;
 		}
 
@@ -85,10 +80,10 @@ void Commands::ssh(const Context &ctx)
 		if (libssh2_session_handshake(session, sock))
 		{
 			libssh2_session_last_error(session, &err_msg, NULL, 0);
-			ctx.err << "SSH handshake failed: " << err_msg << std::endl;
+			ctx.err << "SSH handshake failed: " << err_msg << '\n';
 			break;
 		}
-		ctx.out << "Connected to " << address << std::endl;
+		ctx.out << "Connected to " << address << '\n';
 
 		// Authentication
 		// IMPORTANT: MbedTLS expects private keys to be in PEM format, NOT OPENSSH FORMAT!
@@ -103,7 +98,7 @@ void Commands::ssh(const Context &ctx)
 			const char *userauthlist = libssh2_userauth_list(session, user.c_str(), user.length());
 			if (strstr(userauthlist, "password") == NULL)
 			{
-				ctx.err << "ssh: passwd login not allowed" << std::endl;
+				ctx.err << "ssh: passwd login not allowed\n";
 				break;
 			}
 
@@ -120,7 +115,7 @@ void Commands::ssh(const Context &ctx)
 					{
 						if (key == '\n' || key == '\r')
 						{
-							ctx.out << std::endl;
+							ctx.out << '\n';
 							break;
 						}
 						else if (key == '\b')
@@ -144,18 +139,18 @@ void Commands::ssh(const Context &ctx)
 			if (libssh2_userauth_password(session, user.c_str(), password.c_str()))
 			{
 				libssh2_session_last_error(session, &err_msg, NULL, 0);
-				ctx.err << "ssh: Password authentication failed: " << err_msg << std::endl;
+				ctx.err << "ssh: Password authentication failed: " << err_msg << '\n';
 				break;
 			}
 		}
-		ctx.out << "Authentication successful." << std::endl;
+		ctx.out << "Authentication successful.\n";
 
 		// Open channel
 		channel = libssh2_channel_open_session(session);
 		if (!channel)
 		{
 			libssh2_session_last_error(session, &err_msg, NULL, 0);
-			ctx.err << "Failed to open channel: " << err_msg << std::endl;
+			ctx.err << "Failed to open channel: " << err_msg << '\n';
 			break;
 		}
 
@@ -163,7 +158,7 @@ void Commands::ssh(const Context &ctx)
 		if (libssh2_channel_request_pty(channel, "vanilla"))
 		{
 			libssh2_session_last_error(session, &err_msg, NULL, 0);
-			ctx.err << "Failed to request PTY: " << err_msg << std::endl;
+			ctx.err << "Failed to request PTY: " << err_msg << '\n';
 			break;
 		}
 
@@ -171,10 +166,10 @@ void Commands::ssh(const Context &ctx)
 		if (libssh2_channel_shell(channel))
 		{
 			libssh2_session_last_error(session, &err_msg, NULL, 0);
-			ctx.err << "Failed to request shell: " << err_msg << std::endl;
+			ctx.err << "Failed to request shell: " << err_msg << '\n';
 			break;
 		}
-		ctx.out << "Shell opened." << std::endl;
+		ctx.out << "Shell opened.\n";
 
 		libssh2_session_set_blocking(session, 0);
 		libssh2_channel_set_blocking(channel, 0);
@@ -189,93 +184,81 @@ void Commands::ssh(const Context &ctx)
 		while (!libssh2_channel_eof(channel) && pmMainLoop())
 		{
 			threadYield();
-
 			char buffer[1024];
-			ssize_t nbytes;
 
 			// Read from channel
-			nbytes = libssh2_channel_read(channel, buffer, sizeof(buffer));
+			const auto nbytes = libssh2_channel_read(channel, buffer, sizeof(buffer));
 			if (nbytes > 0)
 			{
-				ctx.out.write(buffer, nbytes);
+				for (const auto c : std::string_view{buffer, static_cast<size_t>(nbytes)})
+					if (c == '\b')
+						ctx.out << "\e[D"; // move left, since the console does nothing with backspaces for now
+					// uncomment this else-if to see all special ASCII characters for debugging
+					/*else if (c < 32 || c == 127)
+						ctx.out << '(' << (int)c << ')';*/
+					else
+						ctx.out << c;
 			}
 			else if (nbytes < 0 && nbytes != LIBSSH2_ERROR_EAGAIN)
 			{
 				libssh2_session_last_error(session, &err_msg, NULL, 0);
-				ctx.err << "Error reading from channel: " << err_msg << std::endl;
+				ctx.err << "Error reading from channel: " << err_msg << '\n';
 				break;
 			}
 
-			if (ctx.shell.IsFocused())
+			// Don't process input if not focused
+			if (!ctx.shell.IsFocused())
+				continue;
+
+			std::string seq;
+			switch (const auto key = keyboardUpdate())
 			{
-				int key = keyboardUpdate();
-				if (key > 0 || key < 0) // handle all keys, including special
-				{
-					std::string seq;
-					switch (key)
-					{
-					case DVK_TAB:
-						seq = "\t";
-						break;
-					case DVK_BACKSPACE:
-						seq = "\x7f"; // DEL (common for terminals)
-						break;
-					case DVK_ENTER:
-						seq = "\r"; // CR for SSH
-						break;
-					case DVK_UP:
-						seq = "\e[A";
-						break;
-					case DVK_DOWN:
-						seq = "\e[B";
-						break;
-					case DVK_RIGHT:
-						seq = "\e[C";
-						break;
-					case DVK_LEFT:
-						seq = "\e[D";
-						break;
-					case DVK_CTRL:
-					case DVK_ALT:
-					case DVK_SHIFT:
-					case DVK_CAPS:
-					case DVK_MENU:
-					case DVK_FOLD:
-						// Ignore or handle as needed
-						break;
-					case DVK_SPACE:
-						seq = " ";
-						break;
-					default:
-						if (key > 0 && key < 128)
-							seq = static_cast<char>(key);
-						break;
-					}
-					if (!seq.empty())
-					{
-						ssize_t nwritten = libssh2_channel_write(channel, seq.data(), seq.size());
-						if (nwritten < 0 && nwritten != LIBSSH2_ERROR_EAGAIN)
-						{
-							libssh2_session_last_error(session, &err_msg, NULL, 0);
-							ctx.err << "Error writing to channel: " << err_msg << std::endl;
-							break;
-						}
-					}
-				}
+			// make arrow keys work
+			case DVK_UP:
+				seq = "\e[A";
+				break;
+			case DVK_DOWN:
+				seq = "\e[B";
+				break;
+			case DVK_RIGHT:
+				seq = "\e[C";
+				break;
+			case DVK_LEFT:
+				seq = "\e[D";
+				break;
+			case DVK_FOLD:
+				seq = '\e';
+				break;
+			default:
+				if (key > 0 && key < 128)
+					seq = key;
+			}
+
+			if (seq.empty())
+				continue;
+
+			const auto nwritten = libssh2_channel_write(channel, seq.data(), seq.size());
+			if (nwritten < 0 && nwritten != LIBSSH2_ERROR_EAGAIN)
+			{
+				libssh2_session_last_error(session, &err_msg, NULL, 0);
+				ctx.err << "Error writing to channel: " << err_msg << '\n';
+				break;
 			}
 		}
-	} while (0);
+	} while (false);
 
 	if (channel)
 	{
 		libssh2_channel_close(channel);
 		libssh2_channel_free(channel);
 	}
+
 	if (session)
 	{
 		libssh2_session_disconnect(session, "Normal Shutdown");
 		libssh2_session_free(session);
 	}
+
 	if (sock >= 0)
 		close(sock);
 	libssh2_exit();
