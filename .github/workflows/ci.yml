@@ -17,7 +17,7 @@ jobs:
       - name: Uninstall system libnds, build and install my fork
         run: |
           sudo dkp-pacman -Rdd libnds --noconfirm
-          git clone https://github.com/trustytrojan/libnds -b ansi-colors
+          git clone https://github.com/trustytrojan/libnds -b console-rework
           cd libnds
           sudo -E make install -j$(nproc)
 
