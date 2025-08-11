@@ -28,17 +28,15 @@ Shell::Shell(const int console)
 
 Shell::~Shell()
 {
-	if (!fsInitialized())
+	// allow disabling history saving, melonDS freezes upon writing any file to disk
+	if (!fsInitialized() || env.contains("DONT_SAVE_HISTORY"))
 		return;
 
 	// save everything afterwards; opening files in append mode corrupts them.
 	// may just be a limitation of dkp's libfat
-	if (fsInitialized())
-	{
-		std::ofstream historyFile{".ndsh_history"};
-		for (const auto &line : prompt.getLineHistory())
-			historyFile << line << '\n';
-	}
+	std::ofstream historyFile{".ndsh_history"};
+	for (const auto &line : prompt.getLineHistory())
+		historyFile << line << '\n';
 }
 
 void Shell::SourceFile(const std::string &filepath)
@@ -57,7 +55,6 @@ void Shell::SourceFile(const std::string &filepath)
 	}
 
 	std::ifstream file{filepath};
-
 	if (!file)
 	{
 		ostr << "\e[91mshell: cannot open file: " << filepath << "\e[39m\n";
