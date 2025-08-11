@@ -9,17 +9,21 @@ project(nds-shell LANGUAGES CXX)
 set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(BUILD_SHARED_LIBS OFF)
+
+option(NDSH_THREADING "Enable multithreading for multiconsole support" ON)
+
+macro(setcb var val)
+	set(${var} ${val} CACHE BOOL "" FORCE)
+endmacro()
 
 list(APPEND CMAKE_MODULE_PATH "$ENV{DEVKITPRO}/cmake")
 include(Platform/NintendoDS)
 include(FetchContent)
 
 ## mbedtls
-set(ENABLE_PROGRAMS OFF)
-set(ENABLE_TESTING OFF)
+setcb(ENABLE_PROGRAMS OFF)
+setcb(ENABLE_TESTING OFF)
 add_compile_definitions(
 	_POSIX_VERSION=202507 # just needs to be something greater than the 2000s
 	MBEDTLS_TEST_SW_INET_PTON # libnds doesn't provide inet_pton()
@@ -31,59 +35,65 @@ FetchContent_MakeAvailable(mbedtls)
 list(APPEND CMAKE_PREFIX_PATH "${mbedtls_BINARY_DIR}/cmake")
 
 ## curl
-set(BUILD_LIBCURL_DOCS OFF)
-set(BUILD_MISC_DOCS OFF)
-set(BUILD_TESTING OFF)
-set(BUILD_EXAMPLES OFF)
-set(BUILD_CURL_EXE OFF)
-set(BUILD_STATIC_LIBS ON)
+setcb(BUILD_LIBCURL_DOCS OFF)
+setcb(BUILD_MISC_DOCS OFF)
+setcb(BUILD_TESTING OFF)
+setcb(BUILD_EXAMPLES OFF)
+setcb(BUILD_CURL_EXE OFF)
+setcb(BUILD_STATIC_LIBS ON)
 
-set(CURL_ENABLE_EXPORT_TARGET OFF)
-set(CURL_USE_LIBSSH2 OFF)
-set(CURL_USE_LIBPSL OFF)
-set(CURL_DISABLE_INSTALL ON)
-set(CURL_DISABLE_BINDLOCAL ON)
-set(CURL_DISABLE_SOCKETPAIR ON)
+setcb(CURL_ENABLE_EXPORT_TARGET OFF)
+setcb(CURL_USE_LIBSSH2 OFF)
+setcb(CURL_USE_LIBPSL OFF)
+setcb(CURL_DISABLE_INSTALL ON)
+setcb(CURL_DISABLE_BINDLOCAL ON)
+setcb(CURL_DISABLE_SOCKETPAIR ON)
 
-set(CURL_USE_MBEDTLS ON)
+## THIS SETTING IS THE DECIDING FACTOR FOR WHETHER HTTPS WILL WORK IN THREADS!!!!!!!
+# for some reason allowing verbose strings (which allows for debugging curl code)
+# uses too much thread-local storage???? https://github.com/devkitPro/calico/pull/6
+# the culprit could also be mbedtls; still better off just disabling this than breaking my head over it.
+setcb(CURL_DISABLE_VERBOSE_STRINGS ON)
+
+setcb(CURL_USE_MBEDTLS ON)
 set(MBEDTLS_LIBRARIES mbedx509 mbedcrypto mbedtls)
 
-set(ENABLE_CURL_MANUAL OFF)
-set(ENABLE_UNIX_SOCKETS OFF)
-set(ENABLE_IPV6 OFF)
-set(ENABLE_THREADED_RESOLVER OFF)
-set(ENABLE_ARES OFF)
+setcb(ENABLE_CURL_MANUAL OFF)
+setcb(ENABLE_UNIX_SOCKETS OFF)
+setcb(ENABLE_IPV6 OFF)
+setcb(ENABLE_THREADED_RESOLVER OFF)
+setcb(ENABLE_ARES OFF)
 
-set(HAVE_ATOMIC OFF)
-set(HAVE_BASENAME OFF)
+setcb(HAVE_ATOMIC OFF)
+setcb(HAVE_BASENAME OFF)
 
 # nonblock
-set(HAVE_FCNTL_O_NONBLOCK OFF)
-set(HAVE_SETSOCKOPT_SO_NONBLOCK OFF)
-set(HAVE_IOCTL_FIONBIO ON)
+setcb(HAVE_FCNTL_O_NONBLOCK OFF)
+setcb(HAVE_SETSOCKOPT_SO_NONBLOCK OFF)
+setcb(HAVE_IOCTL_FIONBIO ON)
 
 # socket api
-set(HAVE_SOCKET ON)
-set(HAVE_SELECT ON)
-set(HAVE_RECV ON)
-set(HAVE_SEND ON)
-set(HAVE_CLOSESOCKET ON)
-set(HAVE_GETSOCKNAME ON)
-set(HAVE_GETPEERNAME ON)
+setcb(HAVE_SOCKET ON)
+setcb(HAVE_SELECT ON)
+setcb(HAVE_RECV ON)
+setcb(HAVE_SEND ON)
+setcb(HAVE_CLOSESOCKET ON)
+setcb(HAVE_GETSOCKNAME ON)
+setcb(HAVE_GETPEERNAME ON)
 
-set(HTTP_ONLY ON) # http(s), ws(s)
-set(PICKY_COMPILER OFF) # -Wpedantic is annoying
-set(USE_MANUAL OFF)
+setcb(HTTP_ONLY ON) # http(s), ws(s)
+setcb(PICKY_COMPILER OFF) # -Wpedantic is annoying
+setcb(USE_MANUAL OFF)
 
 FetchContent_Declare(curl URL https://github.com/trustytrojan/curl/archive/8.15.0-mbedtls.zip)
 FetchContent_MakeAvailable(curl)
 
 ## lua
-set(LUA_SUPPORT_DL OFF)
-set(LUA_ENABLE_SHARED OFF)
-set(LUA_ENABLE_TESTING OFF)
-set(LUA_BUILD_BINARY OFF)
-set(LUA_BUILD_COMPILER OFF)
+setcb(LUA_SUPPORT_DL OFF)
+setcb(LUA_ENABLE_SHARED OFF)
+setcb(LUA_ENABLE_TESTING OFF)
+setcb(LUA_BUILD_BINARY OFF)
+setcb(LUA_BUILD_COMPILER OFF)
 link_libraries(m) # has to be done manually for now
 FetchContent_Declare(lua URL https://github.com/walterschell/Lua/archive/master.zip)
 FetchContent_MakeAvailable(lua)
@@ -95,19 +105,19 @@ execute_process(
 )
 
 ## sol2
-set(SOL2_ENABLE_INSTALL OFF)
+setcb(SOL2_ENABLE_INSTALL OFF)
 add_compile_definitions(SOL_EXCEPTIONS=0)
 FetchContent_Declare(sol2 URL https://github.com/ThePhD/sol2/archive/develop.zip)
 FetchContent_MakeAvailable(sol2)
 
 ## libssh2
-set(CRYPTO_BACKEND mbedTLS)
-set(ENABLE_ZLIB_COMPRESSION OFF)
-set(CLEAR_MEMORY OFF)
-set(BUILD_EXAMPLES OFF)
-set(BUILD_TESTING OFF)
-set(MBEDTLS_INCLUDE_DIR ${mbedtls_SOURCE_DIR}/include)
-set(MBEDCRYPTO_LIBRARY mbedcrypto)
+setcb(CRYPTO_BACKEND mbedTLS)
+setcb(ENABLE_ZLIB_COMPRESSION OFF)
+setcb(CLEAR_MEMORY OFF)
+setcb(BUILD_EXAMPLES OFF)
+setcb(BUILD_TESTING OFF)
+# setcb(MBEDTLS_INCLUDE_DIR ${mbedtls_SOURCE_DIR}/include)
+# setcb(MBEDCRYPTO_LIBRARY mbedcrypto)
 add_compile_definitions(LIBSSH2_MBEDTLS _3DS)
 FetchContent_Declare(libssh2 URL https://github.com/trustytrojan/libssh2/archive/1.11.1-nds.zip)
 FetchContent_MakeAvailable(libssh2)
@@ -116,6 +126,18 @@ FetchContent_MakeAvailable(libssh2)
 add_compile_options(-fno-rtti -fno-exceptions)
 include_directories(include)
 link_libraries(dswifi9 fat lua_static sol2 libcurl libssh2)
+
+if(NDSH_THREADING)
+	add_compile_definitions(NDSH_THREADING)
+	message("********************* THREADING IS ON *********************")
+else()
+	message("********************* THREADING IS OFF *********************")
+endif()
+
+if(NOT CURL_DISABLE_VERBOSE_STRINGS)
+	message("********************* CURL VERBOSE STRINGS ARE ON! THREADED HTTPS WILL CRASH!!! *********************")
+	add_compile_definitions(CURL_DEBUG)
+endif()
 
 file(GLOB_RECURSE SOURCES src/**)
 add_executable(nds-shell ${SOURCES})

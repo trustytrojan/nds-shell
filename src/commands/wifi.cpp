@@ -58,7 +58,14 @@ static std::span<WlanBssDesc> ScanAPs(const Commands::Context &ctx)
 
 	while (pmMainLoop() && !(aplist = wfcGetScanBssList(&count)))
 	{
+#ifdef NDSH_THREADING
 		threadYield();
+		if (!ctx.shell.IsFocused())
+			continue;
+#else
+		swiWaitForVBlank();
+		scanKeys();
+#endif
 
 		if (keysDown() & KEY_START)
 		{
@@ -82,10 +89,14 @@ int GetHiddenSSID(const Commands::Context &ctx, WlanBssDesc &ap)
 	bool ok;
 	do
 	{
+#ifdef NDSH_THREADING
 		threadYield();
-
 		if (!ctx.shell.IsFocused())
 			continue;
+#else
+		swiWaitForVBlank();
+		scanKeys();
+#endif
 
 		if (keysDown() & KEY_START)
 			// user canceled
@@ -131,10 +142,14 @@ int GetPassword(const Commands::Context &ctx, WlanBssDesc &ap)
 	bool ok;
 	do
 	{
+#ifdef NDSH_THREADING
 		threadYield();
-
 		if (!ctx.shell.IsFocused())
 			continue;
+#else
+		swiWaitForVBlank();
+		scanKeys();
+#endif
 
 		if (keysDown() & KEY_START)
 			// user canceled
@@ -192,7 +207,13 @@ static int WaitForConnection(std::ostream &out)
 	for (; pmMainLoop() && status != ASSOCSTATUS_ASSOCIATED && status != ASSOCSTATUS_CANNOTCONNECT;
 		 status = Wifi_AssocStatus())
 	{
+#ifdef NDSH_THREADING
 		threadYield();
+		// TODO: check console focus
+#else
+		swiWaitForVBlank();
+		scanKeys();
+#endif
 
 		if (keysDown() & KEY_START)
 			// user canceled

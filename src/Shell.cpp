@@ -18,15 +18,19 @@ Shell::Shell(const int console)
 	: ostr{Consoles::GetStream(console)},
 	  console{console}
 {
-	if (fsInitialized() && fs::exists(".ndshrc"))
-		SourceFile(".ndshrc");
 	prompt.setOutputStream(ostr);
-	if (fsInitialized())
-		prompt.setLineHistory(".ndsh_history");
+	if (!fsInitialized())
+		return;
+	prompt.setLineHistory(".ndsh_history");
+	if (fs::exists(".ndshrc"))
+		SourceFile(".ndshrc");
 }
 
 Shell::~Shell()
 {
+	if (!fsInitialized())
+		return;
+
 	// save everything afterwards; opening files in append mode corrupts them.
 	// may just be a limitation of dkp's libfat
 	if (fsInitialized())
@@ -41,7 +45,14 @@ void Shell::SourceFile(const std::string &filepath)
 {
 	if (!fsInitialized())
 	{
-		ostr << "\e[91mshell: fs not initialized\e[39m\n";
+		ostr << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
+	std::error_code ec;
+	if (!fs::exists(filepath, ec))
+	{
+		ostr << "\r[41mshell: file does not exist: " << filepath << "\e[39m\n";
 		return;
 	}
 
@@ -165,6 +176,12 @@ void Shell::ResetStreams()
 
 void Shell::RedirectOutput(int fd, const std::string &filename)
 {
+	if (!fsInitialized())
+	{
+		ostr << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (fd == 1)
 	{
 		outf.open(filename);
@@ -189,6 +206,12 @@ void Shell::RedirectOutput(int fd, const std::string &filename)
 
 void Shell::RedirectInput(int fd, const std::string &filename)
 {
+	if (!fsInitialized())
+	{
+		ostr << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	inf.open(filename);
 	if (!inf)
 	{
@@ -208,10 +231,14 @@ void Shell::StartPrompt()
 
 	while (pmMainLoop() && !shouldExit)
 	{
+#ifdef NDSH_THREADING
 		threadYield();
 
 		if (!Consoles::IsFocused(console))
 			continue;
+#else
+		swiWaitForVBlank();
+#endif
 
 		prompt.update();
 

@@ -72,7 +72,11 @@ void Commands::tcp(const Context &ctx)
 
 	while (pmMainLoop() && !shouldExit)
 	{
+#ifdef NDSH_THREADING
 		threadYield();
+#else
+		swiWaitForVBlank();
+#endif
 
 		if (ctx.shell.IsFocused())
 		{
