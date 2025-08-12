@@ -123,8 +123,12 @@ FetchContent_Declare(libssh2 URL https://github.com/trustytrojan/libssh2/archive
 FetchContent_MakeAvailable(libssh2)
 
 ## libtelnet
-FetchContent_Declare(telnet URL https://github.com/EmergReanimator/libtelnet/archive/develop.zip)
-FetchContent_MakeAvailable(telnet)
+setcb(LIBTELNET_BUILD_UTIL OFF)
+setcb(LIBTELNET_BUILD_DOC OFF)
+setcb(LIBTELNET_BUILD_TEST OFF)
+setcb(LIBTELNET_INSTALL OFF)
+FetchContent_Declare(libtelnet URL https://github.com/trustytrojan/libtelnet/archive/cmake-changes.zip)
+FetchContent_MakeAvailable(libtelnet)
 
 ## nds-shell
 add_compile_options(-fno-rtti -fno-exceptions)
