@@ -33,11 +33,17 @@ std::string Context::GetEnv(const std::string &key, const std::string &_default)
 
 void ls(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	const auto &path = (ctx.args.size() == 1) ? ctx.GetEnv("PWD") : ctx.args[1];
 
 	if (!fs::exists(path))
 	{
-		ctx.err << "\e[41mpath does not exist\e[39m\n";
+		ctx.err << "\e[91mpath does not exist\e[39m\n";
 		return;
 	}
 
@@ -45,7 +51,7 @@ void ls(const Context &ctx)
 	{
 		const auto filename = entry.path().filename().string();
 		if (entry.is_directory())
-			ctx.out << "\e[44m" << filename << "\e[39m ";
+			ctx.out << "\e[94m" << filename << "\e[39m ";
 		else
 			ctx.out << filename << ' ';
 		ctx.out << '\n';
@@ -54,6 +60,12 @@ void ls(const Context &ctx)
 
 void cd(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() == 1)
 	{
 		ctx.shell.SetEnv("PWD", "/");
@@ -64,7 +76,7 @@ void cd(const Context &ctx)
 
 	if (!fs::exists(path))
 	{
-		ctx.err << "\e[41mpath does not exist\e[39m\n";
+		ctx.err << "\e[91mpath does not exist\e[39m\n";
 		return;
 	}
 
@@ -73,30 +85,33 @@ void cd(const Context &ctx)
 
 void cat(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() == 1)
 	{
-		if (&ctx.in == &std::cin)
-		{
-			// this gets you stuck in the cat command,
-			// unless i make stdin nonblocking and use threads
-			// so you can "ctrl+c" by pressing the fold key
-			ctx.err << "\e[41mcat: not using stdin\e[39m\n";
-			return;
-		}
+		ctx.err << "\e[91mshell: fs not initialized!\e[39m\n";
+		return;
+	}
 
-		ctx.out << ctx.in.rdbuf();
+	if (ctx.args.size() < 2)
+	{
+		ctx.err << "args: <filepath>\n";
 		return;
 	}
 
 	std::error_code ec;
-	if (!fs::exists(ctx.args[1], ec) && !ec)
+	if (!fs::exists(ctx.GetEnv("PWD") + '/' + ctx.args[1], ec) && !ec)
 	{
-		ctx.err << "\e[41mcat: file does not exist: " << ctx.args[1] << "\e[39m\n";
+		ctx.err << "\e[91mcat: file does not exist: " << ctx.args[1] << "\e[39m\n";
 		return;
 	}
 	else if (ec)
 	{
-		ctx.err << "\e[41mcat: " << ec.message() << "\e[39m\n";
+		ctx.err << "\e[91mcat: " << ec.message() << "\e[39m\n";
 		return;
 	}
 
@@ -104,7 +119,7 @@ void cat(const Context &ctx)
 
 	if (!file)
 	{
-		ctx.err << "\e[41mcat: cannot open file: " << ctx.args[1] << "\e[39m\n";
+		ctx.err << "\e[91mcat: cannot open file: " << ctx.args[1] << "\e[39m\n";
 		return;
 	}
 
@@ -113,6 +128,12 @@ void cat(const Context &ctx)
 
 void rm(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() == 1)
 	{
 		ctx.err << "args: <filepaths...>\n";
@@ -123,12 +144,13 @@ void rm(const Context &ctx)
 	{
 		std::error_code ec;
 		if (!fs::remove(ctx.args[1], ec))
-			ctx.err << "\e[41mrm: failed to remove: '" << ctx.args[1] << "': " << ec.message() << "\e[39m\n";
+			ctx.err << "\e[91mrm: failed to remove: '" << ctx.args[1] << "': " << ec.message() << "\e[39m\n";
 	}
 }
 
 void echo(const Context &ctx)
 {
+	// TODO: add -e flag
 	for (auto itr = ctx.args.cbegin() + 1; itr < ctx.args.cend(); ++itr)
 		ctx.out << *itr << ' ';
 	ctx.out << '\n';
@@ -145,7 +167,7 @@ void dns(const Context &ctx)
 	const auto host = gethostbyname(ctx.args[1].c_str());
 	if (!host)
 	{
-		ctx.err << "\e[41mdns: gethostbyname: " << strerror(errno) << "\e[39m";
+		ctx.err << "\e[91mdns: gethostbyname: " << strerror(errno) << "\e[39m";
 		return;
 	}
 
@@ -171,6 +193,12 @@ void ipinfo(const Context &ctx)
 
 void source(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() < 2)
 	{
 		ctx.err << "args: <filepath>\n";
@@ -182,6 +210,12 @@ void source(const Context &ctx)
 
 void rename(const Context &ctx)
 {
+	if (!Shell::fsInitialized())
+	{
+		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		return;
+	}
+
 	if (ctx.args.size() < 3)
 	{
 		ctx.err << "args: <oldpath> <newpath>\n";
@@ -191,7 +225,7 @@ void rename(const Context &ctx)
 	std::error_code ec;
 	fs::rename(ctx.args[1], ctx.args[2], ec);
 	if (ec)
-		ctx.err << "\e[41mrename: " << ec.message() << "\e[39m\n";
+		ctx.err << "\e[91mrename: " << ec.message() << "\e[39m\n";
 }
 
 void pwd(const Context &ctx)
@@ -221,9 +255,12 @@ void history(const Context &ctx)
 	if (ctx.args.size() == 2 && ctx.args[1] == "-c")
 	{
 		ctx.shell.ClearLineHistory();
-		std::error_code ec;
-		if (!fs::remove("/.ndsh_history", ec))
-			ctx.err << "\e[41mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
+		if (Shell::fsInitialized())
+		{
+			std::error_code ec;
+			if (!fs::remove("/.ndsh_history", ec))
+				ctx.err << "\e[41mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
+		}
 		return;
 	}
 
@@ -284,6 +321,7 @@ const Map MAP{
 	{"lua", lua},
 	{"source", source},
 	{"poweroff", poweroff},
+	{"ssh", ssh},
 	{"telnet", telnet}};
 
 void help(const Context &ctx)

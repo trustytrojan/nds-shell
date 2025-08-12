@@ -48,7 +48,7 @@ static std::span<WlanBssDesc> ScanAPs(const Commands::Context &ctx)
 {
 	if (!wfcBeginScan(&filter))
 	{
-		ctx.err << "\e[41mwifi: GetAPList: wfcBeginScan failed\e[39m\n";
+		ctx.err << "\e[91mwifi: GetAPList: wfcBeginScan failed\e[39m\n";
 		return {};
 	}
 
@@ -58,7 +58,14 @@ static std::span<WlanBssDesc> ScanAPs(const Commands::Context &ctx)
 
 	while (pmMainLoop() && !(aplist = wfcGetScanBssList(&count)))
 	{
+#ifdef NDSH_THREADING
 		threadYield();
+		if (!ctx.shell.IsFocused())
+			continue;
+#else
+		swiWaitForVBlank();
+		scanKeys();
+#endif
 
 		if (keysDown() & KEY_START)
 		{
@@ -82,10 +89,14 @@ int GetHiddenSSID(const Commands::Context &ctx, WlanBssDesc &ap)
 	bool ok;
 	do
 	{
+#ifdef NDSH_THREADING
 		threadYield();
-
 		if (!ctx.shell.IsFocused())
 			continue;
+#else
+		swiWaitForVBlank();
+		scanKeys();
+#endif
 
 		if (keysDown() & KEY_START)
 			// user canceled
@@ -101,7 +112,7 @@ int GetHiddenSSID(const Commands::Context &ctx, WlanBssDesc &ap)
 
 			if (!ok)
 			{
-				ctx.err << "\e[41mwifi: Invalid SSID\n";
+				ctx.err << "\e[91mwifi: Invalid SSID\n";
 				prompt.prepareForNextLine();
 				prompt.printFullPrompt(false);
 			}
@@ -131,10 +142,14 @@ int GetPassword(const Commands::Context &ctx, WlanBssDesc &ap)
 	bool ok;
 	do
 	{
+#ifdef NDSH_THREADING
 		threadYield();
-
 		if (!ctx.shell.IsFocused())
 			continue;
+#else
+		swiWaitForVBlank();
+		scanKeys();
+#endif
 
 		if (keysDown() & KEY_START)
 			// user canceled
@@ -164,7 +179,7 @@ int GetPassword(const Commands::Context &ctx, WlanBssDesc &ap)
 
 			if (!ok)
 			{
-				ctx.err << "\e[41mwifi: Invalid key!\e[39m\n";
+				ctx.err << "\e[91mwifi: Invalid key!\e[39m\n";
 				prompt.prepareForNextLine();
 				prompt.printFullPrompt(false);
 			}
@@ -192,7 +207,13 @@ static int WaitForConnection(std::ostream &out)
 	for (; pmMainLoop() && status != ASSOCSTATUS_ASSOCIATED && status != ASSOCSTATUS_CANNOTCONNECT;
 		 status = Wifi_AssocStatus())
 	{
+#ifdef NDSH_THREADING
 		threadYield();
+		// TODO: check console focus
+#else
+		swiWaitForVBlank();
+		scanKeys();
+#endif
 
 		if (keysDown() & KEY_START)
 			// user canceled
@@ -219,7 +240,7 @@ int ConnectAP(const Commands::Context &ctx, WlanBssDesc &ap)
 	{
 		const auto rc = GetHiddenSSID(ctx, ap);
 		if (rc == EXIT_FAILURE)
-			std::cerr << "\e[41mwifi: GetHiddenSSID failed\e[39m\n";
+			std::cerr << "\e[91mwifi: GetHiddenSSID failed\e[39m\n";
 		return EXIT_FAILURE;
 	}
 
@@ -234,14 +255,14 @@ int ConnectAP(const Commands::Context &ctx, WlanBssDesc &ap)
 		if (const auto rc = GetPassword(ctx, ap))
 		{
 			if (rc == EXIT_FAILURE)
-				ctx.err << "\e[41mwifi: GetPassword failed\e[39m\n";
+				ctx.err << "\e[91mwifi: GetPassword failed\e[39m\n";
 			return rc;
 		}
 	}
 
 	if (!wfcBeginConnect(&ap, &auth))
 	{
-		ctx.err << "\e[41mwifi: wfcBeginConnect failed\e[39m\n";
+		ctx.err << "\e[91mwifi: wfcBeginConnect failed\e[39m\n";
 		return EXIT_FAILURE;
 	}
 
@@ -264,7 +285,7 @@ void subcommand_connect(const Commands::Context &ctx)
 
 	if (aplist.empty())
 	{
-		ctx.err << "\e[41mwifi: No APs detected\e[39m\n";
+		ctx.err << "\e[91mwifi: No APs detected\e[39m\n";
 		return;
 	}
 
@@ -273,7 +294,7 @@ void subcommand_connect(const Commands::Context &ctx)
 
 	if (it == aplist.end())
 	{
-		ctx.err << "\e[41mwifi: SSID '" << ssid << "' not found\e[39m\n";
+		ctx.err << "\e[91mwifi: SSID '" << ssid << "' not found\e[39m\n";
 		return;
 	}
 
@@ -289,10 +310,10 @@ void subcommand_connect(const Commands::Context &ctx)
 	switch (ConnectAP(ctx, *ap))
 	{
 	case EXIT_SUCCESS:
-		ctx.out << "\e[42mwifi: connection successful\e[39m\n";
+		ctx.out << "\e[92mwifi: connection successful\e[39m\n";
 		break;
 	case EXIT_FAILURE:
-		ctx.err << "\e[41mwifi: connection failed\e[39m\n";
+		ctx.err << "\e[91mwifi: connection failed\e[39m\n";
 		break;
 	case USER_CANCEL:
 		ctx.out << "wifi: connection canceled\n";
@@ -306,10 +327,10 @@ void subcommand_autoconnect(std::ostream &ostr)
 	switch (WaitForConnection(ostr))
 	{
 	case EXIT_SUCCESS:
-		ostr << "\e[42mwifi: autoconnect successful\e[39m\n";
+		ostr << "\e[92mwifi: autoconnect successful\e[39m\n";
 		break;
 	case EXIT_FAILURE:
-		ostr << "\e[41mwifi: autoconnect failed\n\e[39m";
+		ostr << "\e[91mwifi: autoconnect failed\n\e[39m";
 		break;
 	case USER_CANCEL:
 		ostr << "wifi: autoconnect canceled\n";
@@ -338,7 +359,7 @@ void subcommand_scan(const Commands::Context &ctx)
 	{
 		// ScanAPs already prints messages on failure or cancellation,
 		// but not if no APs are found.
-		ctx.err << "\e[41mwifi: No APs detected\e[39m\n";
+		ctx.err << "\e[91mwifi: No APs detected\e[39m\n";
 		return;
 	}
 
@@ -373,7 +394,7 @@ void Commands::wifi(const Context &ctx)
 	if (subcommand.starts_with("con"))
 		subcommand_connect(ctx);
 	else if (subcommand.starts_with("dis") && Wifi_DisconnectAP())
-		ctx.err << "\e[41mwifi: Wifi_DisconnectAP failed\e[39m\n";
+		ctx.err << "\e[91mwifi: Wifi_DisconnectAP failed\e[39m\n";
 	else if (subcommand.starts_with("stat"))
 		subcommand_status(ctx);
 	else if (subcommand.starts_with("auto"))

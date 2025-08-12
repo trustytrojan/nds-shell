@@ -17,12 +17,12 @@ struct MyTickTask : TickTask
 // - input line history with arrow-key & d-pad button navigation
 class CliPrompt
 {
-	MyTickTask mtt{.flashState = flashState};
-	bool mttRunning{};
+	// MyTickTask mtt{.flashState = flashState};
+	// bool mttRunning{};
 
 	std::ostream *ostr = &std::cout;
 	std::string prompt = "> ";
-	char cursor = '_';
+	// char cursor = '_';
 
 	// The input buffer, also referred to as the line buffer.
 	std::string input;
@@ -71,7 +71,7 @@ public:
 	void setPrompt(const std::string &s) { prompt = s; }
 
 	// Set the character to print as the cursor.
-	void setCursor(char c) { cursor = c; }
+	// void setCursor(char c) { cursor = c; }
 
 	// Read the input buffer.
 	const std::string &getInput() const { return input; }

@@ -10,6 +10,16 @@
 
 void subcommand_autoconnect(std::ostream &ostr); // from wifi.cpp
 
+static bool fsInit{}, wifiInit{};
+
+bool Shell::wifiInitialized() {
+	return wifiInit;
+}
+
+bool Shell::fsInitialized() {
+	return fsInit;
+}
+
 void InitResources()
 {
 	auto &ostr = Consoles::GetStream(0);
@@ -17,19 +27,25 @@ void InitResources()
 	ostr << "initializing filesystem...";
 
 	if (!fatInitDefault())
-		ostr << "\r\e[2K\e[41mfat init failed: filesystem commands will "
-				"not work\e[39m\n";
+	{
+		ostr << "\r\e[2K\e[91mfat init failed: filesystem commands will "
+				"not work\n";
+	}
 	else
-		ostr << "\r\e[2K\e[42mfilesystem intialized!\n";
+	{
+		ostr << "\r\e[2K\e[92mfilesystem intialized!\n";
+		fsInit = true;
+	}
 
 	ostr << "initializing wifi...";
 
 	if (!wlmgrInitDefault() || !wfcInit())
-		ostr << "\r\e[2K\e[41mwifi init failed: networking commands will not "
+		ostr << "\r\e[2K\e[91mwifi init failed: networking commands will not "
 				"work\e[39m\n";
 	else
 	{
-		ostr << "\r\e[2K\e[42mwifi initialized!\n\e[39mautoconnecting...";
+		ostr << "\r\e[2K\e[92mwifi initialized!\n\e[39mautoconnecting...";
+		wifiInit = true;
 		subcommand_autoconnect(ostr);
 	}
 
@@ -41,7 +57,7 @@ void PrintGreeting(int console, bool clearScreen = true)
 	auto &ostr = Consoles::GetStream(console);
 	if (clearScreen)
 		ostr << "\e[2J\e[H"; // Clear screen and move cursor to home
-	ostr << "\e[42mnds-shell (con" << console << ")\e[39m\n\nPress START to start a shell\n\n";
+	ostr << "\e[92mnds-shell (con" << console << ")\e[39m\n\nPress START to start a shell\n\n";
 }
 
 bool running[Consoles::NUM_CONSOLES]{};
@@ -56,15 +72,17 @@ void ShellThread(int console)
 
 int main()
 {
-	tickInit();
 	defaultExceptionHandler();
+	tickInit();
 	Consoles::Init();
 	InitResources();
 
+#ifdef NDSH_THREADING
 	// Threads created with the C/C++ APIs are minimum priority by default:
 	// https://github.com/devkitPro/calico/blob/6d437b7651ba5c95036a90f534c30079bb926945/source/system/newlib_syscalls.c#L166
 	// The main thread is higher initially. Make sure we can yield to the others.
 	threadGetSelf()->prio = THREAD_MIN_PRIO;
+#endif
 
 	// Print initial greeting on all consoles
 	PrintGreeting(0, false); // Don't clear con0, InitResources output is there
@@ -76,7 +94,11 @@ int main()
 	// Main thread: Handle console switching and key scanning.
 	while (pmMainLoop())
 	{
+#ifdef NDSH_THREADING
 		threadYield();
+#else
+		swiWaitForVBlank();
+#endif
 
 		// This only needs to be called here and not in other threads,
 		// since they all are run sequentially.
@@ -89,10 +111,14 @@ int main()
 		{
 			// std::thread has no way of knowing whether the thread is stopped,
 			// so we have to tell it ourselves
+#ifdef NDSH_THREADING
 			auto &thread = shellThreads[console];
 			if (thread.joinable())
 				thread.join();
 			shellThreads[console] = std::thread{ShellThread, console};
+#else
+			ShellThread(console);
+#endif
 		}
 		else if (down & KEY_L)
 			Consoles::switchConsoleLeft();

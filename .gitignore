@@ -5,3 +5,4 @@ examples
 node_modules
 package-lock.json
 .cache
+melonds-sdcard

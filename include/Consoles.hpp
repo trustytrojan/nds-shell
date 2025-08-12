@@ -13,7 +13,7 @@ enum class Display
 	BOTTOM
 };
 
-const int NUM_CONSOLES = 7;
+const int NUM_CONSOLES = 3;
 
 void Init();
 void InitMulti();
