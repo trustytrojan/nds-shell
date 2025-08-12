@@ -104,13 +104,13 @@ void Commands::telnet(const Context &ctx)
 		return;
 	}
 
-	const auto debugMessages = ctx.env.contains("DEBUG");
+	const auto debug = ctx.env.contains("DEBUG");
 
 	// parse the address
 	sockaddr_in sain;
 	if (const auto rc = NetUtils::ParseAddress(sain, ctx.args[1], 23); rc != NetUtils::Error::NO_ERROR)
 	{
-		ctx.err << "\e[41mtelnet: " << NetUtils::StrError(rc) << "\e[39m\n";
+		ctx.err << "\e[91mtelnet: " << NetUtils::StrError(rc) << "\e[39m\n";
 		return;
 	}
 
@@ -118,12 +118,12 @@ void Commands::telnet(const Context &ctx)
 	const auto sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == -1)
 	{
-		ctx.err << "\e[41mtelnet: socket: " << strerror(errno) << "\e[39m\n";
+		ctx.err << "\e[91mtelnet: socket: " << strerror(errno) << "\e[39m\n";
 		return;
 	}
 
-	if (debugMessages)
-		ctx.err << "\e[40mtelnet: socket: " << sock << "\n\e[39m";
+	if (debug)
+		ctx.err << "\e[90mtelnet: socket: " << sock << "\n\e[39m";
 
 	bool connected{};
 	while (pmMainLoop() && !connected)
@@ -135,7 +135,7 @@ void Commands::telnet(const Context &ctx)
 		case -1:
 			if (errno == EINPROGRESS || errno == EALREADY)
 				break;
-			ctx.err << "\e[41mtelnet: connect: " << strerror(errno) << "\e[39m\n";
+			ctx.err << "\e[91mtelnet: connect: " << strerror(errno) << "\e[39m\n";
 			closesocket(sock);
 			return;
 		case 0:
@@ -143,19 +143,19 @@ void Commands::telnet(const Context &ctx)
 		}
 	}
 
-	if (debugMessages)
+	if (debug)
 		ctx.err << "\e[90mtelnet: connected\e[39m\n";
 
 	int yes = 1;
 	if (ioctl(sock, FIONBIO, &yes) == -1)
 	{
-		ctx.err << "\e[41mtelnet: ioctl: " << strerror(errno) << "\e[39m\n";
+		ctx.err << "\e[91mtelnet: ioctl: " << strerror(errno) << "\e[39m\n";
 		closesocket(sock);
 		return;
 	}
 
-	if (debugMessages)
-		ctx.err << "\e[90mtelnet: ioctl succeeded\e[49m\n";
+	if (debug)
+		ctx.err << "\e[90mtelnet: ioctl succeeded\e[39m\n";
 
 	ctx.out << "press fold/esc key to exit\n";
 
@@ -175,12 +175,12 @@ void Commands::telnet(const Context &ctx)
 		}
 		else if (bytesRead == 0)
 		{
-			ctx.err << "\e[91mtelnet: connection closed\e[39m\n";
+			ctx.err << "\e[90mtelnet: connection closed\e[39m\n";
 			break;
 		}
 		else if (errno != EAGAIN && errno != EWOULDBLOCK)
 		{
-			ctx.err << "\e[41mtelnet: recv: " << strerror(errno) << "\e[39m\n";
+			ctx.err << "\e[91mtelnet: recv: " << strerror(errno) << "\e[39m\n";
 			break;
 		}
 
@@ -218,7 +218,7 @@ void Commands::telnet(const Context &ctx)
 			telnet_send(telnet, seq.c_str(), seq.length());
 	}
 
-	if (debugMessages)
+	if (debug)
 		ctx.err << "\e[90mtelnet: after loop\e[39m\n";
 
 	telnet_free(telnet);

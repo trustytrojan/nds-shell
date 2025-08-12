@@ -43,7 +43,7 @@ void Shell::SourceFile(const std::string &filepath)
 {
 	if (!fsInitialized())
 	{
-		ostr << "\e[41mshell: fs not initialized\e[39m\n";
+		ostr << "\e[91mshell: fs not initialized\e[39m\n";
 		return;
 	}
 
@@ -83,7 +83,7 @@ void Shell::ProcessLine(std::string_view line)
 	if (!LexLine(tokens, line, env))
 		return;
 
-	if (env.contains("SHELL_DEBUG"))
+	if (env.contains("DEBUG"))
 	{ // debug tokens
 		ostr << "\e[90mtokens: ";
 		auto itr = tokens.cbegin();
@@ -113,7 +113,7 @@ void Shell::ProcessLine(std::string_view line)
 		return;
 	}
 
-	if (env.contains("SHELL_DEBUG"))
+	if (env.contains("DEBUG"))
 	{ // debug args
 		ostr << "\e[90margs: ";
 		auto itr = args.cbegin();
@@ -135,8 +135,6 @@ void Shell::ProcessLine(std::string_view line)
 			RedirectOutput(redirect.fd, redirect.filename);
 
 	const auto &command = args[0];
-
-	// ostr << "\e[90mcommand: '" << command << "'\n";
 
 	if (const auto withExtension{command + ".ndsh"}; fsInitialized() && fs::exists(withExtension))
 	{ // Treat .ndsh files as commands!
@@ -175,7 +173,7 @@ void Shell::RedirectOutput(int fd, const std::string &filename)
 {
 	if (!fsInitialized())
 	{
-		ostr << "\e[41mshell: fs not initialized\e[39m\n";
+		ostr << "\e[91mshell: fs not initialized\e[39m\n";
 		return;
 	}
 
@@ -205,7 +203,7 @@ void Shell::RedirectInput(int fd, const std::string &filename)
 {
 	if (!fsInitialized())
 	{
-		ostr << "\e[41mshell: fs not initialized\e[39m\n";
+		ostr << "\e[91mshell: fs not initialized\e[39m\n";
 		return;
 	}
 
@@ -221,7 +219,7 @@ void Shell::RedirectInput(int fd, const std::string &filename)
 
 void Shell::StartPrompt()
 {
-	ostr << "\e[96mgithub.com/trustytrojan/nds-shell\e[39m\n\nrun 'help' for help\n\n";
+	ostr << "\e[96mtrustytrojan/nds-shell\nstar me on github!!!\e[39m\n\nrun 'help' for help\n\n";
 
 	prompt.prepareForNextLine();
 	prompt.printFullPrompt(false);

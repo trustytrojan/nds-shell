@@ -6,6 +6,26 @@ cmake_policy(SET CMP0135 NEW)
 cmake_policy(SET CMP0077 NEW)
 project(nds-shell LANGUAGES CXX)
 
+find_package(Git QUIET)
+if(GIT_FOUND)
+	execute_process(
+		COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_HASH
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		ERROR_QUIET
+	)
+endif()
+
+if(NOT GIT_HASH)
+	set(GIT_HASH "unknown")
+endif()
+
+configure_file(
+	"${PROJECT_SOURCE_DIR}/src/version.h.in"
+	"${PROJECT_BINARY_DIR}/version.h"
+)
+
 set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -132,7 +152,7 @@ FetchContent_MakeAvailable(libtelnet)
 
 ## nds-shell
 add_compile_options(-fno-rtti -fno-exceptions)
-include_directories(include)
+include_directories(include ${PROJECT_BINARY_DIR})
 link_libraries(dswifi9 fat lua_static sol2 libcurl libssh2 libtelnet)
 
 if(NDSH_THREADING)

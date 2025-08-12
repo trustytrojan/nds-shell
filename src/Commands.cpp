@@ -35,7 +35,7 @@ void ls(const Context &ctx)
 {
 	if (!Shell::fsInitialized())
 	{
-		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		ctx.err << "\e[91mshell: fs not initialized\e[39m\n";
 		return;
 	}
 
@@ -62,7 +62,7 @@ void cd(const Context &ctx)
 {
 	if (!Shell::fsInitialized())
 	{
-		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		ctx.err << "\e[91mshell: fs not initialized\e[39m\n";
 		return;
 	}
 
@@ -87,7 +87,7 @@ void cat(const Context &ctx)
 {
 	if (!Shell::fsInitialized())
 	{
-		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		ctx.err << "\e[91mshell: fs not initialized\e[39m\n";
 		return;
 	}
 
@@ -130,7 +130,7 @@ void rm(const Context &ctx)
 {
 	if (!Shell::fsInitialized())
 	{
-		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		ctx.err << "\e[91mshell: fs not initialized\e[39m\n";
 		return;
 	}
 
@@ -195,7 +195,7 @@ void source(const Context &ctx)
 {
 	if (!Shell::fsInitialized())
 	{
-		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		ctx.err << "\e[91mshell: fs not initialized\e[39m\n";
 		return;
 	}
 
@@ -212,7 +212,7 @@ void rename(const Context &ctx)
 {
 	if (!Shell::fsInitialized())
 	{
-		ctx.err << "\e[41mshell: fs not initialized\e[39m\n";
+		ctx.err << "\e[91mshell: fs not initialized\e[39m\n";
 		return;
 	}
 
@@ -259,7 +259,7 @@ void history(const Context &ctx)
 		{
 			std::error_code ec;
 			if (!fs::remove("/.ndsh_history", ec))
-				ctx.err << "\e[41mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
+				ctx.err << "\e[91mhistory: failed to remove '.ndsh_history': " << ec.message() << "\e[39m\n";
 		}
 		return;
 	}
