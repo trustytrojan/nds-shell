@@ -6,6 +6,7 @@
 #include "Parser.hpp"
 
 #include <filesystem>
+#include <fstream>
 
 namespace fs = std::filesystem;
 
@@ -127,12 +128,21 @@ void Shell::ProcessLine(std::string_view line)
 	commandEnv.insert_range(envAssigns);
 
 	// Apply redirections (rightmost takes precedence for same fd)
-	ResetStreams(); // always reset first
+	std::vector<std::istream *> opened_istreams;
+	std::vector<std::ostream *> opened_ostreams;
 	for (const auto &redirect : redirects)
+	{
 		if (redirect.direction == IoRedirect::Direction::IN)
-			RedirectInput(redirect.fd, redirect.filename);
-		else
-			RedirectOutput(redirect.fd, redirect.filename);
+		{
+			if (const auto p = RedirectInputFromFile(redirect.fd, redirect.filename))
+				opened_istreams.emplace_back(p);
+		}
+		else if (redirect.direction == IoRedirect::Direction::OUT)
+		{
+			if (const auto p = RedirectOutputToFile(redirect.fd, redirect.filename))
+				opened_ostreams.emplace_back(p);
+		}
+	}
 
 	const auto &command = args[0];
 
@@ -146,75 +156,94 @@ void Shell::ProcessLine(std::string_view line)
 		itr->second({*out, *err, *in, args, commandEnv, *this});
 	else
 		ostr << "\e[91mshell: unknown command\e[39m\n";
+
+	// free/delete the opened streams (which closes them too)!
+	for (const auto p : opened_istreams)
+		if (p) // null check for sanity
+			delete p;
+	for (const auto p : opened_ostreams)
+		if (p)
+			delete p;
+
+	ResetStreams();
 }
 
 void Shell::ResetStreams()
 {
-	if (in == &inf)
-	{
-		inf.close();
+	if (in != &std::cin)
 		in = &std::cin;
-	}
-
-	if (out == &outf)
-	{
-		outf.close();
+	if (out != &ostr)
 		out = &ostr;
-	}
-
-	if (err == &errf)
-	{
-		errf.close();
+	if (err != &ostr)
 		err = &ostr;
-	}
 }
 
-void Shell::RedirectOutput(int fd, const std::string &filename)
+std::ostream *Shell::RedirectOutputToFile(int fd, const std::string &filename)
 {
 	if (!fsInitialized())
 	{
 		ostr << "\e[91mshell: fs not initialized\e[39m\n";
-		return;
+		return {};
 	}
 
-	if (fd == 1)
+	const auto fstrp = new std::ofstream{filename};
+	if (!fstrp)
 	{
-		outf.open(filename);
-		if (!outf)
-		{
-			ostr << "\e[91mshell: cannot open file for writing: " << filename << "\e[39m\n";
-			return;
-		}
-		out = &outf;
+		ostr << "\e[91mshell: cannot allocate ofstream\e[39m\n";
+		return {};
 	}
-	else if (fd == 2)
+
+	auto &fstr = *fstrp;
+	if (!fstr)
 	{
-		errf.open(filename);
-		if (!errf)
-		{
-			ostr << "\e[91mshell: cannot open file for writing: " << filename << "\e[39m\n";
-			return;
-		}
-		err = &errf;
+		ostr << "\e[91mshell: cannot open file for writing: " << filename << "\e[39m\n";
+		return {};
 	}
+
+	RedirectOutput(fd, fstr);
+	return fstrp;
 }
 
-void Shell::RedirectInput(int fd, const std::string &filename)
+std::istream *Shell::RedirectInputFromFile(int fd, const std::string &filename)
 {
 	if (!fsInitialized())
 	{
 		ostr << "\e[91mshell: fs not initialized\e[39m\n";
-		return;
+		return {};
 	}
 
-	inf.open(filename);
-	if (!inf)
+	const auto fstrp = new std::ifstream{filename};
+	if (!fstrp)
+	{
+		ostr << "\e[91mshell: cannot allocate ifstream\e[39m\n";
+		return {};
+	}
+
+	auto &fstr = *fstrp;
+	if (!fstr)
 	{
 		ostr << "\e[91mshell: cannot open file for reading: " << filename << "\e[39m\n";
-		return;
+		return {};
 	}
+
+	RedirectInput(fd, fstr);
+	return fstrp;
+}
+
+void Shell::RedirectInput(int fd, std::istream &istr)
+{
 	if (fd == 0)
-		in = &inf;
+		in = &istr;
+	// in the future, a full file descriptor table???????
+}
+
+void Shell::RedirectOutput(int fd, std::ostream &ostr)
+{
+	if (fd == 1)
+		out = &ostr;
+	else if (fd == 2)
+		err = &ostr;
+	// in the future, a full file descriptor table???????
 }
 
 void Shell::StartPrompt()
