@@ -28,7 +28,7 @@ void curl(const Context &);
 void tcp(const Context &);
 void lua(const Context &);
 void ssh(const Context &);
-// void source(const Context &);
+void telnet(const Context &);
 
 // the smaller commands are defined in Commands.cpp
 using Fn = void (*)(const Context &);

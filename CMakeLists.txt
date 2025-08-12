@@ -6,6 +6,26 @@ cmake_policy(SET CMP0135 NEW)
 cmake_policy(SET CMP0077 NEW)
 project(nds-shell LANGUAGES CXX)
 
+find_package(Git QUIET)
+if(GIT_FOUND)
+	execute_process(
+		COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_HASH
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		ERROR_QUIET
+	)
+endif()
+
+if(NOT GIT_HASH)
+	set(GIT_HASH "unknown")
+endif()
+
+configure_file(
+	"${PROJECT_SOURCE_DIR}/src/version.h.in"
+	"${PROJECT_BINARY_DIR}/version.h"
+)
+
 set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -122,10 +142,18 @@ add_compile_definitions(LIBSSH2_MBEDTLS _3DS)
 FetchContent_Declare(libssh2 URL https://github.com/trustytrojan/libssh2/archive/1.11.1-nds.zip)
 FetchContent_MakeAvailable(libssh2)
 
+## libtelnet
+setcb(LIBTELNET_BUILD_UTIL OFF)
+setcb(LIBTELNET_BUILD_DOC OFF)
+setcb(LIBTELNET_BUILD_TEST OFF)
+setcb(LIBTELNET_INSTALL OFF)
+FetchContent_Declare(libtelnet URL https://github.com/trustytrojan/libtelnet/archive/cmake-changes.zip)
+FetchContent_MakeAvailable(libtelnet)
+
 ## nds-shell
 add_compile_options(-fno-rtti -fno-exceptions)
-include_directories(include)
-link_libraries(dswifi9 fat lua_static sol2 libcurl libssh2)
+include_directories(include ${PROJECT_BINARY_DIR})
+link_libraries(dswifi9 fat lua_static sol2 libcurl libssh2 libtelnet)
 
 if(NDSH_THREADING)
 	add_compile_definitions(NDSH_THREADING)

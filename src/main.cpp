@@ -1,5 +1,6 @@
 #include "Consoles.hpp"
 #include "Shell.hpp"
+#include "version.h"
 
 #include <dswifi9.h>
 #include <fat.h>
@@ -57,7 +58,7 @@ void PrintGreeting(int console, bool clearScreen = true)
 	auto &ostr = Consoles::GetStream(console);
 	if (clearScreen)
 		ostr << "\e[2J\e[H"; // Clear screen and move cursor to home
-	ostr << "\e[92mnds-shell (con" << console << ")\e[39m\n\nPress START to start a shell\n\n";
+	ostr << "\e[92mnds-shell " << GIT_HASH << " (con" << console << ")\e[39m\n\nPress START to start a shell\n\n";
 }
 
 bool running[Consoles::NUM_CONSOLES]{};

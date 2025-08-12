@@ -57,7 +57,7 @@ void Commands::curl(const Context &ctx)
 	if (Shell::fsInitialized())
 		curl_easy_setopt(easy, CURLOPT_CAINFO, ctx.GetEnv("CURL_CAFILE", "tls-ca-bundle.pem").c_str());
 	else
-		ctx.err << "\e[41mcurl: https unavailable: fs not initialized\e[39m\n";
+		ctx.err << "\e[91mcurl: https unavailable: fs not initialized\e[39m\n";
 
 	// write http response to ctx.out
 	curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, curl_write);
@@ -94,7 +94,7 @@ void Commands::curl(const Context &ctx)
 
 		if (const auto mc = curl_multi_perform(multi, &still_running); mc != CURLM_OK)
 		{
-			ctx.err << "\e[41mcurl: " << curl_multi_strerror(mc) << "\e[39m\n";
+			ctx.err << "\e[91mcurl: " << curl_multi_strerror(mc) << "\e[39m\n";
 			break;
 		}
 
@@ -105,7 +105,7 @@ void Commands::curl(const Context &ctx)
 			if (msg->msg == CURLMSG_DONE)
 			{
 				if (msg->data.result != CURLE_OK)
-					ctx.err << "\e[41mcurl: " << curl_easy_strerror(msg->data.result) << ": " << curl_errbuf
+					ctx.err << "\e[91mcurl: " << curl_easy_strerror(msg->data.result) << ": " << curl_errbuf
 							<< "\e[39m\n";
 			}
 		}
@@ -115,7 +115,7 @@ void Commands::curl(const Context &ctx)
 	curl_multi_cleanup(multi);
 #else
 	if (const auto rc = curl_easy_perform(easy); rc != CURLE_OK)
-		ctx.err << "\e[41mcurl: " << curl_easy_strerror(rc) << ": " << curl_errbuf << "\e[39m\n";
+		ctx.err << "\e[91mcurl: " << curl_easy_strerror(rc) << ": " << curl_errbuf << "\e[39m\n";
 #endif
 
 	curl_easy_cleanup(easy);
