@@ -60,7 +60,11 @@ static void _event_handler(telnet_t *telnet, telnet_event_t *ev, void *user_data
 	{
 	/* data received */
 	case TELNET_EV_DATA:
-		ctx->shellCtx.out.write(ev->data.buffer, ev->data.size);
+		for (const auto c : std::string_view{ev->data.buffer, ev->data.size})
+			if (c == '\b')
+				ctx->shellCtx.out << "\e[D";
+			else
+				ctx->shellCtx.out << c;
 		break;
 	/* data must be sent */
 	case TELNET_EV_SEND:
@@ -121,17 +125,6 @@ void Commands::telnet(const Context &ctx)
 	if (debugMessages)
 		ctx.err << "\e[40mtelnet: socket: " << sock << "\n\e[39m";
 
-	// int yes = 1;
-	// if (ioctl(sock, FIONBIO, &yes) == -1)
-	// {
-	// 	ctx.err << "\e[41mtelnet: ioctl: " << strerror(errno) << "\e[39m\n";
-	// 	closesocket(sock);
-	// 	return;
-	// }
-
-	// if (debugMessages)
-	// 	ctx.err << "\e[40mtelnet: ioctl succeeded\n";
-
 	bool connected{};
 	while (pmMainLoop() && !connected)
 	{
@@ -151,7 +144,18 @@ void Commands::telnet(const Context &ctx)
 	}
 
 	if (debugMessages)
-		ctx.err << "\e[40mtelnet: connected\n";
+		ctx.err << "\e[90mtelnet: connected\e[39m\n";
+
+	int yes = 1;
+	if (ioctl(sock, FIONBIO, &yes) == -1)
+	{
+		ctx.err << "\e[41mtelnet: ioctl: " << strerror(errno) << "\e[39m\n";
+		closesocket(sock);
+		return;
+	}
+
+	if (debugMessages)
+		ctx.err << "\e[90mtelnet: ioctl succeeded\e[49m\n";
 
 	ctx.out << "press fold/esc key to exit\n";
 
@@ -171,7 +175,7 @@ void Commands::telnet(const Context &ctx)
 		}
 		else if (bytesRead == 0)
 		{
-			// connection closed
+			ctx.err << "\e[91mtelnet: connection closed\e[39m\n";
 			break;
 		}
 		else if (errno != EAGAIN && errno != EWOULDBLOCK)
@@ -180,46 +184,42 @@ void Commands::telnet(const Context &ctx)
 			break;
 		}
 
-		if (ctx.shell.IsFocused())
+		if (!ctx.shell.IsFocused())
+			continue;
+
+		std::string seq;
+		switch (const auto key = keyboardUpdate())
 		{
-			std::string seq;
-
-			switch (const auto key = keyboardUpdate())
-			{
-			case DVK_TAB:
-				seq = "\t";
-				break;
-			case DVK_BACKSPACE:
-				seq = "\x7f"; // DEL (common for terminals)
-				break;
-			case DVK_ENTER:
-				seq = "\r\n"; // CRLF for telnet
-				break;
-			case DVK_UP:
-				seq = "\e[A";
-				break;
-			case DVK_DOWN:
-				seq = "\e[B";
-				break;
-			case DVK_RIGHT:
-				seq = "\e[C";
-				break;
-			case DVK_LEFT:
-				seq = "\e[D";
-				break;
-			case DVK_SPACE:
-				seq = " ";
-				break;
-			default:
-				if (key > 0 && key < 128)
-					seq = key;
-				break;
-			}
-
-			if (!seq.empty())
-				telnet_send(telnet, seq.c_str(), seq.length());
+		case DVK_FOLD:
+			shouldExit = true;
+			break;
+		case DVK_ENTER:
+			seq = "\r\n";
+			break;
+		case DVK_UP:
+			seq = "\e[A";
+			break;
+		case DVK_DOWN:
+			seq = "\e[B";
+			break;
+		case DVK_RIGHT:
+			seq = "\e[C";
+			break;
+		case DVK_LEFT:
+			seq = "\e[D";
+			break;
+		default:
+			if (key > 0 && key < 128)
+				seq = key;
+			break;
 		}
+
+		if (!seq.empty())
+			telnet_send(telnet, seq.c_str(), seq.length());
 	}
+
+	if (debugMessages)
+		ctx.err << "\e[90mtelnet: after loop\e[39m\n";
 
 	telnet_free(telnet);
 	closesocket(sock);
