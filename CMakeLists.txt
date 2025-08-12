@@ -110,10 +110,22 @@ add_compile_definitions(SOL_EXCEPTIONS=0)
 FetchContent_Declare(sol2 URL https://github.com/ThePhD/sol2/archive/develop.zip)
 FetchContent_MakeAvailable(sol2)
 
+## libssh2
+setcb(CRYPTO_BACKEND mbedTLS)
+setcb(ENABLE_ZLIB_COMPRESSION OFF)
+setcb(CLEAR_MEMORY OFF)
+setcb(BUILD_EXAMPLES OFF)
+setcb(BUILD_TESTING OFF)
+set(MBEDTLS_INCLUDE_DIR ${mbedtls_SOURCE_DIR}/include)
+set(MBEDCRYPTO_LIBRARY mbedcrypto)
+add_compile_definitions(LIBSSH2_MBEDTLS _3DS)
+FetchContent_Declare(libssh2 URL https://github.com/trustytrojan/libssh2/archive/1.11.1-nds.zip)
+FetchContent_MakeAvailable(libssh2)
+
 ## nds-shell
 add_compile_options(-fno-rtti -fno-exceptions)
 include_directories(include)
-link_libraries(dswifi9 fat lua_static sol2 libcurl)
+link_libraries(dswifi9 fat lua_static sol2 libcurl libssh2)
 
 if(NDSH_THREADING)
 	add_compile_definitions(NDSH_THREADING)

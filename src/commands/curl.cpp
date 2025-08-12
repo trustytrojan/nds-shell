@@ -9,7 +9,7 @@ static int curl_debug(CURL *, curl_infotype type, char *const data, const size_t
 		// we only want debug messages, not req/resp data
 		return 0;
 	auto &ostr = *reinterpret_cast<std::ostream *>(userp);
-	ostr << "\e[40m";
+	ostr << "\e[90m";
 	ostr.write(data, size);
 	ostr << "\e[39m";
 	return 0;
@@ -41,7 +41,7 @@ void Commands::curl(const Context &ctx)
 	const auto easy = curl_easy_init();
 	if (!easy)
 	{
-		ctx.err << "\e[41mhttp: curl_easy_init failed\e[39m\n";
+		ctx.err << "\e[91mhttp: curl_easy_init failed\e[39m\n";
 		return;
 	}
 

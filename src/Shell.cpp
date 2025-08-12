@@ -28,7 +28,8 @@ Shell::Shell(const int console)
 
 Shell::~Shell()
 {
-	if (!fsInitialized())
+	// allow disabling history saving, melonDS freezes upon writing any file to disk
+	if (!fsInitialized() || env.contains("DONT_SAVE_HISTORY"))
 		return;
 
 	// save everything afterwards; opening files in append mode corrupts them.
@@ -54,10 +55,9 @@ void Shell::SourceFile(const std::string &filepath)
 	}
 
 	std::ifstream file{filepath};
-
 	if (!file)
 	{
-		ostr << "\e[41mshell: cannot open file: " << filepath << "\e[39m\n";
+		ostr << "\e[91mshell: cannot open file: " << filepath << "\e[39m\n";
 		return;
 	}
 
@@ -85,7 +85,7 @@ void Shell::ProcessLine(std::string_view line)
 
 	if (env.contains("SHELL_DEBUG"))
 	{ // debug tokens
-		ostr << "\e[40mtokens: ";
+		ostr << "\e[90mtokens: ";
 		auto itr = tokens.cbegin();
 		for (; itr < tokens.cend() - 1; ++itr)
 			ostr << *itr << ' ';
@@ -101,7 +101,7 @@ void Shell::ProcessLine(std::string_view line)
 
 	if (args.empty() && envAssigns.empty())
 	{
-		ostr << "\e[41mshell: no args or env assigns\e[39m\n";
+		ostr << "\e[91mshell: no args or env assigns\e[39m\n";
 		return;
 	}
 
@@ -115,7 +115,7 @@ void Shell::ProcessLine(std::string_view line)
 
 	if (env.contains("SHELL_DEBUG"))
 	{ // debug args
-		ostr << "\e[40margs: ";
+		ostr << "\e[90margs: ";
 		auto itr = args.cbegin();
 		for (; itr < args.cend() - 1; ++itr)
 			ostr << '\'' << *itr << "' ";
@@ -136,9 +136,9 @@ void Shell::ProcessLine(std::string_view line)
 
 	const auto &command = args[0];
 
-	// ostr << "\e[40mcommand: '" << command << "'\n";
+	// ostr << "\e[90mcommand: '" << command << "'\n";
 
-	if (const auto withExtension{command + ".ndsh"}; fs::exists(withExtension) && fsInitialized())
+	if (const auto withExtension{command + ".ndsh"}; fsInitialized() && fs::exists(withExtension))
 	{ // Treat .ndsh files as commands!
 		SourceFile(withExtension);
 		return;
@@ -147,7 +147,7 @@ void Shell::ProcessLine(std::string_view line)
 	if (const auto itr = Commands::MAP.find(command); itr != Commands::MAP.cend())
 		itr->second({*out, *err, *in, args, commandEnv, *this});
 	else
-		ostr << "\e[41mshell: unknown command\e[39m\n";
+		ostr << "\e[91mshell: unknown command\e[39m\n";
 }
 
 void Shell::ResetStreams()
@@ -184,7 +184,7 @@ void Shell::RedirectOutput(int fd, const std::string &filename)
 		outf.open(filename);
 		if (!outf)
 		{
-			ostr << "\e[41mshell: cannot open file for writing: " << filename << "\e[39m\n";
+			ostr << "\e[91mshell: cannot open file for writing: " << filename << "\e[39m\n";
 			return;
 		}
 		out = &outf;
@@ -194,7 +194,7 @@ void Shell::RedirectOutput(int fd, const std::string &filename)
 		errf.open(filename);
 		if (!errf)
 		{
-			ostr << "\e[41mshell: cannot open file for writing: " << filename << "\e[39m\n";
+			ostr << "\e[91mshell: cannot open file for writing: " << filename << "\e[39m\n";
 			return;
 		}
 		err = &errf;
@@ -212,7 +212,7 @@ void Shell::RedirectInput(int fd, const std::string &filename)
 	inf.open(filename);
 	if (!inf)
 	{
-		ostr << "\e[41mshell: cannot open file for reading: " << filename << "\e[39m\n";
+		ostr << "\e[91mshell: cannot open file for reading: " << filename << "\e[39m\n";
 		return;
 	}
 	if (fd == 0)
@@ -221,7 +221,7 @@ void Shell::RedirectInput(int fd, const std::string &filename)
 
 void Shell::StartPrompt()
 {
-	ostr << "\e[46mgithub.com/trustytrojan/nds-shell\e[39m\n\nrun 'help' for help\n\n";
+	ostr << "\e[96mgithub.com/trustytrojan/nds-shell\e[39m\n\nrun 'help' for help\n\n";
 
 	prompt.prepareForNextLine();
 	prompt.printFullPrompt(false);

@@ -17,6 +17,7 @@ class Shell
 {
 public:
 	static bool fsInitialized();
+	static bool wifiInitialized();
 
 private:
 	std::ostream &ostr;

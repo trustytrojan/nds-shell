@@ -1,18 +1,14 @@
 #include "CliPrompt.hpp"
-#include "EscapeSequences.hpp"
 #include "Shell.hpp"
 
 #include <fstream>
 #include <iostream>
-
-using namespace EscapeSequences;
 
 void CliPrompt::printFullPrompt(bool withInput)
 {
 	*ostr << prompt;
 	if (withInput)
 		*ostr << input;
-	*ostr << cursor << Cursor::moveLeftOne;
 }
 
 void CliPrompt::prepareForNextLine()
@@ -23,24 +19,8 @@ void CliPrompt::prepareForNextLine()
 	input.clear();
 }
 
-void flashCursorTickTask(TickTask *t)
-{
-	auto &mtt = *(MyTickTask *)t;
-	mtt.flashState = !mtt.flashState;
-}
-
-void CliPrompt::flashCursor()
-{
-	/**
-	 * While `cursorPos != line.size()`, the character pointed to by the cursor
-	 * will flash between `line[cursorPos]` and `this->cursor`.
-	 */
-
-	if (cursorPos == input.size())
-		flashState = false;
-	else
-		*ostr << (flashState ? cursor : input[cursorPos]) << Cursor::moveLeftOne;
-}
+const auto MOVE_LEFT = "\e[D";
+const auto MOVE_RIGHT = "\e[C";
 
 void CliPrompt::handleBackspace()
 {
@@ -48,23 +28,18 @@ void CliPrompt::handleBackspace()
 		return;
 	input.erase(--cursorPos, 1);
 	if (cursorPos == input.size())
-		*ostr << " \b\b" << cursor << Cursor::moveLeftOne;
+		*ostr << MOVE_LEFT << ' ' << MOVE_LEFT;
 	else
-		*ostr << "\b\e[0K" << input.c_str() + cursorPos
-			  << Cursor::move(Cursor::MoveDirection::LEFT, input.size() - cursorPos);
+		// move left, clear to end of line (\e[0K), reprint input from cursor onwards, move back to cursor position
+		*ostr << MOVE_LEFT << "\e[0K" << (input.c_str() + cursorPos) << "\e[" << (input.size() - cursorPos) << 'D';
 }
 
 void CliPrompt::handleEnter()
 {
-	if (cursorPos == input.size())
-		*ostr << ' ';
-	else
-		*ostr << input[cursorPos] << '\r';
-
 	*ostr << '\n';
 	_enterPressed = true;
 
-	// don't push empty lines!
+	// don't save empty lines!
 	if (input.size())
 		lineHistory.emplace_back(input);
 }
@@ -73,45 +48,16 @@ void CliPrompt::handleLeft()
 {
 	if (input.empty() || cursorPos == 0)
 		return;
-
-	if (cursorPos == input.size())
-	{ // above to move off last char
-		// remove static cursor
-		*ostr << " \b";
-
-		if (!mttRunning)
-		{
-			tickTaskStart(&mtt, flashCursorTickTask, ticksFromHz(6), ticksFromHz(6));
-			mttRunning = true;
-		}
-	}
-
-	if (flashState)
-		// prevent leaving behind cursors over the input
-		*ostr << input[cursorPos] << Cursor::moveLeftOne;
-
-	*ostr << Cursor::moveLeftOne;
 	--cursorPos;
+	*ostr << MOVE_LEFT;
 }
 
 void CliPrompt::handleRight()
 {
 	if (input.empty() || cursorPos == input.size())
 		return;
-
-	*ostr << input[cursorPos];
-
-	if (++cursorPos == input.size())
-	{
-		// at end of line, reprint cursor
-		*ostr << cursor << Cursor::moveLeftOne;
-
-		if (mttRunning)
-		{
-			tickTaskStop(&mtt);
-			mttRunning = false;
-		}
-	}
+	++cursorPos;
+	*ostr << MOVE_RIGHT;
 }
 
 void CliPrompt::handleUp()
@@ -127,7 +73,7 @@ void CliPrompt::handleUp()
 	// go up one, reset cursorPos, reprint everything
 	input = *--lineHistoryItr;
 	cursorPos = input.size();
-	*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
+	*ostr << "\r\e[2K" << prompt << input;
 }
 
 void CliPrompt::handleDown()
@@ -140,18 +86,14 @@ void CliPrompt::handleDown()
 	++lineHistoryItr;
 
 	if (lineHistoryItr == lineHistory.cend())
-	{
 		// we're at the "new" line, restore it
 		input = savedInput;
-		cursorPos = input.size();
-		*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
-		return;
-	}
+	else
+		input = *lineHistoryItr;
 
 	// reset cursorPos, reprint everything
-	input = *lineHistoryItr;
 	cursorPos = input.size();
-	*ostr << "\r\e[2K" << prompt << input << cursor << Cursor::moveLeftOne;
+	*ostr << "\r\e[2K" << prompt << input;
 }
 
 bool CliPrompt::processKeypad()
@@ -187,13 +129,12 @@ void CliPrompt::processKeyboard()
 	{
 	case 0: // just in case
 	case NOKEY:
-	case DVK_TAB: // ignore tabs for now, use them for autocomplete later
+	case DVK_TAB: // TODO: use tabs for autocomplete
 	case DVK_CTRL:
 	case DVK_ALT:
 	case DVK_CAPS:
 	case DVK_MENU:
 	case DVK_SHIFT:
-		flashCursor();
 		break;
 
 	case DVK_FOLD:
@@ -233,11 +174,10 @@ void CliPrompt::processKeyboard()
 		else
 		{
 			input.insert(input.begin() + cursorPos, c);
-			*ostr << input.c_str() + cursorPos
-				  << Cursor::move(Cursor::MoveDirection::LEFT, input.size() - cursorPos - 1);
+			// move back (size - pos - 1), because we want the cursor to have "advanced" after inserting the character
+			*ostr << (input.c_str() + cursorPos) << "\e[" << (input.size() - cursorPos - 1) << 'D';
 		}
-		if (++cursorPos == input.size())
-			*ostr << cursor << Cursor::moveLeftOne;
+		++cursorPos;
 	}
 }
 
@@ -262,7 +202,7 @@ void CliPrompt::setLineHistory(const std::string &filename)
 	std::ifstream lineHistoryFile{filename};
 	if (!lineHistoryFile)
 	{
-		std::cerr << "\e[41mfailed to load line history\n\e[39m";
+		std::cerr << "\e[91mfailed to load line history\n\e[39m";
 		return;
 	}
 
