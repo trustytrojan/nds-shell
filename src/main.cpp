@@ -13,11 +13,13 @@ void subcommand_autoconnect(std::ostream &ostr); // from wifi.cpp
 
 static bool fsInit{}, wifiInit{};
 
-bool Shell::wifiInitialized() {
+bool Shell::wifiInitialized()
+{
 	return wifiInit;
 }
 
-bool Shell::fsInitialized() {
+bool Shell::fsInitialized()
+{
 	return fsInit;
 }
 
