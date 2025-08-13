@@ -22,7 +22,7 @@ Shell::Shell(const int console)
 	prompt.setOutputStream(ostr);
 	if (!fsInitialized())
 		return;
-	prompt.setLineHistory(".ndsh_history");
+	prompt.setLineHistoryFromFile(".ndsh_history");
 	if (fs::exists(".ndshrc"))
 		SourceFile(".ndshrc");
 }

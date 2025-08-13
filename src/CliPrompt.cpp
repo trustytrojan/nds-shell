@@ -192,7 +192,7 @@ void CliPrompt::update()
 	processKeyboard();
 }
 
-void CliPrompt::setLineHistory(const std::string &filename)
+void CliPrompt::setLineHistoryFromFile(const std::string &filename)
 {
 	lineHistory.clear();
 

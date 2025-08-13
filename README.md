@@ -12,26 +12,37 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 
 ## Features
 - `sh`-like features: cursor navigation, I/O redirection, environment variables, variable substitution, command history
-- Filesystem manipulation using typical POSIX-like commands: `ls`, `cd`, `cat`, etc
-- Networking commands: `wifi`, `dns`, `tcp`, `curl`
-- Lua interpreter (soon an API to add custom commands)
+  - Command history is now saved to your sdcard at `/.ndsh_history`!
+  - Like `.bashrc` for Bash, `.ndshrc` at the root of your sdcard is automatically run upon shell startup
+- Filesystem manipulation using typical POSIX shell commands: `ls`, `cd`, `cat`, etc
+- Networking commands: `wifi`, `dns`, `tcp`, `curl`, `ssh`, `telnet`
+- Lua interpreter, with an API to make your scripts feel just like builtin commands!
 - HTTPS/SSL support with cURL and MbedTLS!
   - HUGE thanks to [this blogpost](https://git.vikingsoftware.com/blog/libcurl-with-mbedtls) for figuring out the CMake quirks
 
 ## Dependencies
-- [libnds](https://github.com/devkitPro/libnds), which includes [dswifi](https://github.com/devkitPro/dswifi) and [libfat](https://github.com/devkitPro/libfat)
-- [MbedTLS (my fork)](https://github.com/trustytrojan/mbedtls/tree/3.6.4-nds)
-- [cURL (my fork)](https://github.com/trustytrojan/curl/tree/8.15.0-mbedtls)
-- [Lua](https://lua.org)
+- [libnds (my console rework fork)](https://github.com/trustytrojan/libnds/tree/console-rework), [dswifi](https://github.com/devkitPro/dswifi) and [libfat](https://github.com/devkitPro/libfat)
+- [MbedTLS (my fork with CMake changes)](https://github.com/trustytrojan/mbedtls/tree/3.6.4-nds)
+- [libcurl (my fork with CMake changes)](https://github.com/trustytrojan/curl/tree/8.15.0-mbedtls)
+- [Lua (CMake compatible repo by @walterschell)](https://github.com/walterschell/Lua)
 - [sol2](https://github.com/ThePhD/sol2)
+- [libssh2 (my fork with CMake changes)](https://github.com/trustytrojan/libssh2/tree/1.11.1-nds)
+- [libtelnet (my fork with CMake changes)](https://github.com/trustytrojan/libtelnet/tree/cmake-changes)
 
 ## Building
 *note: this process has only been tested on linux*
 
 1. Get [devkitPro pacman](https://devkitpro.org/wiki/Getting_Started) on your system
 2. Install the `nds-dev` metapackage (explained in the link above)
-3. Run `$DEVKITPRO/tools/bin/catnip -Tnds -j$(nproc)`
-	- **Do NOT run CMake. You must run `catnip`.**
+3. **Uninstall** `libnds` with `sudo (dkp-)pacman -Rdd libnds`
+4. Clone, build, and install [my libnds fork](https://github.com/trustytrojan/libnds/tree/console-rework):
+   ```sh
+   git clone https://github.com/trustytrojan/libnds -b console-rework
+   cd console-rework
+   sudo -E make install -j$(nproc)
+   ```
+5. Clone this repo and run `$DEVKITPRO/tools/bin/catnip -Tnds -j$(nproc)`
+	- **Do NOT run CMake. You MUST run `catnip`.**
 
 ## To-do list (will be converted to issues)
 - a way to push files to the DS remotely (try FTP with curl)

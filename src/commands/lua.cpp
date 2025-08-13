@@ -19,27 +19,40 @@ std::ostream &operator<<(std::ostream &ostr, const sol::object &obj)
 	}
 }
 
-void setup_lua_state(sol::state &lua, const Commands::Context &ctx)
+struct my_state : sol::state
 {
-	lua.open_libraries(sol::lib::string);
+	my_state(const Commands::Context &ctx);
+};
+
+my_state::my_state(const Commands::Context &ctx)
+{
+	open_libraries(sol::lib::string);
 
 	// clang-format off
-	lua.create_named_table("libnds",
-		"set_brightness", setBrightness
+	create_named_table("libnds",
+		"setBrightness", setBrightness, // this was just for testing, leave it in anyway for fun
+		"pmMainLoop", pmMainLoop,
+		"threadYield", threadYield
 	);
-	// clang-format on
 
-	lua.new_usertype<Shell>(
-		"Shell",
+	new_usertype<CliPrompt>("CliPrompt",
+		"prompt", sol::writeonly_property(&CliPrompt::setPrompt),
+		"ostr", sol::writeonly_property(&CliPrompt::setOutputStream),
+		"input", sol::readonly_property(&CliPrompt::getInput),
+		"printFullPrompt", &CliPrompt::printFullPrompt,
+		"prepareForNextLine", &CliPrompt::prepareForNextLine,
+		"update", &CliPrompt::update,
+		"enterPressed", sol::readonly_property(&CliPrompt::enterPressed),
+		"foldPressed", sol::readonly_property(&CliPrompt::foldPressed),
+		"lineHistory", sol::readonly_property(&CliPrompt::getLineHistory),
+		"setLineHistoryFromFile", &CliPrompt::setLineHistoryFromFile,
+		"clearLineHistory", &CliPrompt::clearLineHistory
+	);
+
+	new_usertype<Shell>("Shell",
 		sol::no_constructor,
-
-		// Expose the IsFocused method as a readonly property
-		"is_focused",
-		sol::readonly_property(&Shell::IsFocused),
-
-		// Keep your custom 'run' command logic
-		"run",
-		[&](Shell &self, const std::string &line)
+		"focused", sol::readonly_property(&Shell::IsFocused),
+		"run", [&](Shell &self, const std::string &line)
 		{
 			// of course, if the line has an i/o redirect,
 			// that will be applied by Shell::ProcessLine, so the
@@ -50,24 +63,25 @@ void setup_lua_state(sol::state &lua, const Commands::Context &ctx)
 			self.ProcessLine(line);
 			return ss.str();
 		});
-
-	// clang-format off
-	lua.create_named_table("ctx",
-		"args", ctx.args,
-		"shell", ctx.shell
+	
+	new_usertype<Commands::Context>("CommandContext",
+		sol::no_constructor,
+		"shell", sol::readonly_property([](const Commands::Context &c) { return std::ref(c.shell); }),
+		"args", sol::readonly_property([](const Commands::Context &c) { return std::ref(c.args); }),
+		"out", sol::readonly_property([](const Commands::Context &c) { return std::ref(c.out); }),
+		"err", sol::readonly_property([](const Commands::Context &c) { return std::ref(c.err); }),
+		"GetEnv", &Commands::Context::GetEnv
 	);
 	// clang-format on
 
-	lua["print"] = [&](const sol::string_view &s)
-	{
-		ctx.out << s << '\n';
-	};
+	set("ctx", ctx);
+	set("print", [&](const sol::string_view &s) { ctx.out << s << '\n'; });
+	set("printerr", [&](const sol::string_view &s) { ctx.err << s << '\n'; });
 }
 
 void Commands::lua(const Context &ctx)
 {
-	sol::state lua;
-	setup_lua_state(lua, ctx);
+	my_state lua{ctx};
 
 	if (ctx.args.size() > 1)
 	{
