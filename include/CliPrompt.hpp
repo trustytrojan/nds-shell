@@ -58,6 +58,12 @@ class CliPrompt
 
 public:
 	CliPrompt() { prepareForNextLine(); }
+	CliPrompt(const std::string &prompt, std::ostream &ostr = std::cout)
+		: ostr{&ostr},
+		  prompt{prompt}
+	{
+		prepareForNextLine();
+	}
 
 	// The output stream to print to.
 	void setOutputStream(std::ostream &o) { ostr = &o; }

@@ -1,4 +1,5 @@
 #include "Consoles.hpp"
+#include "CurlMulti.hpp"
 #include "Shell.hpp"
 #include "version.h"
 
@@ -51,6 +52,12 @@ void InitResources()
 		wifiInit = true;
 		subcommand_autoconnect(ostr);
 	}
+
+#ifdef NDSH_THREADING
+	ostr << "initializing curl multi...";
+	CurlMulti::Init();
+	ostr << "\r\e[2K\e[92mcurl multi initialized!\n";
+#endif
 
 	ostr << '\n';
 }

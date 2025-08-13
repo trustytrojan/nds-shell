@@ -17,6 +17,8 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 - Filesystem manipulation using typical POSIX shell commands: `ls`, `cd`, `cat`, etc
 - Networking commands: `wifi`, `dns`, `tcp`, `curl`, `ssh`, `telnet`
 - Lua interpreter, with an API to make your scripts feel just like builtin commands!
+  - **NEW:** A web-`fetch()`-like API for Lua scripts! (for the goal of making a Discord client on nds-shell!)
+  - *I didn't know about the [Pico-8](https://www.lexaloffle.com/pico-8.php) or the [TIC-80](https://tic80.com/) before... turns out I've unknowingly been creating just that, but **for real hardware!***
 - HTTPS/SSL support with cURL and MbedTLS!
   - HUGE thanks to [this blogpost](https://git.vikingsoftware.com/blog/libcurl-with-mbedtls) for figuring out the CMake quirks
 
@@ -44,6 +46,7 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 5. Clone this repo and run `$DEVKITPRO/tools/bin/catnip -Tnds -j$(nproc)`
 	- **Do NOT run CMake. You MUST run `catnip`.**
 
-## To-do list (will be converted to issues)
-- a way to push files to the DS remotely (try FTP with curl)
-- use an argument parsing library for commands
+## Lua scripting notes
+- For JSON support, I recommend [rxi/json.lua](https://github.com/rxi/json.lua). It's extremely lightweight.
+- Remember that the `lua` command runs under a shell's thread. In your scripts **when performing work asynchronously, you should call `libnds.threadYield()`** (name subject to change) **to yield the shell thread running the `lua` command**.
+  - The [Lua standard library for coroutines](https://www.lua.org/manual/5.4/manual.html#6.2) is available for use, however **Lua coroutines are NOT the same as system-level threads.** They all exist inside the Lua interpreter itself with no connection to the system thread running the `lua` command running your script.

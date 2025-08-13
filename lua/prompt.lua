@@ -1,8 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local prompt = CliPrompt.new()
-prompt.prompt = 'myluascript> '
-prompt.ostr = ctx.out
+local prompt = CliPrompt.new('myluascript> ')
 prompt:printFullPrompt(false)
 prompt:prepareForNextLine()
 
