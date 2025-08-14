@@ -128,8 +128,11 @@ void Commands::telnet(const Context &ctx)
 	bool connected{};
 	while (pmMainLoop() && !connected)
 	{
+#ifdef NDSH_THREADING
 		threadYield();
-
+#else
+		swiWaitForVBlank();
+#endif
 		switch (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)))
 		{
 		case -1:
@@ -165,8 +168,11 @@ void Commands::telnet(const Context &ctx)
 	bool shouldExit{};
 	while (pmMainLoop() && !shouldExit)
 	{
+#ifdef NDSH_THREADING
 		threadYield();
-
+#else
+		swiWaitForVBlank();
+#endif
 		char buf[200]{};
 		const auto bytesRead = recv(sock, buf, sizeof(buf), 0);
 		if (bytesRead > 0)

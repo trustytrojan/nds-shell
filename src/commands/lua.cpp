@@ -1,6 +1,8 @@
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
+#include "my_state.hpp"
 
+#include <curl/curl.h>
 #include <sol/sol.hpp>
 
 std::ostream &operator<<(std::ostream &ostr, const sol::object &obj)
@@ -20,12 +22,16 @@ std::ostream &operator<<(std::ostream &ostr, const sol::object &obj)
 
 void Commands::lua(const Context &ctx)
 {
-	sol::state lua;
-	lua.open_libraries();
+	my_state lua{ctx};
 
 	if (ctx.args.size() > 1)
 	{
-		lua.safe_script_file(ctx.args[1]);
+		const auto &result = lua.safe_script_file(ctx.args[1]);
+		if (!result.valid())
+		{
+			sol::error err = result;
+			ctx.err << "\e[91mlua: " << err.what() << "\e[39m\n";
+		}
 		return;
 	}
 
@@ -57,7 +63,14 @@ void Commands::lua(const Context &ctx)
 			if (!line.contains("print") && !line.contains("return"))
 				line = "return " + line;
 
-			ctx.out << lua.safe_script(line).get<sol::object>() << '\n';
+			const auto result = lua.safe_script(line);
+			if (!result)
+			{
+				sol::error err = result;
+				ctx.err << "\e[91mlua: " << err.what() << "\e[39m\n";
+			}
+			else
+				ctx.out << lua.safe_script(line).get<sol::object>() << '\n';
 
 			prompt.prepareForNextLine();
 			prompt.printFullPrompt(false);

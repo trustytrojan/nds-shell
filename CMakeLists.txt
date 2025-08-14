@@ -48,9 +48,7 @@ add_compile_definitions(
 	_POSIX_VERSION=202507 # just needs to be something greater than the 2000s
 	MBEDTLS_TEST_SW_INET_PTON # libnds doesn't provide inet_pton()
 )
-FetchContent_Declare(mbedtls
-	GIT_REPOSITORY https://github.com/trustytrojan/mbedtls
-	GIT_TAG 3.6.4-nds)
+FetchContent_Declare(mbedtls URL https://github.com/trustytrojan/mbedtls/releases/download/3.6.4-nds-r1/mbedtls-3.6.4-nds.7z)
 FetchContent_MakeAvailable(mbedtls)
 list(APPEND CMAKE_PREFIX_PATH "${mbedtls_BINARY_DIR}/cmake")
 
