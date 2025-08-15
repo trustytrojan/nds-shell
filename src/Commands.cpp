@@ -1,4 +1,5 @@
 #include "Commands.hpp"
+#include "Hardware.hpp"
 #include "NetUtils.hpp"
 #include "Shell.hpp"
 
@@ -291,6 +292,35 @@ void poweroff(const Context &ctx)
 	pmPrepareToReset();
 }
 
+void hwinfo(const Context &ctx)
+{
+	ctx.out << "Hardware Information:\n";
+	ctx.out << "  Type: " << Hardware::GetHardwareType();
+	
+	if (Hardware::IsDSiMode()) {
+		ctx.out << " (DSi Enhanced Mode)";
+	}
+	
+	ctx.out << "\n  Total RAM: " << (Hardware::GetAvailableRAM() / (1024 * 1024)) << " MB\n";
+	
+	if (Hardware::IsGBASlotAvailable()) {
+		ctx.out << "  GBA Slot: Available (providing memory expansion)\n";
+	} else if (!Hardware::IsDSiMode()) {
+		ctx.out << "  GBA Slot: Not available or occupied\n";
+	}
+	
+	ctx.out << "  Features: ";
+	if (Hardware::IsDSiMode()) {
+		ctx.out << "DSi enhanced CPU, 16MB RAM";
+	} else {
+		ctx.out << "Standard DS CPU, 4MB base RAM";
+		if (Hardware::IsGBASlotAvailable()) {
+			ctx.out << " + GBA slot expansion";
+		}
+	}
+	ctx.out << "\n";
+}
+
 void help(const Context &);
 
 const Map MAP{
@@ -317,6 +347,7 @@ const Map MAP{
 	{"unset", unset},
 	{"history", history},
 	{"devices", devices},
+	{"hwinfo", hwinfo},
 	{"exit", exit},
 	{"lua", lua},
 	{"source", source},
