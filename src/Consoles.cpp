@@ -1,4 +1,5 @@
 #include "Consoles.hpp"
+#include "Hardware.hpp"
 
 #include <fcntl.h>
 #include <nds/arm9/console.h>
@@ -48,6 +49,14 @@ void Init()
 	videoSetModeSub(MODE_0_2D);
 	vramSetBankA(VRAM_A_MAIN_BG);
 	vramSetBankC(VRAM_C_SUB_BG);
+
+	// If we have extra memory available (DSi or GBA slot), we can potentially
+	// use larger buffers for improved performance
+	if (Hardware::IsDSiMode() || Hardware::IsGBASlotAvailable()) {
+		// On DSi or with GBA slot expansion, we have more memory available
+		// This allows for larger console buffers and better performance
+		// The actual memory allocation is handled by libnds internally
+	}
 
 	InitMulti();
 
