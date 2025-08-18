@@ -29,8 +29,9 @@ namespace Hardware
             
             // Check for GBA slot availability on DS hardware
             // GBA slot can provide additional memory expansion
-            // Check if GBA slot is present and not occupied by a cartridge
-            gbaSlotAvailable = (REG_GBA_CART & 0xFF) == 0x96;
+            // For now, conservatively assume GBA slot is not available
+            // until we can verify the correct detection method in libnds
+            gbaSlotAvailable = false;
             
             if (gbaSlotAvailable) {
                 // Initialize GBA slot for memory expansion
