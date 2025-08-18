@@ -13,4 +13,5 @@ struct my_state : sol::state
 	void load_Shell();
 	void load_CommandContext();
 	void load_fetch();
+	void load_websocket();
 };
