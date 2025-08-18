@@ -1,4 +1,5 @@
 #include "Commands.hpp"
+#include "CurlMulti.hpp"
 
 #include <curl/curl.h>
 
@@ -16,12 +17,12 @@ static int curl_debug(CURL *, curl_infotype type, char *const data, const size_t
 }
 #endif
 
-static curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr)
+curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr)
 {
 	return socket(addr->family, addr->socktype, 0);
 }
 
-static size_t curl_write(char *const buffer, const size_t size, const size_t nitems, void *userp)
+size_t curl_write(char *const buffer, const size_t size, const size_t nitems, void *userp)
 {
 	const auto bytes = size * nitems;
 	// we can safely pass the whole buffer because of https://github.com/devkitPro/libnds/pull/72
@@ -84,39 +85,26 @@ void Commands::curl(const Context &ctx)
 
 #ifdef NDSH_THREADING
 	// use a multi to make the easy nonblocking!
-	const auto multi = curl_multi_init();
-	curl_multi_add_handle(multi, easy);
+	// but since this is the `curl` command, we want to block until it's done.
+	// we can use a simple flag and the callback system to achieve this.
+	bool done = false;
+	CurlMulti::AddEasyHandle(
+		easy,
+		[&](CURLcode result, long)
+		{
+			if (result != CURLE_OK)
+				ctx.err << "\e[91mcurl: " << curl_easy_strerror(result) << ": " << curl_errbuf << "\e[39m\n";
+			done = true;
+		});
 
-	int still_running = 0;
-	do
+	while (!done && pmMainLoop())
 	{
 		threadYield();
-
-		if (const auto mc = curl_multi_perform(multi, &still_running); mc != CURLM_OK)
-		{
-			ctx.err << "\e[91mcurl: " << curl_multi_strerror(mc) << "\e[39m\n";
-			break;
-		}
-
-		CURLMsg *msg = nullptr;
-		int msgs_in_queue = 0;
-		while ((msg = curl_multi_info_read(multi, &msgs_in_queue)) && pmMainLoop())
-		{
-			if (msg->msg == CURLMSG_DONE)
-			{
-				if (msg->data.result != CURLE_OK)
-					ctx.err << "\e[91mcurl: " << curl_easy_strerror(msg->data.result) << ": " << curl_errbuf
-							<< "\e[39m\n";
-			}
-		}
-	} while (still_running && pmMainLoop());
-
-	curl_multi_remove_handle(multi, easy);
-	curl_multi_cleanup(multi);
+	}
 #else
 	if (const auto rc = curl_easy_perform(easy); rc != CURLE_OK)
 		ctx.err << "\e[91mcurl: " << curl_easy_strerror(rc) << ": " << curl_errbuf << "\e[39m\n";
 #endif
 
-	curl_easy_cleanup(easy);
+	// curl_easy_cleanup(easy); // CurlMulti owns the handle now
 }

@@ -107,7 +107,7 @@ void initConsole(u8 idx, bool mainDisplay, int layer)
 	if (!mainDisplay)
 		// Limit height to the top edge of keyboard
 		console.windowHeight = 14;
-	
+
 	if (idx == 1)
 	{
 		bgHide(console.bgId);

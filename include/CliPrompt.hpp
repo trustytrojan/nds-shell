@@ -17,12 +17,8 @@ struct MyTickTask : TickTask
 // - input line history with arrow-key & d-pad button navigation
 class CliPrompt
 {
-	// MyTickTask mtt{.flashState = flashState};
-	// bool mttRunning{};
-
 	std::ostream *ostr = &std::cout;
 	std::string prompt = "> ";
-	// char cursor = '_';
 
 	// The input buffer, also referred to as the line buffer.
 	std::string input;
@@ -62,10 +58,15 @@ class CliPrompt
 
 public:
 	CliPrompt() { prepareForNextLine(); }
+	CliPrompt(const std::string &prompt, std::ostream &ostr = std::cout)
+		: ostr{&ostr},
+		  prompt{prompt}
+	{
+		prepareForNextLine();
+	}
 
 	// The output stream to print to.
 	void setOutputStream(std::ostream &o) { ostr = &o; }
-	void setOutputStream(std::ostream *o) { ostr = o; }
 
 	// Set the text to print before the cursor.
 	void setPrompt(const std::string &s) { prompt = s; }
@@ -101,7 +102,7 @@ public:
 
 	// Set the current line history using the contents of the file located at
 	// `filename`.
-	void setLineHistory(const std::string &filename);
+	void setLineHistoryFromFile(const std::string &filename);
 
 	// Clear the line history.
 	void clearLineHistory() { lineHistory.clear(); }
