@@ -282,13 +282,17 @@ void devices(const Context &ctx)
 
 void exit(const Context &ctx)
 {
-	// Exit the current shell.
 	ctx.shell.SetShouldExit();
 }
 
 void poweroff(const Context &ctx)
 {
 	pmPrepareToReset();
+}
+
+void isdsimode(const Context &ctx)
+{
+	ctx.out << (isDSiMode() ? "yes" : "no") << '\n';
 }
 
 void help(const Context &);
@@ -322,7 +326,8 @@ const Map MAP{
 	{"source", source},
 	{"poweroff", poweroff},
 	{"ssh", ssh},
-	{"telnet", telnet}};
+	{"telnet", telnet},
+	{"isdsimode", isdsimode}};
 
 void help(const Context &ctx)
 {
