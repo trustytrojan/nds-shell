@@ -1,7 +1,7 @@
 # nds-shell
 [![Build](https://github.com/trustytrojan/nds-shell/actions/workflows/ci.yml/badge.svg)](https://github.com/trustytrojan/nds-shell/actions/workflows/ci.yml)
 
-A POSIX `sh`-like shell & environment for the Nintendo DS.
+A POSIX-like shell & environment for the Nintendo DS.
 
 Click [here](https://nightly.link/trustytrojan/nds-shell/workflows/ci/main/nds-shell.zip) to get the latest GitHub Actions build. Check the [issues](https://github.com/trustytrojan/nds-shell/issues) tab to see all currently known issues. Report new issues there if you find any.
 
