@@ -28,6 +28,9 @@ void InitResources()
 {
 	auto &ostr = Consoles::GetStream(0);
 
+	if (isDSiMode())
+		ostr << "DSi mode detected!\n";
+
 	ostr << "initializing filesystem...";
 
 	if (!fatInitDefault())
