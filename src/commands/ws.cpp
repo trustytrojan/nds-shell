@@ -85,7 +85,7 @@ void Commands::ws(const Context &ctx)
 					const auto& message = ctx.args[2];
 					
 					// Try using curl_ws_send if available, otherwise note limitation
-#ifdef CURLOPT_WS_OPTIONS
+#if defined(CURL_AT_LEAST_VERSION) && CURL_AT_LEAST_VERSION(7, 86, 0)
 					size_t sent;
 					const CURLcode send_result = curl_ws_send(easy, message.c_str(), message.length(), &sent, 0, CURLWS_TEXT);
 					
@@ -127,7 +127,7 @@ void Commands::ws(const Context &ctx)
 					}
 #else
 					ctx.out << "Note: Full WebSocket API not available in this curl version.\n";
-					ctx.out << "Connection established but message sending requires newer curl with WebSocket support.\n";
+					ctx.out << "Connection established but message sending requires curl >= 7.86.0.\n";
 					ctx.out << "For full functionality, use the Lua 'websocket()' API for basic operation.\n";
 #endif
 				}
@@ -160,7 +160,7 @@ void Commands::ws(const Context &ctx)
 		{
 			const auto& message = ctx.args[2];
 			
-#ifdef CURLOPT_WS_OPTIONS
+#if defined(CURL_AT_LEAST_VERSION) && CURL_AT_LEAST_VERSION(7, 86, 0)
 			size_t sent;
 			const CURLcode send_result = curl_ws_send(easy, message.c_str(), message.length(), &sent, 0, CURLWS_TEXT);
 			
@@ -202,7 +202,7 @@ void Commands::ws(const Context &ctx)
 			}
 #else
 			ctx.out << "Note: Full WebSocket API not available in this curl version.\n";
-			ctx.out << "Connection established but message sending requires newer curl with WebSocket support.\n";
+			ctx.out << "Connection established but message sending requires curl >= 7.86.0.\n";
 #endif
 		}
 		else

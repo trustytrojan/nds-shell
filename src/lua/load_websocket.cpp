@@ -52,7 +52,7 @@ void my_state::load_websocket()
 			// CA cert for WSS
 			if (Shell::fsInitialized())
 				curl_easy_setopt(easy, CURLOPT_CAINFO, ctx.GetEnv("CURL_CAFILE", "tls-ca-bundle.pem").c_str());
-			else if (url.find("wss://") == 0)
+			else if (std::string(url).find("wss://") == 0)
 				ctx.err << "\e[91mwebsocket: wss unavailable: fs not initialized\e[39m\n";
 
 			// Get curl errors

@@ -50,3 +50,30 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 - For JSON support, I recommend [rxi/json.lua](https://github.com/rxi/json.lua). It's extremely lightweight.
 - Remember that the `lua` command runs under a shell's thread. In your scripts **when performing work asynchronously, you should call `libnds.threadYield()`** (name subject to change) **to yield the shell thread running the `lua` command**.
   - The [Lua standard library for coroutines](https://www.lua.org/manual/5.4/manual.html#6.2) is available for use, however **Lua coroutines are NOT the same as system-level threads.** They all exist inside the Lua interpreter itself with no connection to the system thread running the `lua` command running your script.
+
+## WebSocket Support
+nds-shell includes basic WebSocket support through both command-line and Lua interfaces:
+
+### Command Line
+```bash
+ws <url> [message]           # Establish WebSocket connection and optionally send message
+ws wss://gateway.discord.gg/?v=10&encoding=json  # Connect to Discord Gateway
+ws ws://echo.websocket.org "Hello WebSocket"     # Send message to echo server
+```
+
+### Lua API
+```lua
+-- Basic WebSocket connection
+local ws, err = websocket('wss://echo.websocket.org/', 
+    {},  -- options (headers, timeout)
+    function(info, error_msg)
+        if error_msg then
+            printerr('Error: ' .. error_msg)
+        else
+            print('Connected to: ' .. info.url)
+        end
+    end
+)
+```
+
+**Note**: Full WebSocket protocol implementation (message sending/receiving) requires libcurl with complete WebSocket API support. The current implementation establishes connections and provides a foundation for protocol implementation.
