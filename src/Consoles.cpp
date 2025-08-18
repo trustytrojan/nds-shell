@@ -52,7 +52,8 @@ void Init()
 
 	// If we have extra memory available (DSi or GBA slot), we can potentially
 	// use larger buffers for improved performance
-	if (Hardware::IsDSiMode() || Hardware::IsGBASlotAvailable()) {
+	if (Hardware::IsDSiMode() || Hardware::IsGBASlotAvailable())
+	{
 		// On DSi or with GBA slot expansion, we have more memory available
 		// This allows for larger console buffers and better performance
 		// The actual memory allocation is handled by libnds internally

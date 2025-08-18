@@ -30,17 +30,15 @@ void InitResources()
 	auto &ostr = Consoles::GetStream(0);
 
 	// Display hardware information
-	ostr << "\e[96mhardware: " << Hardware::GetHardwareType() 
-	     << " (" << (Hardware::GetAvailableRAM() / (1024 * 1024)) << "MB RAM";
-	
-	if (Hardware::IsDSiMode()) {
+	ostr << "\e[96mhardware: " << Hardware::GetHardwareType() << " (" << (Hardware::GetAvailableRAM() / (1024 * 1024))
+		 << "MB RAM";
+
+	if (Hardware::IsDSiMode())
 		ostr << ", DSi enhanced mode";
-	}
-	
-	if (Hardware::IsGBASlotAvailable()) {
+
+	if (Hardware::IsGBASlotAvailable())
 		ostr << ", GBA slot expansion";
-	}
-	
+
 	ostr << ")\e[39m\n";
 
 	ostr << "initializing filesystem...";
@@ -99,10 +97,10 @@ int main()
 {
 	defaultExceptionHandler();
 	tickInit();
-	
+
 	// Initialize hardware-specific features (DSi mode, GBA slot)
 	Hardware::Init();
-	
+
 	Consoles::Init();
 	InitResources();
 
