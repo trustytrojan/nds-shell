@@ -109,7 +109,11 @@ void Commands::ssh(const Context &ctx)
 				std::string pass_buf;
 				while (pmMainLoop())
 				{
+#ifdef NDSH_THREADING
 					threadYield();
+#else
+					swiWaitForVBlank();
+#endif
 					int key = keyboardUpdate();
 					if (key > 0)
 					{
@@ -183,7 +187,11 @@ void Commands::ssh(const Context &ctx)
 
 		while (!libssh2_channel_eof(channel) && pmMainLoop())
 		{
+#ifdef NDSH_THREADING
 			threadYield();
+#else
+			swiWaitForVBlank();
+#endif
 			char buffer[1024];
 
 			// Read from channel

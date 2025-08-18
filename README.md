@@ -12,27 +12,41 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 
 ## Features
 - `sh`-like features: cursor navigation, I/O redirection, environment variables, variable substitution, command history
-- Filesystem manipulation using typical POSIX-like commands: `ls`, `cd`, `cat`, etc
-- Networking commands: `wifi`, `dns`, `tcp`, `curl`
-- Lua interpreter (soon an API to add custom commands)
+  - Command history is now saved to your sdcard at `/.ndsh_history`!
+  - Like `.bashrc` for Bash, `.ndshrc` at the root of your sdcard is automatically run upon shell startup
+- Filesystem manipulation using typical POSIX shell commands: `ls`, `cd`, `cat`, etc
+- Networking commands: `wifi`, `dns`, `tcp`, `curl`, `ssh`, `telnet`
+- Lua interpreter, with an API to make your scripts feel just like builtin commands!
+  - **NEW:** A web-`fetch()`-like API for Lua scripts! (for the goal of making a Discord client on nds-shell!)
+  - *I didn't know about the [Pico-8](https://www.lexaloffle.com/pico-8.php) or the [TIC-80](https://tic80.com/) before... turns out I've unknowingly been creating just that, but **for real hardware!***
 - HTTPS/SSL support with cURL and MbedTLS!
   - HUGE thanks to [this blogpost](https://git.vikingsoftware.com/blog/libcurl-with-mbedtls) for figuring out the CMake quirks
 
 ## Dependencies
-- [libnds](https://github.com/devkitPro/libnds), which includes [dswifi](https://github.com/devkitPro/dswifi) and [libfat](https://github.com/devkitPro/libfat)
-- [MbedTLS (my fork)](https://github.com/trustytrojan/mbedtls/tree/3.6.4-nds)
-- [cURL (my fork)](https://github.com/trustytrojan/curl/tree/8.15.0-mbedtls)
-- [Lua](https://lua.org)
+- [libnds (my console rework fork)](https://github.com/trustytrojan/libnds/tree/console-rework), [dswifi](https://github.com/devkitPro/dswifi) and [libfat](https://github.com/devkitPro/libfat)
+- [MbedTLS (my fork with CMake changes)](https://github.com/trustytrojan/mbedtls/tree/3.6.4-nds)
+- [libcurl (my fork with CMake changes)](https://github.com/trustytrojan/curl/tree/8.15.0-mbedtls)
+- [Lua (CMake compatible repo by @walterschell)](https://github.com/walterschell/Lua)
 - [sol2](https://github.com/ThePhD/sol2)
+- [libssh2 (my fork with CMake changes)](https://github.com/trustytrojan/libssh2/tree/1.11.1-nds)
+- [libtelnet (my fork with CMake changes)](https://github.com/trustytrojan/libtelnet/tree/cmake-changes)
 
 ## Building
 *note: this process has only been tested on linux*
 
 1. Get [devkitPro pacman](https://devkitpro.org/wiki/Getting_Started) on your system
 2. Install the `nds-dev` metapackage (explained in the link above)
-3. Run `$DEVKITPRO/tools/bin/catnip -Tnds -j$(nproc)`
-	- **Do NOT run CMake. You must run `catnip`.**
+3. **Uninstall** `libnds` with `sudo (dkp-)pacman -Rdd libnds`
+4. Clone, build, and install [my libnds fork](https://github.com/trustytrojan/libnds/tree/console-rework):
+   ```sh
+   git clone https://github.com/trustytrojan/libnds -b console-rework
+   cd console-rework
+   sudo -E make install -j$(nproc)
+   ```
+5. Clone this repo and run `$DEVKITPRO/tools/bin/catnip -Tnds -j$(nproc)`
+	- **Do NOT run CMake. You MUST run `catnip`.**
 
-## To-do list (will be converted to issues)
-- a way to push files to the DS remotely (try FTP with curl)
-- use an argument parsing library for commands
+## Lua scripting notes
+- For JSON support, I recommend [rxi/json.lua](https://github.com/rxi/json.lua). It's extremely lightweight.
+- Remember that the `lua` command runs under a shell's thread. In your scripts **when performing work asynchronously, you should call `libnds.threadYield()`** (name subject to change) **to yield the shell thread running the `lua` command**.
+  - The [Lua standard library for coroutines](https://www.lua.org/manual/5.4/manual.html#6.2) is available for use, however **Lua coroutines are NOT the same as system-level threads.** They all exist inside the Lua interpreter itself with no connection to the system thread running the `lua` command running your script.

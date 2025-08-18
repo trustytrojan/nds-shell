@@ -1,4 +1,5 @@
 #include "Consoles.hpp"
+#include "CurlMulti.hpp"
 #include "Shell.hpp"
 #include "version.h"
 
@@ -13,11 +14,13 @@ void subcommand_autoconnect(std::ostream &ostr); // from wifi.cpp
 
 static bool fsInit{}, wifiInit{};
 
-bool Shell::wifiInitialized() {
+bool Shell::wifiInitialized()
+{
 	return wifiInit;
 }
 
-bool Shell::fsInitialized() {
+bool Shell::fsInitialized()
+{
 	return fsInit;
 }
 
@@ -49,6 +52,12 @@ void InitResources()
 		wifiInit = true;
 		subcommand_autoconnect(ostr);
 	}
+
+#ifdef NDSH_THREADING
+	ostr << "initializing curl multi...";
+	CurlMulti::Init();
+	ostr << "\r\e[2K\e[92mcurl multi initialized!\n";
+#endif
 
 	ostr << '\n';
 }
