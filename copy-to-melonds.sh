@@ -1,2 +1,2 @@
 #!/bin/sh
-cp lua/* melonds-sdcard
+cp -r lua melonds-sdcard
