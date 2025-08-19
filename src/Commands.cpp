@@ -327,7 +327,8 @@ const Map MAP{
 	{"poweroff", poweroff},
 	{"ssh", ssh},
 	{"telnet", telnet},
-	{"isdsimode", isdsimode}};
+	{"isdsimode", isdsimode},
+	{"ws", ws}};
 
 void help(const Context &ctx)
 {

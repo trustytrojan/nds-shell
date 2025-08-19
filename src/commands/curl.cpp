@@ -98,13 +98,11 @@ void Commands::curl(const Context &ctx)
 		});
 
 	while (!done && pmMainLoop())
-	{
 		threadYield();
-	}
 #else
 	if (const auto rc = curl_easy_perform(easy); rc != CURLE_OK)
 		ctx.err << "\e[91mcurl: " << curl_easy_strerror(rc) << ": " << curl_errbuf << "\e[39m\n";
 #endif
 
-	// curl_easy_cleanup(easy); // CurlMulti owns the handle now
+	curl_easy_cleanup(easy);
 }

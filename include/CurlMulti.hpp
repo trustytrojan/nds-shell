@@ -27,9 +27,6 @@ void Init();
  * The handle will be processed asynchronously on the network thread.
  * The provided callback will be invoked upon completion.
  *
- * NOTE: The CurlMulti system takes ownership of the easy handle and will
- * call curl_easy_cleanup on it after the callback is invoked.
- *
  * @param easy A pointer to a configured CURL easy handle.
  * @param callback A function to be called when the transfer is complete.
  */

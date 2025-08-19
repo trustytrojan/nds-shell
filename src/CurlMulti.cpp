@@ -53,9 +53,7 @@ static void ProcessHandles()
 				g_completion_callbacks.erase(it);
 			}
 
-			// Clean up the completed easy handle.
 			curl_multi_remove_handle(g_multi_handle, easy_handle);
-			curl_easy_cleanup(easy_handle);
 		}
 	}
 }

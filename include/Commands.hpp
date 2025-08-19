@@ -29,6 +29,7 @@ void tcp(const Context &);
 void lua(const Context &);
 void ssh(const Context &);
 void telnet(const Context &);
+void ws(const Context &ctx);
 
 // the smaller commands are defined in Commands.cpp
 using Fn = void (*)(const Context &);
