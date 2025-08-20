@@ -37,14 +37,12 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 1. Download the latest version of the [devkitPro installer](https://github.com/devkitPro/installer/releases) and select the `nds` option during installation
 2. Open the `MSys2` shell from your start menu after installation and uninstall `libnds` with `pacman -Rdd libnds` 
 *note: if you already have msys2 installed make sure you open the one that is exactly called `MSys2`, this is the one installed by devkitPro*
-
 3. Clone, build and install [my libnds fork](https://github.com/trustytrojan/libnds/tree/console-rework):
   ```sh
   git clone https://github.com/trustytrojan/libnds -b console-rework
   cd libnds
   make install -j$(nproc)
   ```
-
 5. Clone this repo and build with `$DEVKITPRO/tools/bin/catnip -Tnds`
 
 ### Linux
