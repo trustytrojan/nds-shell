@@ -39,11 +39,11 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 *note: if you already have msys2 installed make sure you open the one that is exactly called `MSys2`, this is the one installed by devkitPro*
 
 3. Clone, build and install [my libnds fork](https://github.com/trustytrojan/libnds/tree/console-rework):
-```sh
-git clone https://github.com/trustytrojan/libnds -b console-rework
-cd libnds
-make install -j$(nproc)
-```
+  ```sh
+  git clone https://github.com/trustytrojan/libnds -b console-rework
+  cd libnds
+  make install -j$(nproc)
+  ```
 
 5. Clone this repo and build with `$DEVKITPRO/tools/bin/catnip -Tnds`
 
