@@ -310,6 +310,7 @@ const Map MAP{
 	{"ipinfo", ipinfo},
 	{"tcp", tcp},
 	{"curl", curl},
+	{"ws", ws},
 	{"pwd", pwd},
 	{"env", env},
 	{"rename", rename},

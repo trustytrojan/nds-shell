@@ -12,6 +12,7 @@ my_state::my_state(const Commands::Context &ctx)
 	load_Shell();
 	load_CommandContext();
 	load_fetch();
+	load_websocket();
 
 	set("ctx", ctx);
 	set("print", [&](const sol::string_view &s) { ctx.out << s << '\n'; });
