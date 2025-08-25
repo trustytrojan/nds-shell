@@ -1,4 +1,5 @@
 #include "CurlMulti.hpp"
+#include <iostream>
 #include <mutex>
 #include <nds.h>
 #include <thread>
@@ -33,28 +34,40 @@ static void ProcessHandles()
 	CURLMsg *msg;
 	while ((msg = curl_multi_info_read(g_multi_handle, &msgs_in_queue)))
 	{
-		if (msg->msg == CURLMSG_DONE)
+		if (msg->msg != CURLMSG_DONE)
+			continue;
+
+		CURL *easy_handle = msg->easy_handle;
+		CURLcode result = msg->data.result;
+
+		// Find the corresponding callback.
+		auto it = g_completion_callbacks.find(easy_handle);
+		if (it != g_completion_callbacks.end())
 		{
-			CURL *easy_handle = msg->easy_handle;
-			CURLcode result = msg->data.result;
+			// Get response code before cleaning up
+			long response_code = 0;
+			curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &response_code);
 
-			// Find the corresponding callback.
-			auto it = g_completion_callbacks.find(easy_handle);
-			if (it != g_completion_callbacks.end())
-			{
-				// Get response code before cleaning up
-				long response_code = 0;
-				curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &response_code);
+			// Invoke the user's callback function.
+			it->second(result, response_code);
 
-				// Invoke the user's callback function.
-				it->second(result, response_code);
-
-				// Erase the callback from the map.
-				g_completion_callbacks.erase(it);
-			}
-
-			curl_multi_remove_handle(g_multi_handle, easy_handle);
+			// Erase the callback from the map.
+			g_completion_callbacks.erase(it);
 		}
+
+		char *scheme;
+		if (const auto rc = curl_easy_getinfo(easy_handle, CURLINFO_SCHEME, &scheme); rc != CURLE_OK)
+		{
+			std::cerr << "\e[91mCurlMulti: " << curl_easy_strerror(rc) << "\e[39m\n";
+			continue;
+		}
+
+		// schemes can come out in either upper/lower case
+		const auto schemeIsWebsocket = strstr(scheme, "WS") || strstr(scheme, "ws");
+		if (schemeIsWebsocket)
+			continue;
+
+		curl_multi_remove_handle(g_multi_handle, easy_handle);
 	}
 }
 
@@ -95,6 +108,13 @@ void AddEasyHandle(CURL *easy, CompletionCallback callback)
 	std::lock_guard<std::mutex> lock(g_mutex);
 	g_completion_callbacks[easy] = std::move(callback);
 	curl_multi_add_handle(g_multi_handle, easy);
+}
+
+void RemoveEasyHandle(CURL *easy)
+{
+	std::lock_guard<std::mutex> lock(g_mutex);
+	g_completion_callbacks.erase(easy);
+	curl_multi_remove_handle(g_multi_handle, easy);
 }
 
 } // namespace CurlMulti

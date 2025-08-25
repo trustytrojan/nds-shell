@@ -26,10 +26,15 @@ void Init();
  * @brief Adds a configured curl easy handle to the multi stack for processing.
  * The handle will be processed asynchronously on the network thread.
  * The provided callback will be invoked upon completion.
+ * @warning The provided easy handle will NOT be cleaned up with curl_easy_cleanup.
  *
  * @param easy A pointer to a configured CURL easy handle.
  * @param callback A function to be called when the transfer is complete.
  */
 void AddEasyHandle(CURL *easy, CompletionCallback callback);
+
+// For "live-connection" protocols, removes the easy handle from the multi handle.
+// Does NOT call curl_easy_cleanup, that's still your job.
+void RemoveEasyHandle(CURL *easy);
 
 } // namespace CurlMulti

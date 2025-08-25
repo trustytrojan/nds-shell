@@ -112,6 +112,10 @@ void loop(CURL *easy, const Commands::Context &ctx)
 close:
 	curl_ws_send(easy, "", 0, &sent, 0, CURLWS_CLOSE);
 	curl_easy_cleanup(easy);
+
+	// We need to remove it manually because CurlMulti will keep
+	// WebSocket handles to, you know, make the WebSocket work.
+	CurlMulti::RemoveEasyHandle(easy);
 }
 
 void Commands::ws(const Context &ctx)
