@@ -15,9 +15,9 @@ Although it may seem like it, the scope of this project is *not* to be an operat
   - Command history is now saved to your sdcard at `/.ndsh_history`!
   - Like `.bashrc` for Bash, `.ndshrc` at the root of your sdcard is automatically run upon shell startup
 - Filesystem manipulation using typical POSIX shell commands: `ls`, `cd`, `cat`, etc
-- Networking commands: `wifi`, `dns`, `tcp`, `curl`, `ssh`, `telnet`
+- Networking commands: `wifi`, `dns`, `tcp`, `curl`, `ssh`, `telnet`, `ws`
 - Lua interpreter, with an API to make your scripts feel just like builtin commands!
-  - **NEW:** A web-`fetch()`-like API for Lua scripts! (for the goal of making a Discord client on nds-shell!)
+  - With a `fetch()` HTTP API and `WebSocket` class, resembling the JS/browser equivalents!
   - *I didn't know about the [Pico-8](https://www.lexaloffle.com/pico-8.php) or the [TIC-80](https://tic80.com/) before... turns out I've unknowingly been creating just that, but **for real hardware!***
 - HTTPS/SSL support with cURL and MbedTLS!
   - HUGE thanks to [this blogpost](https://git.vikingsoftware.com/blog/libcurl-with-mbedtls) for figuring out the CMake quirks
@@ -48,5 +48,5 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 
 ## Lua scripting notes
 - For JSON support, I recommend [rxi/json.lua](https://github.com/rxi/json.lua). It's extremely lightweight.
-- Remember that the `lua` command runs under a shell's thread. In your scripts **when performing work asynchronously, you should call `libnds.threadYield()`** (name subject to change) **to yield the shell thread running the `lua` command**.
+- Remember that the `lua` command runs under a shell's thread. In your scripts **when performing work in a loop, you should call `libnds.threadYield()` to yield the current thread so others can run**.
   - The [Lua standard library for coroutines](https://www.lua.org/manual/5.4/manual.html#6.2) is available for use, however **Lua coroutines are NOT the same as system-level threads.** They all exist inside the Lua interpreter itself with no connection to the system thread running the `lua` command running your script.

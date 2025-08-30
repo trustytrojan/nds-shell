@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
--- use rxi/json.lua, it's very small and works!
+-- use https://github.com/rxi/json.lua, it's very small and works!
 -- make sure it's in the same directory
 local json = require('json')
 
