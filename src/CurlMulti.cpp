@@ -5,6 +5,31 @@
 #include <thread>
 #include <unordered_map>
 
+// for some reason dkp doesnt have strcasestr... implement it ourselves.
+char *strcasestr(const char *haystack, const char *needle)
+{
+	if (!haystack || !needle)
+		return NULL;
+
+	if (*needle == '\0')
+		return (char *)haystack;
+
+	for (; *haystack; ++haystack)
+	{
+		const char *h = haystack;
+		const char *n = needle;
+		while (*h && *n && tolower((unsigned char)*h) == tolower((unsigned char)*n))
+		{
+			h++;
+			n++;
+		}
+		if (*n == '\0')
+			return (char *)haystack;
+	}
+
+	return NULL;
+}
+
 namespace CurlMulti
 {
 
@@ -63,7 +88,9 @@ static void ProcessHandles()
 		}
 
 		// schemes can come out in either upper/lower case
-		const auto schemeIsWebsocket = strstr(scheme, "WS") || strstr(scheme, "ws");
+		const auto schemeIsWebsocket = strcasestr(scheme, "ws") == scheme;
+
+		// do NOT remove websocket handles
 		if (schemeIsWebsocket)
 			continue;
 

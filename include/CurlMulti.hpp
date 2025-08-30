@@ -35,6 +35,7 @@ void AddEasyHandle(CURL *easy, CompletionCallback callback);
 
 // For "live-connection" protocols, removes the easy handle from the multi handle.
 // Does NOT call curl_easy_cleanup, that's still your job.
+// It is *safe* to call this with an easy handle that is *not* currently in the multi.
 void RemoveEasyHandle(CURL *easy);
 
 } // namespace CurlMulti
