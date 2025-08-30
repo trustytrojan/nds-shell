@@ -15,34 +15,40 @@ void Commands::ws(const Context &ctx)
 	ws.setConnectTimeout(atoi(ctx.GetEnv("CURL_TIMEOUT", "10").c_str()));
 	ws.setCaFile(ctx.GetEnv("CURL_CAFILE", "tls-ca-bundle.pem"));
 
+	ws.on_message(
+		[&](auto &msg)
+		{
+			for (const auto c : msg)
+				if (c == '\b')
+					ctx.out << "\e[D";
+				else
+					ctx.out << c;
+		});
+
+	ws.on_error([&](auto code, auto msg)
+				{ ctx.err << "\e[91mws: " << curl_easy_strerror(code) << ": " << msg << "\e[39m\n"; });
+
+	bool closed{};
+	ws.on_close([&](auto, auto) { closed = true; });
+
 	if (const auto res = ws.connect(); res != CURLE_OK)
-	{
-		ctx.err << "\e[91mws: connection failed: " << curl_easy_strerror(res) << ": " << ws.getErrbuf() << "\e[39m\n";
+		// the on_error callback receives the errbuf, we can just return
 		return;
-	}
 
 	// Begin send/recv loop.
 	CliPrompt prompt{"", ctx.out};
 	prompt.printFullPrompt(false);
-	std::vector<char> msgbuf;
 
-	while (pmMainLoop())
+	while (!closed && pmMainLoop())
 	{
 #ifdef NDSH_THREADING
 		threadYield();
 #else
 		swiWaitForVBlank();
 #endif
-		auto [rc, messageFullyReceived] = ws.recvFragment(msgbuf);
-		if (messageFullyReceived)
-		{
-			for (const auto c : msgbuf)
-				if (c == '\b')
-					ctx.out << "\e[D";
-				else
-					ctx.out << c;
-			msgbuf.clear();
-		}
+
+		// Poll the websocket for events
+		ws.poll();
 
 		// Lastly update & check the prompt for a line to send
 		if (!ctx.shell.IsFocused())
