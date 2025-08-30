@@ -79,7 +79,7 @@ void my_state::load_fetch()
 #ifdef NDSH_THREADING
 			CurlMulti::AddEasyHandle(
 				easy,
-				[invoke_callback = std::move(invoke_callback), headers](CURLcode result, long response_code)
+				[invoke_callback = std::move(invoke_callback), headers, easy](CURLcode result, long response_code)
 				{
 					// This lambda is now executing on the CurlMulti thread.
 					invoke_callback(result, response_code);
@@ -87,6 +87,7 @@ void my_state::load_fetch()
 					// Now we can clean up the headers.
 					if (headers)
 						curl_slist_free_all(headers);
+					curl_easy_cleanup(easy);
 				});
 #else
 			const auto rc = curl_easy_perform(easy);
