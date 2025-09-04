@@ -3,6 +3,7 @@
 #include "NetUtils.hpp"
 
 #include <dswifi9.h>
+#include <sys/ioctl.h>
 #include <wfc.h>
 
 #include <fcntl.h>
@@ -11,7 +12,38 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 
+#include <expected>
 #include <iostream>
+
+struct TcpSocket
+{
+	const int fd{socket(AF_INET, SOCK_STREAM, 0)};
+	~TcpSocket() { closesocket(fd); }
+
+	// direct system call wrappers
+	int connect(sockaddr_in &sain) { return ::connect(fd, (sockaddr *)&sain, sizeof(sockaddr_in)); }
+	int recv(void *data, size_t recvlength) { return ::recv(fd, data, recvlength, 0); }
+	int send(const void *data, size_t sendlength) { return ::send(fd, data, sendlength, 0); }
+
+	std::expected<void, const char *> connect(const std::string_view &hostport)
+	{
+		sockaddr_in sain;
+		if (const auto rc = NetUtils::ParseAddress(sain, hostport.data()); rc != NetUtils::Error::NO_ERROR)
+			return std::unexpected{NetUtils::StrError(rc)};
+		if (connect(sain) == -1)
+			return std::unexpected{strerror(errno)};
+		return {};
+	}
+
+	int send(const std::string_view &s) { return send(s.data(), s.size()); }
+
+	std::expected<void, const char *> setNonblocking(bool yes)
+	{
+		if (::ioctl(fd, FIONBIO, &yes) == -1)
+			return std::unexpected{strerror(errno)};
+		return {};
+	}
+};
 
 void Commands::tcp(const Context &ctx)
 {
@@ -21,128 +53,88 @@ void Commands::tcp(const Context &ctx)
 		return;
 	}
 
-	const auto debugMessages = ctx.env.contains("TCP_DEBUG");
+	const auto debugPrint = ctx.env.contains("TCP_DEBUG");
 
-	// parse the address
-	sockaddr_in sain;
-	if (const auto rc = NetUtils::ParseAddress(sain, ctx.args[1]); rc != NetUtils::Error::NO_ERROR)
+	TcpSocket sock;
+
+	if (debugPrint)
+		ctx.err << "\e[90mtcp: socket: " << sock.fd << "\n\e[39m";
+
+	if (const auto ex = sock.connect(ctx.args[1]); !ex)
 	{
-		ctx.err << "\e[91mtcp: " << NetUtils::StrError(rc) << "\e[39m\n";
+		ctx.err << "\e[91mtcp: connect: " << ex.error() << "\e[39m\n";
 		return;
 	}
 
-	// open a connection to the server
-	const auto sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock == -1)
-	{
-		ctx.err << "\e[91mtcp: socket: " << strerror(errno) << "\e[39m\n";
-		return;
-	}
-
-	if (debugMessages)
-		ctx.err << "\e[90mtcp: socket: " << sock << "\n\e[39m";
-
-	if (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)) == -1)
-	{
-		ctx.err << "\e[91mtcp: connect: " << strerror(errno) << "\e[39m\n";
-		close(sock);
-		return;
-	}
-
-	if (debugMessages)
+	if (debugPrint)
 		ctx.err << "\e[90mtcp: connected\e[39m\n";
 
-	// TODO: get rid of the select() impl, use non-blocking sockets instead
+	if (const auto ex = sock.setNonblocking(true); !ex)
+	{
+		ctx.err << "\e[91mtelnet: ioctl: " << ex.error() << "\e[39m\n";
+		return;
+	}
 
-	fd_set master_set{};
-	FD_SET(sock, &master_set);
-
-	fd_set readfds{master_set};
+	if (debugPrint)
+		ctx.err << "\e[90mtelnet: set nonblocking\e[39m\n";
 
 	char buf[200]{};
 	bool shouldExit{};
 
 	CliPrompt prompt;
 	prompt.setOutputStream(ctx.out);
-	prompt.setPrompt("tcp> ");
+	prompt.setPrompt("");
 	prompt.prepareForNextLine();
-
 	ctx.out << "press fold/esc key to exit\n";
-	prompt.printFullPrompt(false);
 
 	while (pmMainLoop() && !shouldExit)
 	{
-#ifdef NDSH_THREADING
-		threadYield();
-#else
-		swiWaitForVBlank();
-#endif
-
-		if (ctx.shell.IsFocused())
+		switch (const auto bytesRead = sock.recv(buf, sizeof(buf) - 1))
 		{
-			// NOTE: we only need to prevent the PROMPT from processing the keyboard
-			// when not focused! everything else is allowed to run!
-
-			prompt.update();
-
-			if (prompt.foldPressed())
-			{
-				if (debugMessages)
-					ctx.out << "\r\e[2K\e[90mtcp: fold key pressed\e[39m\n";
+		case -1:
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				// nothing came in
 				break;
-			}
-
-			if (prompt.enterPressed())
-			{
-				ctx.out << "\r\e[1A\e[2K";
-				const auto &lineToSend = prompt.getInput();
-				switch (send(sock, lineToSend.c_str(), lineToSend.length(), 0))
-				{
-				case -1:
-					ctx.err << "\e[91mtcp: send: " << strerror(errno) << "\e[39m\n";
-					shouldExit = true;
-					break;
-				case 0:
-					ctx.out << "\r\e[2Ktcp: remote end disconnected\n";
-					shouldExit = true;
-					break;
-				}
-				prompt.prepareForNextLine();
-				prompt.printFullPrompt(false);
-			}
-		}
-
-		// Check for incoming data
-		readfds = master_set;
-		static timeval timeout{};
-		const auto selectResult = select(sock + 1, &readfds, nullptr, nullptr, &timeout);
-
-		if (selectResult > 0 && FD_ISSET(sock, &readfds))
-		{
-			switch (const auto bytesRead = recv(sock, buf, sizeof(buf) - 1, 0))
-			{
-			case -1:
-				ctx.err << "\e[91mtcp: recv: " << strerror(errno) << "\e[39m\n";
-				shouldExit = true;
-				break;
-			case 0:
-				ctx.out << "\r\e[2Ktcp: remote end disconnected\n";
-				shouldExit = true;
-				break;
-			default:
-				buf[bytesRead] = '\0';
-				ctx.out << "\r\e[2K" << buf << '\n';
-				prompt.printFullPrompt(true);
-				break;
-			}
-		}
-		else if (selectResult == -1)
-		{
-			ctx.err << "\e[91mtcp: select: " << strerror(errno) << "\e[39m\n";
+			ctx.err << "\e[91mtcp: recv: " << strerror(errno) << "\e[39m\n";
 			shouldExit = true;
+			break;
+		case 0:
+			ctx.out << "tcp: remote end disconnected\n";
+			shouldExit = true;
+			break;
+		default:
+			buf[bytesRead] = '\0';
+			ctx.out << buf << '\n';
+			break;
 		}
-	}
 
-	// close() and closesocket() operate on DIFFERENT fd tables
-	closesocket(sock);
+		if (!ctx.shell.IsFocused())
+			continue;
+
+		prompt.update();
+
+		if (prompt.foldPressed())
+		{
+			if (debugPrint)
+				ctx.out << "\e[90mtcp: fold key pressed\e[39m\n";
+			break;
+		}
+
+		if (!prompt.enterPressed())
+			continue;
+
+		switch (sock.send(prompt.getInput()))
+		{
+		case -1:
+			ctx.err << "\e[91mtcp: send: " << strerror(errno) << "\e[39m\n";
+			shouldExit = true;
+			break;
+		case 0:
+			ctx.out << "tcp: remote end disconnected\n";
+			shouldExit = true;
+			break;
+		}
+
+		prompt.prepareForNextLine();
+	}
 }
