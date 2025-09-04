@@ -2,6 +2,7 @@
 
 #include <nds.h>
 
+#include <functional>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -17,6 +18,10 @@ struct MyTickTask : TickTask
 // - input line history with arrow-key & d-pad button navigation
 class CliPrompt
 {
+public:
+	using AutocompleteCallback = std::function<void(const std::string &, std::vector<std::string> &)>;
+
+private:
 	std::ostream *ostr = &std::cout;
 	std::string prompt = "> ";
 
@@ -40,6 +45,9 @@ class CliPrompt
 	// past the end of the line history.
 	std::string savedInput;
 
+	std::vector<std::string> autocompleteOptions;
+	AutocompleteCallback autocompleteCallback;
+
 	void resetKeypressState() { _enterPressed = _foldPressed = {}; }
 	void flashCursor();
 	void handleBackspace();
@@ -48,6 +56,7 @@ class CliPrompt
 	void handleRight();
 	void handleUp();
 	void handleDown();
+	void handleTab();
 
 	// Returns whether an event was run via a keypad press.
 	bool processKeypad();
@@ -71,8 +80,8 @@ public:
 	// Set the text to print before the cursor.
 	void setPrompt(const std::string &s) { prompt = s; }
 
-	// Set the character to print as the cursor.
-	// void setCursor(char c) { cursor = c; }
+	// Set the autocomplete callback function. It is called with the current input when the user presses Tab.
+	void setAutocompleteCallback(const AutocompleteCallback &cb) { autocompleteCallback = cb; }
 
 	// Read the input buffer.
 	const std::string &getInput() const { return input; }

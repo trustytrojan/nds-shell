@@ -47,6 +47,12 @@ void ls(const Context &ctx)
 		return;
 	}
 
+	if (!fs::is_directory(path))
+	{
+		ctx.out << path << '\n';
+		return;
+	}
+
 	for (const auto &entry : fs::directory_iterator{path})
 	{
 		const auto filename = entry.path().filename().string();

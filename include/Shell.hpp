@@ -49,6 +49,9 @@ private:
 	// Does NOT free any resources that they previously pointed to!
 	void ResetStreams();
 
+	// Autocomplete callback for CliPrompt.
+	void AutocompleteCallback(const std::string &input, std::vector<std::string> &options);
+
 public:
 	const int console;
 
