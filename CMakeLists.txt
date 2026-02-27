@@ -22,7 +22,6 @@ configure_file(
 	"${PROJECT_BINARY_DIR}/version.h"
 )
 
-# set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BUILD_SHARED_LIBS OFF)
@@ -49,7 +48,6 @@ include(FetchContent)
 # list(APPEND CMAKE_PREFIX_PATH "${mbedtls_BINARY_DIR}/cmake")
 
 ## wolfssl
-# setcb(WOLFSSL_USER_SETTINGS ON)
 setcb(WOLFSSL_EXAMPLES OFF)
 setcb(WOLFSSL_INSTALL OFF)
 setcb(WOLFSSL_CRYPT_TESTS OFF)
@@ -67,7 +65,7 @@ FetchContent_Declare(wolfssl
 FetchContent_MakeAvailable(wolfssl)
 target_compile_definitions(wolfssl PRIVATE
 	HAVE_SOCKADDR
-	SOMAXCONN=1
+	SOMAXCONN=1 # dkp doesn't define this; 1 is fine
 	WOLFSSL_NO_ATOMICS
 )
 target_compile_definitions(wolfssl PUBLIC
@@ -96,14 +94,12 @@ setcb(CURL_DISABLE_SOCKETPAIR ON)
 ## THIS SETTING IS THE DECIDING FACTOR FOR WHETHER HTTPS WILL WORK IN THREADS!!!!!!!
 # for some reason allowing verbose strings (which allows for debugging curl code)
 # uses too much thread-local storage???? https://github.com/devkitPro/calico/pull/6
-# the culprit could also be mbedtls; still better off just disabling this than breaking my head over it.
+# better off just disabling this than breaking my head over it.
 setcb(CURL_DISABLE_VERBOSE_STRINGS ON)
 
 # setcb(CURL_USE_MBEDTLS ON)
 # set(MBEDTLS_LIBRARIES mbedx509 mbedcrypto mbedtls)
 setcb(CURL_USE_WOLFSSL ON)
-# set(WOLFSSL_LIBRARY wolfssl)
-# set(WOLFSSL_INCLUDE_DIR ${wolfssl_SOURCE_DIR})
 
 setcb(ENABLE_CURL_MANUAL OFF)
 setcb(ENABLE_UNIX_SOCKETS OFF)
@@ -115,7 +111,7 @@ setcb(HAVE_ATOMIC OFF)
 setcb(HAVE_BASENAME OFF)
 
 # nonblock
-setcb(HAVE_FCNTL_O_NONBLOCK OFF)
+setcb(HAVE_FCNTL OFF)
 setcb(HAVE_SETSOCKOPT_SO_NONBLOCK OFF)
 setcb(HAVE_IOCTL_FIONBIO ON)
 
@@ -167,11 +163,9 @@ setcb(BUILD_EXAMPLES OFF)
 setcb(BUILD_TESTING OFF)
 # set(MBEDTLS_INCLUDE_DIR ${mbedtls_SOURCE_DIR}/include)
 # set(MBEDCRYPTO_LIBRARY mbedcrypto)
-# set(WOLFSSL_LIBRARY wolfssl)
-# set(WOLFSSL_INCLUDE_DIR ${wolfssl_SOURCE_DIR})
-# add_compile_definitions(LIBSSH2_MBEDTLS _3DS)
 FetchContent_Declare(libssh2 URL https://github.com/trustytrojan/libssh2/archive/1.11.1-nds.zip)
 FetchContent_MakeAvailable(libssh2)
+# target_compile_definitions(libssh2_static PRIVATE LIBSSH2_MBEDTLS)
 target_compile_definitions(libssh2_static PRIVATE _3DS)
 
 ## libtelnet
