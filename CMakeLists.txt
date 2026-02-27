@@ -1,9 +1,5 @@
-# you MUST use the catnip cmake wrapper provided by devkitpro!
-# DEVKITPRO & DEVKITARM env vars are expected to be set!
-
 cmake_minimum_required(VERSION 3.13)
 cmake_policy(SET CMP0135 NEW)
-cmake_policy(SET CMP0077 NEW)
 project(nds-shell LANGUAGES CXX)
 
 find_package(Git QUIET)
@@ -26,7 +22,7 @@ configure_file(
 	"${PROJECT_BINARY_DIR}/version.h"
 )
 
-set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
+# set(CMAKE_SYSTEM_PROCESSOR "armv5te") # ARM9
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BUILD_SHARED_LIBS OFF)
@@ -41,16 +37,46 @@ list(APPEND CMAKE_MODULE_PATH "$ENV{DEVKITPRO}/cmake")
 include(Platform/NintendoDS)
 include(FetchContent)
 
-## mbedtls
-setcb(ENABLE_PROGRAMS OFF)
-setcb(ENABLE_TESTING OFF)
-add_compile_definitions(
-	_POSIX_VERSION=202507 # just needs to be something greater than the 2000s
-	MBEDTLS_TEST_SW_INET_PTON # libnds doesn't provide inet_pton()
+# ## mbedtls
+# setcb(ENABLE_PROGRAMS OFF)
+# setcb(ENABLE_TESTING OFF)
+# add_compile_definitions(
+# 	_POSIX_VERSION=202507 # just needs to be something greater than the 2000s
+# 	MBEDTLS_TEST_SW_INET_PTON # libnds doesn't provide inet_pton()
+# )
+# FetchContent_Declare(mbedtls URL https://github.com/trustytrojan/mbedtls/releases/download/3.6.4-nds-r1/mbedtls-3.6.4-nds.7z)
+# FetchContent_MakeAvailable(mbedtls)
+# list(APPEND CMAKE_PREFIX_PATH "${mbedtls_BINARY_DIR}/cmake")
+
+## wolfssl
+# setcb(WOLFSSL_USER_SETTINGS ON)
+setcb(WOLFSSL_EXAMPLES OFF)
+setcb(WOLFSSL_INSTALL OFF)
+setcb(WOLFSSL_CRYPT_TESTS OFF)
+setcb(WOLFSSL_CURL ON)
+setcb(WOLFSSL_IP_ALT_NAME OFF) # disable IPv6
+setcb(WOLFSSL_QUIC ON)
+setcb(WOLFSSL_SYS_CA_CERTS OFF)
+setcb(WOLFSSL_TLS13 ON)
+setcb(WOLFSSL_ECC ON)
+FetchContent_Declare(wolfssl
+	URL https://github.com/wolfSSL/wolfssl/archive/v5.8.4-stable.tar.gz
+	# we already have a `socklen_t` definition
+	PATCH_COMMAND bash "${CMAKE_SOURCE_DIR}/config/wolfssl_patch.sh"
 )
-FetchContent_Declare(mbedtls URL https://github.com/trustytrojan/mbedtls/releases/download/3.6.4-nds-r1/mbedtls-3.6.4-nds.7z)
-FetchContent_MakeAvailable(mbedtls)
-list(APPEND CMAKE_PREFIX_PATH "${mbedtls_BINARY_DIR}/cmake")
+FetchContent_MakeAvailable(wolfssl)
+target_compile_definitions(wolfssl PRIVATE
+	HAVE_SOCKADDR
+	SOMAXCONN=1
+	WOLFSSL_NO_ATOMICS
+)
+target_compile_definitions(wolfssl PUBLIC
+	WOLFSSL_NDS
+)
+
+# we have to be the find_package(WolfSSL) because nobody else does it right
+set(WOLFSSL_LIBRARY "wolfssl" CACHE STRING "" FORCE)
+set(WOLFSSL_INCLUDE_DIR "${wolfssl_SOURCE_DIR}" CACHE STRING "" FORCE)
 
 ## curl
 setcb(BUILD_LIBCURL_DOCS OFF)
@@ -73,8 +99,11 @@ setcb(CURL_DISABLE_SOCKETPAIR ON)
 # the culprit could also be mbedtls; still better off just disabling this than breaking my head over it.
 setcb(CURL_DISABLE_VERBOSE_STRINGS ON)
 
-setcb(CURL_USE_MBEDTLS ON)
-set(MBEDTLS_LIBRARIES mbedx509 mbedcrypto mbedtls)
+# setcb(CURL_USE_MBEDTLS ON)
+# set(MBEDTLS_LIBRARIES mbedx509 mbedcrypto mbedtls)
+setcb(CURL_USE_WOLFSSL ON)
+# set(WOLFSSL_LIBRARY wolfssl)
+# set(WOLFSSL_INCLUDE_DIR ${wolfssl_SOURCE_DIR})
 
 setcb(ENABLE_CURL_MANUAL OFF)
 setcb(ENABLE_UNIX_SOCKETS OFF)
@@ -103,8 +132,9 @@ setcb(HTTP_ONLY ON) # http(s), ws(s)
 setcb(PICKY_COMPILER OFF) # -Wpedantic is annoying
 setcb(USE_MANUAL OFF)
 
-FetchContent_Declare(curl URL https://github.com/trustytrojan/curl/archive/8.15.0-mbedtls.zip)
+FetchContent_Declare(curl URL https://github.com/curl/curl/archive/curl-8_18_0.tar.gz)
 FetchContent_MakeAvailable(curl)
+target_compile_definitions(libcurl_static PRIVATE HAVE_WOLFSSL_BIO_NEW)
 
 ## lua
 setcb(LUA_SUPPORT_DL OFF)
@@ -129,16 +159,20 @@ FetchContent_Declare(sol2 URL https://github.com/ThePhD/sol2/archive/develop.zip
 FetchContent_MakeAvailable(sol2)
 
 ## libssh2
-setcb(CRYPTO_BACKEND mbedTLS)
+# setcb(CRYPTO_BACKEND mbedTLS)
+setcb(CRYPTO_BACKEND wolfSSL)
 setcb(ENABLE_ZLIB_COMPRESSION OFF)
 setcb(CLEAR_MEMORY OFF)
 setcb(BUILD_EXAMPLES OFF)
 setcb(BUILD_TESTING OFF)
-set(MBEDTLS_INCLUDE_DIR ${mbedtls_SOURCE_DIR}/include)
-set(MBEDCRYPTO_LIBRARY mbedcrypto)
-add_compile_definitions(LIBSSH2_MBEDTLS _3DS)
+# set(MBEDTLS_INCLUDE_DIR ${mbedtls_SOURCE_DIR}/include)
+# set(MBEDCRYPTO_LIBRARY mbedcrypto)
+# set(WOLFSSL_LIBRARY wolfssl)
+# set(WOLFSSL_INCLUDE_DIR ${wolfssl_SOURCE_DIR})
+# add_compile_definitions(LIBSSH2_MBEDTLS _3DS)
 FetchContent_Declare(libssh2 URL https://github.com/trustytrojan/libssh2/archive/1.11.1-nds.zip)
 FetchContent_MakeAvailable(libssh2)
+target_compile_definitions(libssh2_static PRIVATE _3DS)
 
 ## libtelnet
 setcb(LIBTELNET_BUILD_UTIL OFF)
@@ -151,7 +185,7 @@ FetchContent_MakeAvailable(libtelnet)
 ## nds-shell
 add_compile_options(-fno-rtti -fno-exceptions)
 include_directories(include ${PROJECT_BINARY_DIR})
-link_libraries(dswifi9 fat lua_static sol2 libcurl libssh2 libtelnet)
+link_libraries(dswifi9 fat lua_static sol2 wolfssl libcurl libssh2 libtelnet)
 
 if(NDSH_THREADING)
 	add_compile_definitions(NDSH_THREADING)
