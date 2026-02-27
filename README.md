@@ -11,24 +11,26 @@ Join the [Discord server](https://discord.gg/YNSPCgPnAB)!
 Although it may seem like it, the scope of this project is *not* to be an operating system. That has been attempted several times before, not to mention the existence of [DSLinux](https://www.dslinux.org/), which has been long abandoned. Thanks to the [devkitPro](https://devkitpro.org) team, turning the DS into a general-purpose computer is a lot easier than it was back then. That's what this project aims to do: make the work of [libnds](https://github.com/devkitPro/libnds) fully interactive, while adding some fun features on top!
 
 ## Features
-- `sh`-like features: cursor navigation, I/O redirection, environment variables, variable substitution, command history
-  - Command history is now saved to your sdcard at `/.ndsh_history`!
-  - Like `.bashrc` for Bash, `.ndshrc` at the root of your sdcard is automatically run upon shell startup
-- Filesystem manipulation using typical POSIX shell commands: `ls`, `cd`, `cat`, etc
+- Typical shell features: cursor navigation, I/O redirection, environment variables, variable substitution, command history
+  - Command history is saved to your SD card at `/.ndsh_history`
+  - Like `~/.bashrc` for Bash, `/.ndshrc` is automatically run upon shell startup
+- Filesystem manipulation using typical POSIX commands: `ls`, `cd`, `cat`, etc
+  - Since we aren't an operating system (yet), commands are built into the shell
 - Networking commands: `wifi`, `dns`, `tcp`, `curl`, `ssh`, `telnet`, `ws`
 - Lua interpreter, with an API to make your scripts feel just like builtin commands!
   - With a `fetch()` HTTP API and `WebSocket` class, resembling the JS/browser equivalents!
   - *I didn't know about the [Pico-8](https://www.lexaloffle.com/pico-8.php) or the [TIC-80](https://tic80.com/) before... turns out I've unknowingly been creating just that, but **for real hardware!***
-- HTTPS/SSL support with cURL and MbedTLS!
+- HTTPS with cURL and MbedTLS!
   - HUGE thanks to [this blogpost](https://git.vikingsoftware.com/blog/libcurl-with-mbedtls) for figuring out the CMake quirks
 
 ## Dependencies
 - [libnds (my console rework fork)](https://github.com/trustytrojan/libnds/tree/console-rework), [dswifi](https://github.com/devkitPro/dswifi) and [libfat](https://github.com/devkitPro/libfat)
-- [MbedTLS (my fork with CMake changes)](https://github.com/trustytrojan/mbedtls/tree/3.6.4-nds)
-- [libcurl (my fork with CMake changes)](https://github.com/trustytrojan/curl/tree/8.15.0-mbedtls)
-- [Lua (CMake compatible repo by @walterschell)](https://github.com/walterschell/Lua)
-- [sol2](https://github.com/ThePhD/sol2)
-- [libssh2 (my fork with CMake changes)](https://github.com/trustytrojan/libssh2/tree/1.11.1-nds)
+- [MbedTLS 3.6.4 (my fork with CMake changes)](https://github.com/trustytrojan/mbedtls/tree/3.6.4-nds)
+- [WolfSSL 5.8.4](https://github.com/wolfSSL/wolfssl/tree/v5.8.4-stable)
+- [curl 8.18.0](https://github.com/curl/curl/tree/curl-8_18_0)
+- [Lua 5.4.7 (CMake compatible repo by @walterschell)](https://github.com/walterschell/Lua/tree/v5.4.7)
+- [sol2 3.5.0](https://github.com/ThePhD/sol2/tree/v3.5.0)
+- [libssh2 1.11.1 (my fork with CMake changes)](https://github.com/trustytrojan/libssh2/tree/1.11.1-nds)
 - [libtelnet (my fork with CMake changes)](https://github.com/trustytrojan/libtelnet/tree/cmake-changes)
 
 ## Building
@@ -55,10 +57,7 @@ Although it may seem like it, the scope of this project is *not* to be an operat
    cd libnds
    sudo -E make install -j$(nproc)
    ```
-5. Clone this repo and build with `$DEVKITPRO/tools/bin/catnip -Tnds -j$(nproc)`
-
-#### For both Windows and Linux remains:
-- **Do NOT run CMake. You MUST run `catnip`.**
+5. Clone this repo and build with `cmake --preset dkp-release && cmake --build build -j`
 
 ## Lua scripting notes
 - For JSON support, I recommend [rxi/json.lua](https://github.com/rxi/json.lua). It's extremely lightweight.

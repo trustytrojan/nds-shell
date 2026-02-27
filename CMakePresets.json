@@ -1,0 +1,14 @@
+{
+	"version": 3,
+	"configurePresets": [
+		{
+			"name": "dkp-release",
+			"displayName": "devkitPro Release",
+			"binaryDir": "${sourceDir}/build",
+			"toolchainFile": "$env{DEVKITPRO}/cmake/NDS.cmake",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release"
+			}
+		}
+	]
+}

@@ -3,5 +3,6 @@
 		"--header-insertion=never",
 		"--query-driver=/opt/devkitpro/devkitARM/bin/arm-none-eabi-g++"
 	],
-	"cmake.configureOnOpen": false
+	"cmake.configureOnOpen": false,
+	"cmake.useCMakePresets": "always"
 }
