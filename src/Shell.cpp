@@ -19,12 +19,15 @@ Shell::Shell(const int console)
 	: ostr{Consoles::GetStream(console)},
 	  console{console}
 {
+	SetEnv("PWD", "/");
 	prompt.setOutputStream(ostr);
 	if (!fsInitialized())
 		return;
 	prompt.setLineHistoryFromFile(".ndsh_history");
 	if (fs::exists(".ndshrc"))
 		SourceFile(".ndshrc");
+	prompt.setAutocompleteCallback(
+		std::bind(&Shell::AutocompleteCallback, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 Shell::~Shell()
@@ -73,8 +76,9 @@ void Shell::ProcessLine(std::string_view line)
 		return;
 
 	// Trim leading and trailing whitespace
-	const auto first_non_whitespace = line.find_first_not_of(" \t\n\r");
-	line = line.substr(first_non_whitespace, line.find_last_not_of(" \t\n\r") - first_non_whitespace + 1);
+	const auto first_non_whitespace = line.find_first_not_of(' ');
+	if (first_non_whitespace != std::string::npos)
+		line = line.substr(first_non_whitespace, line.find_last_not_of(' ') - first_non_whitespace + 1);
 
 	if (line.empty())
 		return;
@@ -244,6 +248,47 @@ void Shell::RedirectOutput(int fd, std::ostream &ostr)
 	else if (fd == 2)
 		err = &ostr;
 	// in the future, a full file descriptor table???????
+}
+
+void Shell::AutocompleteCallback(const std::string &_input, std::vector<std::string> &options)
+{
+	std::string_view input{_input};
+
+	// Trim ONLY leading whitespace (trailing matters here!)
+	const auto first_non_whitespace = input.find_first_not_of(' ');
+	if (first_non_whitespace != std::string::npos)
+		input = input.substr(input.find_first_not_of(' '));
+
+	if (!input.contains(' '))
+	{
+		// autocomplete the command
+
+		if (Commands::MAP.contains(std::string{input}))
+			// it's already a valid command
+			return;
+
+		for (const auto &[cmdname, _] : Commands::MAP)
+			if (cmdname.starts_with(input))
+				options.emplace_back(cmdname);
+	}
+	else if (fsInitialized())
+	{
+		// a command is already there, autocomplete filenames.
+		// get to the last space-separated token, this will be our current filename
+		input = input.substr(input.find_last_of(' ') + 1);
+
+		const auto &pwd = env["PWD"];
+
+		if (!fs::exists(pwd))
+			return;
+
+		for (const auto &entry : fs::directory_iterator{pwd})
+		{
+			const auto filename{entry.path().filename().string()};
+			if (filename.starts_with(input))
+				options.emplace_back(filename);
+		}
+	}
 }
 
 void Shell::StartPrompt()

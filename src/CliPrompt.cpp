@@ -96,6 +96,38 @@ void CliPrompt::handleDown()
 	*ostr << "\r\e[2K" << prompt << input;
 }
 
+void CliPrompt::handleTab()
+{
+	if (!autocompleteCallback)
+		return;
+
+	autocompleteOptions.clear();
+	autocompleteCallback(input, autocompleteOptions);
+
+	if (autocompleteOptions.empty())
+		return;
+
+	if (autocompleteOptions.size() == 1)
+	{
+		// only 1 match: replace input with received string.
+
+		// hack for appending an autocompleted "final token" (e.g. a filepath)
+		input.resize(input.find_last_of(' ') + 1);
+		input += autocompleteOptions[0];
+
+		*ostr << "\r\e[2K" << prompt << input;
+		return;
+	}
+
+	*ostr << "\n\e[90m"; // print in gray, make customizable later
+	for (const auto &s : autocompleteOptions)
+		if (s.contains(' '))
+			*ostr << '"' << s << "\" ";
+		else
+			*ostr << s << ' ';
+	*ostr << "\e[39m\n" << prompt << input;
+}
+
 bool CliPrompt::processKeypad()
 {
 #ifndef NDSH_THREADING
@@ -129,12 +161,15 @@ void CliPrompt::processKeyboard()
 	{
 	case 0: // just in case
 	case NOKEY:
-	case DVK_TAB: // TODO: use tabs for autocomplete
 	case DVK_CTRL:
 	case DVK_ALT:
 	case DVK_CAPS:
 	case DVK_MENU:
 	case DVK_SHIFT:
+		break;
+
+	case DVK_TAB:
+		handleTab();
 		break;
 
 	case DVK_FOLD:
