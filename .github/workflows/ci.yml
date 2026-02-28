@@ -2,10 +2,10 @@ name: Build
 
 on:
   push:
-    branches: main
+    branches: [main]
     paths: [.github/workflows/*, src/**, include/**, CMakeLists.txt]
   pull_request:
-    branches: main
+    branches: [main]
     paths: [.github/workflows/*, src/**, include/**, CMakeLists.txt]
 
 jobs:
@@ -19,17 +19,20 @@ jobs:
           sudo dkp-pacman -Rdd libnds --noconfirm
           git clone https://github.com/trustytrojan/libnds -b console-rework
           cd libnds
-          sudo -E make install -j$(nproc)
+          sudo -E make install -j`nproc`
 
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure & build CMake project with Catnip
-        run: catnip -Tnds
+      - name: Configure CMake
+        run: cmake --preset dkp-release
+
+      - name: Build
+        run: cmake --build build -j
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nds-shell
-          path: build/main.release/nds-shell.*
+          path: ./build/nds-shell.*
           if-no-files-found: error
