@@ -2,11 +2,15 @@ setcb(WOLFSSL_EXAMPLES OFF)
 setcb(WOLFSSL_INSTALL OFF)
 setcb(WOLFSSL_CRYPT_TESTS OFF)
 setcb(WOLFSSL_CURL ON)
-setcb(WOLFSSL_IP_ALT_NAME OFF) # disable IPv6
 setcb(WOLFSSL_QUIC ON)
 setcb(WOLFSSL_SYS_CA_CERTS OFF)
 setcb(WOLFSSL_TLS13 ON)
 setcb(WOLFSSL_ECC ON)
+setcb(WOLFSSL_SINGLE_THREADED ON)
+
+if(NDS_TOOLCHAIN_VENDOR STREQUAL "dkp")
+	setcb(WOLFSSL_IP_ALT_NAME OFF) # disable IPv6
+endif()
 
 FetchContent_Declare(wolfssl
 	URL https://github.com/wolfSSL/wolfssl/archive/v5.8.4-stable.tar.gz
@@ -18,6 +22,7 @@ target_compile_definitions(wolfssl PRIVATE
 	HAVE_SOCKADDR
 	SOMAXCONN=1 # dkp doesn't define this; 1 is fine
 	WOLFSSL_NO_ATOMICS
+	$<$<STREQUAL:"${NDS_TOOLCHAIN_VENDOR}","blocks">:HAVE_GETADDRINFO>
 )
 
 target_compile_definitions(wolfssl PUBLIC

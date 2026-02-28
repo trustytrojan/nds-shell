@@ -15,10 +15,15 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BUILD_SHARED_LIBS OFF)
 
-list(APPEND CMAKE_MODULE_PATH "$ENV{DEVKITPRO}/cmake" "${CMAKE_SOURCE_DIR}/cmake")
-include(insert_git_hash)
-include(Platform/NintendoDS)
 include(FetchContent)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include(insert_git_hash)
+
+if(NDS_TOOLCHAIN_VENDOR STREQUAL "dkp")
+	list(APPEND CMAKE_MODULE_PATH "$ENV{DEVKITPRO}/cmake")
+	include(Platform/NintendoDS)
+endif()
 
 ## options
 option(NDSH_THREADING "Enable multithreading for multiconsole support" ON)
@@ -39,7 +44,12 @@ include(deps/libtelnet)
 ## nds-shell
 add_compile_options(-fno-rtti -fno-exceptions) # this should be global for any C++ dependencies
 target_include_directories(nds-shell PRIVATE include ${CMAKE_BINARY_DIR})
-target_link_libraries(nds-shell PRIVATE dswifi9 fat) # libnds is linked by default
+
+if(NDS_TOOLCHAIN_VENDOR STREQUAL "dkp")
+	target_link_libraries(nds-shell PRIVATE dswifi9 fat) # libnds is linked by default
+elseif(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
+	target_link_libraries(nds-shell PRIVATE dswifi9 fat)
+endif()
 
 ## VERY important options
 if(NDSH_THREADING)
@@ -50,7 +60,7 @@ else()
 endif()
 
 if(NOT CURL_DISABLE_VERBOSE_STRINGS)
-	message(WARNING "********************* CURL VERBOSE STRINGS ARE ON! THREADED HTTPS WILL CRASH!!! *********************")
+	message("********************* CURL VERBOSE STRINGS ARE ON! THREADED HTTPS WILL CRASH!!! *********************")
 	target_compile_definitions(nds-shell PRIVATE CURL_DEBUG)
 endif()
 

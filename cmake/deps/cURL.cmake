@@ -1,3 +1,12 @@
+if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
+	find_package(CURL)
+	if(CURL_FOUND)
+		message(STATUS "***************** CURL found! linking and returning early")
+		target_link_libraries(nds-shell PRIVATE CURL::libcurl)
+		return()
+	endif()
+endif()
+
 # general configs
 setcb(BUILD_LIBCURL_DOCS OFF)
 setcb(BUILD_MISC_DOCS OFF)
@@ -61,4 +70,4 @@ if(SSL_BACKEND STREQUAL "WolfSSL")
 	target_compile_definitions(libcurl_static PRIVATE HAVE_WOLFSSL_BIO_NEW)
 endif()
 
-target_link_libraries(nds-shell PRIVATE libcurl_static)
+target_link_libraries(nds-shell PRIVATE CURL::libcurl_static)

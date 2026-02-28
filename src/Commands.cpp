@@ -313,11 +313,7 @@ const Map MAP{
 	{"pwd", pwd},
 	{"env", env},
 	{"rename", rename},
-	{"clear",
-	 [](auto &ctx)
-	 {
-		 ctx.out << "\e[2J";
-	 }},
+	{"clear", [](auto &ctx) { ctx.out << "\e[2J"; }},
 	{"unset", unset},
 	{"history", history},
 	{"devices", devices},
