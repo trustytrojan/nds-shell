@@ -1,5 +1,9 @@
-cmake_minimum_required(VERSION 3.13)
-cmake_policy(SET CMP0135 NEW)
+cmake_minimum_required(VERSION 3.21)
+
+if(POLICY CMP0135)
+	cmake_policy(SET CMP0135 NEW)
+endif()
+
 project(nds-shell LANGUAGES CXX)
 
 macro(setcb var val)
