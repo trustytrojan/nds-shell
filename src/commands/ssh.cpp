@@ -159,7 +159,9 @@ void Commands::ssh(const Context &ctx)
 		}
 
 		// Request PTY
-		if (libssh2_channel_request_pty(channel, "vanilla"))
+		// we need to be a "dumb" terminal, otherwise we get sent
+		// a bunch of shell/session metadata we don't care about
+		if (libssh2_channel_request_pty(channel, "dumb"))
 		{
 			libssh2_session_last_error(session, &err_msg, NULL, 0);
 			ctx.err << "Failed to request PTY: " << err_msg << '\n';
