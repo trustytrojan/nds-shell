@@ -32,7 +32,7 @@ static void consoleParseColor(const char *const escapeseq) {
 	// Special case: \x1b[m resets attributes
 	if (*escapeseq == 'm') {
 		c->fontCurPal = 15 << 12; // Default color (bright white)
-		c->fontCurPal2 = 0;	   // black bg
+		c->fontCurPal2 = 0 << 12;	   // black bg
 		return;
 	}
 

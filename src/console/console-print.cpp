@@ -151,7 +151,7 @@ void myConsolePrintChar(const char ch) {
 
 	case '\n':
 		newRow();
-		// also return to first column:
+		// also return to first column by falling through to the '\r' case:
 
 	case '\r':
 		if (c->bg2Id == -1)

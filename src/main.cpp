@@ -86,7 +86,7 @@ void PrintGreeting(int console, bool clearScreen = true)
 
 	if (clearScreen)
 		ostr << "\e[2J\e[H"; // Clear screen and move cursor to home
-	ostr << "\e[92mnds-shell " << GIT_HASH << " (con" << console << ")\e[39m\n\nPress START to start a shell\n\n";
+	ostr << "\e[92mnds-shell " << GIT_HASH << " (con" << console << ")\e[m\n\nPress START to start a shell\n\n";
 }
 
 #ifdef NDSH_MULTICONSOLE
@@ -168,8 +168,8 @@ int main()
 				thread.join();
 			shellThreads[console] = std::thread{ShellThread, console};
 #else
-			Shell{0}.StartPrompt();
-			PrintGreeting(0);
+			Shell{console}.StartPrompt();
+			PrintGreeting(console);
 #endif
 		}
 #ifdef NDSH_MULTICONSOLE
