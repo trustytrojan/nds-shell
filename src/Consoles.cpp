@@ -1,4 +1,5 @@
 #include "Consoles.hpp"
+#include "console/console-priv.hpp"
 
 #include <fcntl.h>
 #include <nds/arm9/console.h>
@@ -7,26 +8,30 @@
 #include <fstream>
 #include <iostream>
 
-/*
-This file exists in case libnds PR #70 isn't merged.
-I realized a bit late that I could just hack what I wanted together without changing libnds lol.
-*/
-
-// from libnds:console.c
-extern "C" ssize_t con_write(_reent *r, void *fd, const char *ptr, size_t len);
-
-ssize_t new_con_write(_reent *r, void *fd, const char *ptr, size_t len)
+ssize_t con_write(_reent *r, void *fd, const char *ptr, size_t len)
 {
-	PrintConsole *tmpConsole{};
-	if (r->deviceData)
-		tmpConsole = consoleSelect((PrintConsole *)(r->deviceData));
+	if (!ptr || len <= 0)
+		return -1;
 
-	const auto ret = con_write(r, fd, ptr, len);
+	const auto myConsole = (MyPrintConsole *)r->deviceData;
+
+	PrintConsole *tmpConsole{};
+	if (myConsole)
+		tmpConsole = consoleSelect(myConsole);
+
+	for (size_t i = 0; i < len; ++i)
+	{
+		const char chr = ptr[i];
+		if (chr == '\e' || myConsole->escBufLen > 0)
+			consoleUpdateEscapeSequence(chr);
+		else
+			myConsolePrintChar(chr);
+	}
 
 	if (tmpConsole)
 		consoleSelect(tmpConsole);
 
-	return ret;
+	return len;
 }
 
 int con_open(struct _reent *, void *, const char *, int, int)
@@ -69,33 +74,48 @@ void Init()
 void InitSingle()
 {
 	// handle the simple one-console initialization like back in the old days.
-	static PrintConsole console;
+	static MyPrintConsole console;
+
+	constexpr auto layer{0};
+	constexpr auto type{BgType_Text4bpp};
+	constexpr auto size{BgSize_T_256x256};
+	constexpr auto mapBase{20}; // 22 is recommended, but as found below, 20 is fine
+	constexpr auto tileBase{3};
 
 	consoleInit(
-		&console,
-		0,				  // layer
-		BgType_Text4bpp,  // type
-		BgSize_T_256x256, // size
-		20,				  // mapBase (22 is recommended, but as found below, 20 is fine)
-		3,				  // tileBase
-		true,			  // mainDisplay
-		true,			  // loadGraphics
-		true);			  // ansiBgColors
+		(PrintConsole *)&console,
+		layer,
+		type,
+		size,
+		mapBase,
+		tileBase,
+		true,  // mainDisplay
+		true); // loadGraphics
 
-	devoptab_t *dot = (devoptab_t *)devoptab_list[STD_OUT];
-
-	// Sanity check
-	if (dot != devoptab_list[STD_ERR])
-	{
-		// stdout & stderr devices are not the same!
-		// trap here so that HOPEFULLY the PC address points here for me to see 🙏
-		__builtin_trap();
+	{ // make our console more ANSI-compliant!
+		console.bg2Id = bgInit(layer + 1, type, size, mapBase + 1, tileBase);
+		console.fontBg2Gfx = bgGetGfxPtr(console.bg2Id);
+		console.fontBg2Map = bgGetMapPtr(console.bg2Id);
+		console.escBufLen = 0;
+		console.fontCurPal2 = 0 << 12;
 	}
 
-	// keep the name "con" since it will be the only one.
-	dot->write_r = new_con_write;
-	dot->open_r = con_open;
-	dot->deviceData = &console;
+	{ // modify the existing devoptab to use our write() and make it open()able!
+		const auto dot = (devoptab_t *)devoptab_list[STD_OUT];
+
+		// Sanity check
+		if (dot != devoptab_list[STD_ERR])
+		{
+			// stdout & stderr devices are not the same!
+			// trap here so that HOPEFULLY the PC address points here for me to see 🙏
+			__builtin_trap();
+		}
+
+		// keep the name "con" since it will be the only one.
+		dot->write_r = con_write;
+		dot->open_r = con_open;
+		dot->deviceData = &console;
+	}
 }
 
 #ifdef NDSH_MULTICONSOLE

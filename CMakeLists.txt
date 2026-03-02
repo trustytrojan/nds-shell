@@ -53,6 +53,10 @@ set(NDSH_SOURCES
 	src/NetUtils.cpp
 	src/commands/tcp.cpp
 	src/commands/wifi.cpp
+	src/console/console-clear.cpp
+	src/console/console-cursor.cpp
+	src/console/console-esc.cpp
+	src/console/console-print.cpp
 )
 
 if(NDSH_CURL)
