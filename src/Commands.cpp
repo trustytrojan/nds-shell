@@ -4,12 +4,13 @@
 
 #include <dswifi9.h>
 #include <nds.h>
-#include <wfc.h>
+#ifndef __BLOCKSDS__
+	#include <wfc.h>
+#endif
 
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <sys/iosupport.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 
@@ -18,8 +19,12 @@
 
 namespace fs = std::filesystem;
 
+#ifndef __BLOCKSDS__
+#include <sys/iosupport.h>
+
 // from newlib:libgloss/libsysbase/iosupport.c
 extern const devoptab_t dotab_stdnull;
+#endif
 
 namespace Commands
 {
@@ -268,6 +273,7 @@ void history(const Context &ctx)
 		ctx.out << line << '\n';
 }
 
+#ifndef __BLOCKSDS__
 void devices(const Context &ctx)
 {
 	for (int i = 0; i < STD_MAX; ++i)
@@ -279,6 +285,7 @@ void devices(const Context &ctx)
 	}
 	ctx.out << '\n';
 }
+#endif
 
 void exit(const Context &ctx)
 {
@@ -287,7 +294,11 @@ void exit(const Context &ctx)
 
 void poweroff(const Context &ctx)
 {
+#ifdef __BLOCKSDS__
+	systemShutDown();
+#else
 	pmPrepareToReset();
+#endif
 }
 
 void isdsimode(const Context &ctx)
@@ -318,7 +329,9 @@ const Map MAP{
 	{"clear", [](auto &ctx) { ctx.out << "\e[2J"; }},
 	{"unset", unset},
 	{"history", history},
+#ifndef __BLOCKSDS__
 	{"devices", devices},
+#endif
 	{"exit", exit},
 #ifdef NDSH_SOL2
 	{"lua", lua},

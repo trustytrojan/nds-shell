@@ -1,6 +1,5 @@
 #pragma once
 
-#include <calico.h>
 #include <nds/arm9/console.h>
 #include <nds/ndstypes.h>
 

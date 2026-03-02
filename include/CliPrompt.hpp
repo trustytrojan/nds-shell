@@ -1,15 +1,15 @@
 #pragma once
 
+// this goes here because this header is visible to every source that needs it
+#ifdef __BLOCKSDS__
+	#define pmMainLoop() true
+#endif
+
 #include <nds.h>
 
 #include <iostream>
 #include <string>
 #include <vector>
-
-struct MyTickTask : TickTask
-{
-	bool &flashState;
-};
 
 // Asynchronous command-line interface prompt, taking input from the
 // keypad (physical buttons) and libnds virtual keyboard. Provides:

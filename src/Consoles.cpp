@@ -3,11 +3,35 @@
 
 #include <fcntl.h>
 #include <nds/arm9/console.h>
-#include <sys/iosupport.h>
+#ifndef __BLOCKSDS__
+	#include <sys/iosupport.h>
+#endif
 
 #include <fstream>
 #include <iostream>
 
+#ifndef NDSH_MULTICONSOLE
+static MyPrintConsole console;
+#endif
+
+#ifdef __BLOCKSDS__
+ssize_t con_write(const char *ptr, size_t len)
+{
+	if (!ptr || len <= 0)
+		return -1;
+
+	for (size_t i = 0; i < len; ++i)
+	{
+		const char chr = ptr[i];
+		if (chr == '\e' || console.escBufLen > 0)
+			consoleUpdateEscapeSequence(chr);
+		else
+			myConsolePrintChar(chr);
+	}
+
+	return len;
+}
+#else
 ssize_t con_write(_reent *r, void *fd, const char *ptr, size_t len)
 {
 	if (!ptr || len <= 0)
@@ -38,6 +62,7 @@ int con_open(struct _reent *, void *, const char *, int, int)
 {
 	return 0;
 }
+#endif
 
 #ifdef NDSH_MULTICONSOLE
 // from newlib/iosupport.c
@@ -74,7 +99,6 @@ void Init()
 void InitSingle()
 {
 	// handle the simple one-console initialization like back in the old days.
-	static MyPrintConsole console;
 
 	constexpr auto layer{0};
 	constexpr auto type{BgType_Text4bpp};
@@ -92,6 +116,10 @@ void InitSingle()
 		console.fontCurPal2 = 0 << 12;
 	}
 
+#ifdef __BLOCKSDS__
+	consoleSetCustomStdout(con_write);
+	consoleSetCustomStderr(con_write);
+#else
 	{ // modify the existing devoptab to use our write() and make it open()able!
 		const auto dot = (devoptab_t *)devoptab_list[STD_OUT];
 
@@ -108,6 +136,7 @@ void InitSingle()
 		dot->open_r = con_open;
 		dot->deviceData = &console;
 	}
+#endif
 }
 
 #ifdef NDSH_MULTICONSOLE

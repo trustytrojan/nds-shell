@@ -4,7 +4,6 @@
 
 #include <dswifi9.h>
 #include <sys/ioctl.h>
-#include <wfc.h>
 
 #include <fcntl.h>
 #include <netdb.h>
@@ -39,7 +38,11 @@ struct TcpSocket
 
 	std::expected<void, const char *> setNonblocking(bool yes)
 	{
+#ifdef __BLOCKSDS__
+		if (::fcntl(fd, F_SETFL, O_NONBLOCK))
+#else
 		if (::ioctl(fd, FIONBIO, &yes) == -1)
+#endif
 			return std::unexpected{strerror(errno)};
 		return {};
 	}

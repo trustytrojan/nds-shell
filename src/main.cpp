@@ -3,17 +3,19 @@
 #include "version.h"
 
 #ifdef NDSH_CURL
-#include <curl/curl.h>
+	#include <curl/curl.h>
 #endif
 
 #if defined(NDSH_THREADING) && defined(NDSH_CURL)
-#include "CurlMulti.hpp"
+	#include "CurlMulti.hpp"
 #endif
 
 #include <dswifi9.h>
 #include <fat.h>
 #include <nds.h>
-#include <wfc.h>
+#ifndef __BLOCKSDS__
+	#include <wfc.h>
+#endif
 
 #include <thread>
 
@@ -55,7 +57,11 @@ void InitResources()
 
 	ostr << "initializing wifi...";
 
+#ifdef __BLOCKSDS__
+	if (!Wifi_InitDefault(INIT_ONLY | WIFI_ATTEMPT_DSI_MODE))
+#else
 	if (!wlmgrInitDefault() || !wfcInit())
+#endif
 		ostr << "\r\e[2K\e[91mwifi init failed: networking commands will not "
 				"work\e[39m\n";
 	else
@@ -104,7 +110,9 @@ void ShellThread(int console)
 int main()
 {
 	defaultExceptionHandler();
+#ifndef __BLOCKSDS__
 	tickInit();
+#endif
 	Consoles::Init();
 	InitResources();
 
@@ -149,9 +157,7 @@ int main()
 		scanKeys();
 
 		const auto down = keysDown();
-#ifdef NDSH_MULTICONSOLE
 		const auto console = Consoles::GetFocusedConsole();
-#endif
 
 		if (
 			(down & KEY_START)

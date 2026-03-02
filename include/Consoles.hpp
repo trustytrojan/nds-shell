@@ -25,6 +25,11 @@ void switchConsoleRight();
 u8 GetFocusedConsole();
 bool IsFocused(u8 console);
 std::ostream &GetStream(u8 console);
+#else
+constexpr u8 GetFocusedConsole()
+{
+	return 0;
+}
 #endif
 
 } // namespace Consoles

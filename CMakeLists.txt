@@ -37,6 +37,12 @@ set(NDSH_SSL_BACKEND "WolfSSL" CACHE STRING "SSL backend to use for libcurl/libs
 set_property(CACHE NDSH_SSL_BACKEND PROPERTY STRINGS "WolfSSL" "MbedTLS")
 
 ## validation
+if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
+	message(AUTHOR_WARNING "BlocksDS toolchain detected. Disabling threading and multicon, as it's not ready yet.")
+	setcb(NDSH_MULTICONSOLE OFF)
+	setcb(NDSH_THREADING OFF)
+endif()
+
 if(NDSH_THREADING AND NOT NDSH_MULTICONSOLE)
 	message(FATAL_ERROR "Multithreading with a single console is not supported.")
 endif()
@@ -128,7 +134,7 @@ target_include_directories(nds-shell PRIVATE include ${CMAKE_BINARY_DIR})
 if(NDS_TOOLCHAIN_VENDOR STREQUAL "dkp")
 	target_link_libraries(nds-shell PRIVATE dswifi9 fat) # libnds is linked by default
 elseif(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
-	target_link_libraries(nds-shell PRIVATE dswifi9 fat)
+	target_link_libraries(nds-shell PRIVATE dswifi9)
 endif()
 
 ## VERY important options
@@ -141,7 +147,7 @@ endif()
 
 if(NDSH_CURL AND NOT CURL_DISABLE_VERBOSE_STRINGS)
 	target_compile_definitions(nds-shell PRIVATE CURL_DEBUG)
-	message("********************* CURL VERBOSE STRINGS ARE ON! THREADED HTTPS WILL CRASH!!! *********************")
+	message(WARNING "CURL VERBOSE STRINGS ARE ON! THREADED HTTPS WILL CRASH!!!")
 endif()
 
 if(NDSH_MULTICONSOLE)

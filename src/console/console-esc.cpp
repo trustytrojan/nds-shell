@@ -2,6 +2,10 @@
 #include <ctype.h>
 #include <stdio.h>
 
+#ifdef __BLOCKSDS__
+	#define siscanf sscanf
+#endif
+
 static void updateColorBright(const int param, int *const color, int *const bgcolor, int *const bright) {
 	if (param == 0) { // Reset
 		*color = 15;  // fg: bright white
@@ -59,8 +63,9 @@ static void consoleParseColor(const char *const escapeseq) {
 	// start consuming arguments, delimited with ';'
 	while (true) {
 		// Try to parse a parameter followed by a semicolon
+		chars_consumed = 0;
 		items_matched = siscanf(p, "%d;%n", &param, &chars_consumed);
-		if (items_matched > 0) {
+		if (items_matched > 0 && chars_consumed > 0) {
 			updateColorBright(param, &color, &bgcolor, &bright);
 			p += chars_consumed;
 			continue;
