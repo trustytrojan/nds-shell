@@ -23,7 +23,7 @@ void consoleDrawCursor(void) {
 	*consoleFontBgMapAtCursor() = 0x0fff & fbmvUnderCursor;
 
 	// background: just use bright write (15)
-	*consoleFontBg2MapAtCursor() = (15 << 12) | consoleComputeFontBg2MapValue(219);
+	*consoleFontBg2MapAtCursor() = (15 << 12) | consoleComputeFontBg2MapValue(CONSOLE_CURSOR_CHAR);
 }
 
 void consoleSetCursorPos(const int x, const int y) {

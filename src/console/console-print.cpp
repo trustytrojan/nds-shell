@@ -72,7 +72,7 @@ void consoleCommitChar(const char ch) {
 	*consoleFontBgMapAtCursor() = consoleComputeFontBgMapValue(ch); // fg
 
 	if (c->bg2Id != -1)
-		*consoleFontBg2MapAtCursor() = consoleComputeFontBg2MapValue(219); // bg
+		*consoleFontBg2MapAtCursor() = consoleComputeFontBg2MapValue(CONSOLE_CURSOR_CHAR); // bg
 
 	++c->cursorX;
 
@@ -164,7 +164,7 @@ void myConsolePrintChar(const char ch) {
 		*consoleFontBgMapAtCursor() = consoleComputeFontBgMapValue(ch); // fg
 
 		if (c->bg2Id != -1)
-			*consoleFontBg2MapAtCursor() = consoleComputeFontBg2MapValue(219); // bg
+			*consoleFontBg2MapAtCursor() = consoleComputeFontBg2MapValue(CONSOLE_CURSOR_CHAR); // bg
 
 		++c->cursorX;
 

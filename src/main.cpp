@@ -58,7 +58,9 @@ void InitResources()
 	ostr << "initializing wifi...";
 
 #ifdef __BLOCKSDS__
-	if (!Wifi_InitDefault(INIT_ONLY | WIFI_ATTEMPT_DSI_MODE))
+	// for some reason INIT_ONLY just doesn't let us autoconnect in the future?
+	// we will have to rely on WFC_CONNECT from now on 🤷‍♂️
+	if (!Wifi_InitDefault(WFC_CONNECT | WIFI_ATTEMPT_DSI_MODE))
 #else
 	if (!wlmgrInitDefault() || !wfcInit())
 #endif

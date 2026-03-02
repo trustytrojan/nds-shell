@@ -3,6 +3,12 @@
 #include <nds/arm9/console.h>
 #include <nds/ndstypes.h>
 
+#ifdef __BLOCKSDS__
+	#define CONSOLE_CURSOR_CHAR '_'
+#else
+	#define CONSOLE_CURSOR_CHAR 219
+#endif
+
 struct MyPrintConsole : PrintConsole
 {
 	int bg2Id; // ID of bg used for ANSI background colors!
