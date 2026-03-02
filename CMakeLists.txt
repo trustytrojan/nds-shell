@@ -27,19 +27,89 @@ endif()
 
 ## options
 option(NDSH_THREADING "Enable multithreading for multiconsole support" ON)
-set(SSL_BACKEND "WolfSSL" CACHE STRING "SSL backend to use for libcurl/libssh2. Only \"WolfSSL\" and \"MbedTLS\" allowed.")
-set_property(CACHE SSL_BACKEND PROPERTY STRINGS "WolfSSL" "MbedTLS")
+option(NDSH_CURL "Enable cURL/HTTPS support" ON)
+option(NDSH_SSH "Enable SSH support" ON)
+option(NDSH_TELNET "Enable TELNET support" ON)
+option(NDSH_LUA "Enable Lua support" ON)
 
-file(GLOB_RECURSE SOURCES src/**)
-add_executable(nds-shell ${SOURCES})
+set(NDSH_SSL_BACKEND "WolfSSL" CACHE STRING "SSL backend to use for libcurl/libssh2. May be empty.")
+set_property(CACHE NDSH_SSL_BACKEND PROPERTY STRINGS "WolfSSL" "MbedTLS")
 
-## dependencies (modules will link nds-shell to their libraries)
-include(deps/${SSL_BACKEND})
-include(deps/cURL)
-include(deps/Lua)
-include(deps/sol2)
-include(deps/libssh2)
-include(deps/libtelnet)
+## sources
+set(NDSH_SOURCES
+	src/main.cpp
+	src/Shell.cpp
+	src/CliPrompt.cpp
+	src/Consoles.cpp
+	src/Commands.cpp
+	src/Lexer.cpp
+	src/Parser.cpp
+	src/NetUtils.cpp
+	src/commands/tcp.cpp
+	src/commands/wifi.cpp
+)
+
+if(NDSH_CURL)
+	list(APPEND NDSH_SOURCES
+		src/commands/curl.cpp
+		src/commands/ws.cpp
+		src/CurlMulti.cpp
+		src/WebSocket.cpp
+	)
+endif()
+
+if(NDSH_LUA)
+	list(APPEND NDSH_SOURCES
+		src/lua/load_CliPrompt.cpp
+		src/lua/load_CommandContext.cpp
+		src/lua/load_libnds_funcs.cpp
+		src/lua/load_Shell.cpp
+		src/lua/my_state.cpp
+		src/commands/lua.cpp
+	)
+	if(NDSH_CURL)
+		list(APPEND NDSH_SOURCES
+			src/lua/load_fetch.cpp
+			src/lua/load_WebSocket.cpp
+		)
+	endif()
+endif()
+
+if(NDSH_SSH)
+	list(APPEND NDSH_SOURCES
+		src/commands/ssh.cpp
+	)
+endif()
+
+if(NDSH_TELNET)
+	list(APPEND NDSH_SOURCES
+		src/commands/telnet.cpp
+	)
+endif()
+
+add_executable(nds-shell ${NDSH_SOURCES})
+
+## dependencies
+if(NDSH_SSL_BACKEND)
+	include(deps/${NDSH_SSL_BACKEND})
+endif()
+
+if(NDSH_CURL)
+	include(deps/cURL)
+endif()
+
+if(NDSH_LUA)
+	include(deps/Lua)
+	include(deps/sol2)
+endif()
+
+if(NDSH_SSH)
+	include(deps/libssh2)
+endif()
+
+if(NDSH_TELNET)
+	include(deps/libtelnet)
+endif()
 
 ## nds-shell
 add_compile_options(-fno-rtti -fno-exceptions) # this should be global for any C++ dependencies
@@ -59,7 +129,7 @@ else()
 	message("********************* THREADING IS OFF ********************")
 endif()
 
-if(NOT CURL_DISABLE_VERBOSE_STRINGS)
+if(NDSH_CURL AND NOT CURL_DISABLE_VERBOSE_STRINGS)
 	message("********************* CURL VERBOSE STRINGS ARE ON! THREADED HTTPS WILL CRASH!!! *********************")
 	target_compile_definitions(nds-shell PRIVATE CURL_DEBUG)
 endif()

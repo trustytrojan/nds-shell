@@ -2,7 +2,6 @@
 #include "Commands.hpp"
 #include "my_state.hpp"
 
-#include <curl/curl.h>
 #include <sol/sol.hpp>
 
 std::ostream &operator<<(std::ostream &ostr, const sol::object &obj)
@@ -28,10 +27,7 @@ void Commands::lua(const Context &ctx)
 	{
 		const auto &result = lua.safe_script_file(ctx.args[1]);
 		if (!result.valid())
-		{
-			sol::error err = result;
-			ctx.err << "\e[91mlua: " << err.what() << "\e[39m\n";
-		}
+			ctx.err << "\e[91mlua: " << sol::error{result}.what() << "\e[39m\n";
 		return;
 	}
 
@@ -64,13 +60,11 @@ void Commands::lua(const Context &ctx)
 				line = "return " + line;
 
 			const auto result = lua.safe_script(line);
-			if (!result)
-			{
-				sol::error err = result;
-				ctx.err << "\e[91mlua: " << err.what() << "\e[39m\n";
-			}
+
+			if (!result.valid())
+				ctx.err << "\e[91mlua: " << sol::error{result}.what() << "\e[39m\n";
 			else
-				ctx.out << lua.safe_script(line).get<sol::object>() << '\n';
+				ctx.out << result.get<sol::object>() << '\n';
 
 			prompt.prepareForNextLine();
 			prompt.printFullPrompt(false);

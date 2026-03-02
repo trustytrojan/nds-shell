@@ -6,3 +6,4 @@ FetchContent_Declare(libtelnet URL https://github.com/trustytrojan/libtelnet/arc
 FetchContent_MakeAvailable(libtelnet)
 
 target_link_libraries(nds-shell PRIVATE libtelnet)
+target_compile_definitions(nds-shell PRIVATE NDSH_LIBTELNET)

@@ -20,7 +20,7 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 - Lua interpreter, with an API to make your scripts feel just like builtin commands!
   - With a `fetch()` HTTP API and `WebSocket` class, resembling the JS/browser equivalents!
   - *I didn't know about the [Pico-8](https://www.lexaloffle.com/pico-8.php) or the [TIC-80](https://tic80.com/) before... turns out I've unknowingly been creating just that, but **for real hardware!***
-- HTTPS via cURL with configurable TLS backend (`SSL_BACKEND`): MbedTLS or WolfSSL
+- HTTPS via cURL with configurable TLS backend (`NDSH_SSL_BACKEND`): MbedTLS or WolfSSL
   - HUGE thanks to [this blogpost](https://git.vikingsoftware.com/blog/libcurl-with-mbedtls) for figuring out the CMake quirks for the MbedTLS backend
 
 ## Dependencies

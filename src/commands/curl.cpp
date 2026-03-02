@@ -1,10 +1,12 @@
 #include "Commands.hpp"
 #include "CurlMulti.hpp"
 
+#ifdef NDSH_CURL
+
 #include <curl/curl.h>
 
 #ifdef CURL_DEBUG
-static int curl_debug(CURL *, curl_infotype type, char *const data, const size_t size, void *userp)
+int curl_debug(CURL *, curl_infotype type, char *const data, const size_t size, void *userp)
 {
 	if (type != CURLINFO_TEXT)
 		// we only want debug messages, not req/resp data
@@ -106,3 +108,5 @@ void Commands::curl(const Context &ctx)
 
 	curl_easy_cleanup(easy);
 }
+
+#endif // NDSH_CURL

@@ -1,7 +1,14 @@
 #include "Consoles.hpp"
-#include "CurlMulti.hpp"
 #include "Shell.hpp"
 #include "version.h"
+
+#ifdef NDSH_CURL
+	#include <curl/curl.h>
+#endif
+
+#if defined(NDSH_THREADING) && defined(NDSH_CURL)
+	#include "CurlMulti.hpp"
+#endif
 
 #include <dswifi9.h>
 #include <fat.h>
@@ -56,7 +63,7 @@ void InitResources()
 		subcommand_autoconnect(ostr);
 	}
 
-#ifdef NDSH_THREADING
+#if defined(NDSH_THREADING) && defined(NDSH_CURL)
 	ostr << "initializing curl multi...";
 	CurlMulti::Init();
 	ostr << "\r\e[2K\e[92mcurl multi initialized!\n";
@@ -89,6 +96,15 @@ int main()
 	tickInit();
 	Consoles::Init();
 	InitResources();
+
+#ifdef NDSH_CURL
+	std::cout << curl_version() << '\n';
+	const auto protocols = curl_version_info(CURLVERSION_TWELFTH)->protocols;
+	std::cout << "curl protocols: ";
+	for (auto p = protocols; *p; ++p)
+		std::cout << *p << ' ';
+	std::cout << "\n\n";
+#endif
 
 #ifdef NDSH_THREADING
 	// Threads created with the C/C++ APIs are minimum priority by default:

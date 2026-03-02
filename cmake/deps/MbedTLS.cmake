@@ -38,3 +38,4 @@ set(MBEDX509_LIBRARY "mbedx509" CACHE STRING "" FORCE)
 set(MBEDCRYPTO_LIBRARY "mbedcrypto" CACHE STRING "" FORCE)
 
 target_link_libraries(nds-shell PRIVATE mbedtls)
+target_compile_definitions(nds-shell PRIVATE NDSH_SSL)

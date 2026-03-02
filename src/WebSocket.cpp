@@ -1,5 +1,6 @@
 #include "WebSocket.hpp"
 #include <arpa/inet.h>
+#include <iostream>
 
 WebSocket::WebSocket(const char *url)
 	: easy{curl_easy_init()}
@@ -15,6 +16,21 @@ WebSocket::WebSocket(const char *url)
 	curl_easy_setopt(easy, CURLOPT_OPENSOCKETFUNCTION, curl_opensocket);
 
 	curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, curl_errbuf);
+
+	// from commands/curl.cpp
+	int curl_debug(CURL *, curl_infotype type, char *const data, const size_t size, void *userp);
+	curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr);
+
+#ifdef CURL_DEBUG
+	curl_easy_setopt(easy, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(easy, CURLOPT_DEBUGFUNCTION, curl_debug);
+	curl_easy_setopt(easy, CURLOPT_DEBUGDATA, &std::cerr);
+#endif
+
+	// we need a custom opensocket callback because of
+	// https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L98
+	// note to self... DO NOT USE C++ LAMBDAS
+	curl_easy_setopt(easy, CURLOPT_OPENSOCKETFUNCTION, curl_opensocket);
 }
 
 WebSocket::WebSocket(const std::string_view &s)
@@ -54,15 +70,19 @@ CURLcode WebSocket::connect()
 
 	while (!done && pmMainLoop())
 		threadYield();
-#else
-	if (const auto rc = curl_easy_perform(easy); rc != CURLE_OK)
-		return rc;
-#endif
 
 	if (rc == CURLE_OK && _on_open)
 		_on_open();
 
 	return rc;
+#else
+	const auto rc{curl_easy_perform(easy)};
+
+	if (rc != CURLE_OK && _on_error)
+		_on_error(rc, curl_errbuf);
+
+	return rc;
+#endif
 }
 
 CURLcode WebSocket::send(const char *buf, size_t len, size_t *sent)

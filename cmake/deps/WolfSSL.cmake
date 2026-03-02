@@ -34,3 +34,4 @@ set(WOLFSSL_LIBRARY "wolfssl" CACHE STRING "" FORCE)
 set(WOLFSSL_INCLUDE_DIR "${wolfssl_SOURCE_DIR}" CACHE STRING "" FORCE)
 
 target_link_libraries(nds-shell PRIVATE wolfssl)
+target_compile_definitions(nds-shell PRIVATE NDSH_SSL)

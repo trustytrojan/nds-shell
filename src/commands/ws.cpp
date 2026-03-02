@@ -11,6 +11,14 @@ void Commands::ws(const Context &ctx)
 		return;
 	}
 
+	auto url = ctx.args[1];
+
+	if (!url.starts_with("ws://") && !url.starts_with("wss://"))
+	{
+		ctx.err << "\e[91murl protocol must be ws:// or wss://\e[39m\n";
+		return;
+	}
+
 	WebSocket ws{ctx.args[1]};
 	ws.setConnectTimeout(atoi(ctx.GetEnv("CURL_TIMEOUT", "10").c_str()));
 	ws.setCaFile(ctx.GetEnv("CURL_CAFILE", "tls-ca-bundle.pem"));
@@ -32,8 +40,10 @@ void Commands::ws(const Context &ctx)
 	ws.on_close([&](auto, auto) { closed = true; });
 
 	if (const auto res = ws.connect(); res != CURLE_OK)
-		// the on_error callback receives the errbuf, we can just return
+	{
+		ctx.err << "\e[91mws: connect: " << curl_easy_strerror(res) << '\n';
 		return;
+	}
 
 	// Begin send/recv loop.
 	CliPrompt prompt{"", ctx.out};

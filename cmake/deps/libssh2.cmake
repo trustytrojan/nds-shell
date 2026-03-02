@@ -1,6 +1,6 @@
-if(SSL_BACKEND STREQUAL "MbedTLS")
+if(NDSH_SSL_BACKEND STREQUAL "MbedTLS")
 	setcb(CRYPTO_BACKEND mbedTLS)
-elseif(SSL_BACKEND STREQUAL "WolfSSL")
+elseif(NDSH_SSL_BACKEND STREQUAL "WolfSSL")
 	setcb(CRYPTO_BACKEND wolfSSL)
 endif()
 
@@ -15,8 +15,9 @@ if(NDS_TOOLCHAIN_VENDOR STREQUAL "dkp")
 	target_compile_definitions(libssh2_static PRIVATE _3DS)
 endif()
 
-if(SSL_BACKEND STREQUAL "MbedTLS")
+if(NDSH_SSL_BACKEND STREQUAL "MbedTLS")
 	target_compile_definitions(libssh2_static PRIVATE LIBSSH2_MBEDTLS)
 endif()
 
 target_link_libraries(nds-shell PRIVATE libssh2_static)
+target_compile_definitions(nds-shell PRIVATE NDSH_LIBSSH2)

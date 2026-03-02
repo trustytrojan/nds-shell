@@ -309,7 +309,9 @@ const Map MAP{
 	{"ip", ip},
 	{"ipinfo", ipinfo},
 	{"tcp", tcp},
+#ifdef NDSH_CURL
 	{"curl", curl},
+#endif
 	{"pwd", pwd},
 	{"env", env},
 	{"rename", rename},
@@ -318,13 +320,22 @@ const Map MAP{
 	{"history", history},
 	{"devices", devices},
 	{"exit", exit},
+#ifdef NDSH_SOL2
 	{"lua", lua},
+#endif
 	{"source", source},
 	{"poweroff", poweroff},
+#ifdef NDSH_LIBSSH2
 	{"ssh", ssh},
+#endif
+#ifdef NDSH_LIBTELNET
 	{"telnet", telnet},
+#endif
 	{"isdsimode", isdsimode},
-	{"ws", ws}};
+#ifdef NDSH_CURL
+	{"ws", ws}
+#endif
+};
 
 void help(const Context &ctx)
 {
