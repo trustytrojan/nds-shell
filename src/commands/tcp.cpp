@@ -74,12 +74,12 @@ void Commands::tcp(const Context &ctx)
 
 	if (const auto ex = sock.setNonblocking(true); !ex)
 	{
-		ctx.err << "\e[91mtelnet: ioctl: " << ex.error() << "\e[39m\n";
+		ctx.err << "\e[91mtcp: ioctl: " << ex.error() << "\e[39m\n";
 		return;
 	}
 
 	if (debugPrint)
-		ctx.err << "\e[90mtelnet: set nonblocking\e[39m\n";
+		ctx.err << "\e[90mtcp: set nonblocking\e[39m\n";
 
 	char buf[200]{};
 	bool shouldExit{};

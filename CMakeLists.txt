@@ -69,9 +69,11 @@ if(NDSH_CURL)
 	list(APPEND NDSH_SOURCES
 		src/commands/curl.cpp
 		src/commands/ws.cpp
-		src/CurlMulti.cpp
 		src/WebSocket.cpp
 	)
+	if(NDSH_THREADING)
+		list(APPEND NDSH_SOURCES src/CurlMulti.cpp)
+	endif()
 endif()
 
 if(NDSH_LUA)
@@ -146,7 +148,7 @@ else()
 endif()
 
 if(NDSH_CURL AND NOT CURL_DISABLE_VERBOSE_STRINGS)
-	target_compile_definitions(nds-shell PRIVATE CURL_DEBUG)
+	target_compile_definitions(nds-shell PRIVATE NDSH_CURL_DEBUG)
 	message(WARNING "CURL VERBOSE STRINGS ARE ON! THREADED HTTPS WILL CRASH!!!")
 endif()
 

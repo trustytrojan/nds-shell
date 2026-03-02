@@ -27,7 +27,11 @@ jobs:
 
       - name: Install CMake
         if: ${{ matrix.toolchain.id }} == 'blocks'
-        run: apt-get install -y cmake && which cmake
+        run: |
+          set -e
+          apt-get update
+          apt-get install -y --no-install-recommends cmake
+          which cmake
 
       - name: Configure CMake
         run: cmake --preset ${{ matrix.toolchain.preset }}

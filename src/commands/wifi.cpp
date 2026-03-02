@@ -51,8 +51,11 @@ static const char *GetConnStatusString(int status)
 		return "Obtaining IP address...";
 	case ASSOCSTATUS_ASSOCIATED:
 		return "Connected!";
+#ifdef __BLOCKSDS__
+	// need to macro block this, because dkp makes CANNOTCONNECT equal to DISCONNECTED 🤷‍♂️
 	case ASSOCSTATUS_CANNOTCONNECT:
 		return "Cannot connect";
+#endif
 	default:
 		return "Unknown";
 	}

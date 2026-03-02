@@ -7,9 +7,6 @@
 #include <string>
 #include <string_view>
 
-// from curl.cpp
-curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr);
-
 class WebSocket
 {
 public:

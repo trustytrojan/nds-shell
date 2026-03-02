@@ -26,12 +26,12 @@ u16 *consoleFontBg2MapAtCursor(void) {
 
 u16 consoleComputeFontBgMapValue(const char ch) {
 	const PrintConsole *const c = getCurrentConsole();
-	return c->fontCurPal | (u16)(ch + c->fontCharOffset - c->font.asciiOffset);
+	return TILE_PALETTE(c->fontCurPal) | (u16)(ch + c->fontCharOffset - c->font.asciiOffset);
 }
 
 u16 consoleComputeFontBg2MapValue(const char ch) {
 	const MyPrintConsole *const c = getCurrentConsole();
-	return c->fontCurPal2 | (u16)(ch + c->fontCharOffset - c->font.asciiOffset);
+	return TILE_PALETTE(c->fontCurPal2) | (u16)(ch + c->fontCharOffset - c->font.asciiOffset);
 }
 
 static void newRow() {

@@ -1,11 +1,12 @@
 #pragma once
 
+#include <nds.h>
+
 // this goes here because this header is visible to every source that needs it
 #ifdef __BLOCKSDS__
 	#define pmMainLoop() true
+	#define swiWaitForVBlank() cothread_yield_irq(IRQ_VBLANK)
 #endif
-
-#include <nds.h>
 
 #include <iostream>
 #include <string>

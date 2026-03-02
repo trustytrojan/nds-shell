@@ -35,8 +35,8 @@ static void consoleParseColor(const char *const escapeseq) {
 
 	// Special case: \x1b[m resets attributes
 	if (*escapeseq == 'm') {
-		c->fontCurPal = 15 << 12; // Default color (bright white)
-		c->fontCurPal2 = 0 << 12;	   // black bg
+		c->fontCurPal = 15; // Default color (bright white)
+		c->fontCurPal2 = 0;	 // black bg
 		return;
 	}
 
@@ -49,7 +49,7 @@ static void consoleParseColor(const char *const escapeseq) {
 	// support it, but just use 0-15, ignore everything else.
 	if (siscanf(escapeseq, "38;5;%um", &id) > 0) {
 		if (id <= 15)
-			c->fontCurPal = id << 12;
+			c->fontCurPal = id;
 		return;
 	}
 
@@ -89,22 +89,19 @@ static void consoleParseColor(const char *const escapeseq) {
 			final_color += 8;
 	} else if (bright) {
 		// if only intensity is set, brighten the current color
-		int current_color = (c->fontCurPal >> 12);
+		int current_color = c->fontCurPal;
 		if (current_color < 8)
 			final_color = current_color + 8;
 		else
 			final_color = current_color;
 	}
 
-	// final_param is a 4-bit integer (0-15). this is placed into the
-	// last 4 bits of fontCurPal, which is |'d with the character offset.
-	// this ALSO means we can extract it out of an FBMV by >>'ing 12.
-	// see consoleComputeFontBgMapValue() for reference.
+	// final_color and bgcolor are 4-bit palette indices (0-15).
 
 	if (final_color != -1)
-		c->fontCurPal = final_color << 12;
+		c->fontCurPal = final_color;
 	if (bgcolor != -1)
-		c->fontCurPal2 = bgcolor << 12;
+		c->fontCurPal2 = bgcolor;
 }
 
 static void consoleParseCsiSequence(void) {

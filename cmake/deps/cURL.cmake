@@ -26,7 +26,7 @@ setcb(CURL_DISABLE_SOCKETPAIR ON)
 # for some reason allowing verbose strings (which allows for debugging curl code)
 # uses too much thread-local storage???? https://github.com/devkitPro/calico/pull/6
 # better off just disabling this than breaking my head over it.
-setcb(CURL_DISABLE_VERBOSE_STRINGS ON)
+set(CURL_DISABLE_VERBOSE_STRINGS ON CACHE BOOL "")
 
 if(NDSH_SSL_BACKEND STREQUAL "MbedTLS")
 	setcb(CURL_USE_MBEDTLS ON)
@@ -48,13 +48,20 @@ setcb(ENABLE_ARES OFF)
 setcb(HAVE_ATOMIC OFF)
 setcb(HAVE_BASENAME OFF)
 
-# nonblock
+# curlx/nonblock.c - this is a painpoint that you can only figure out by digging in libcurl code yourself
+# the macros check for posix functions in this order: fcntl(), ioctl(), setsockopt()
 if(NDS_TOOLCHAIN_VENDOR STREQUAL "dkp")
-	# setcb(HAVE_FCNTL OFF)
-	# setcb(HAVE_FCNTL_H OFF)
+	# dkp dswifi only implements ioctl()
 	setcb(HAVE_FCNTL_O_NONBLOCK OFF)
-	setcb(HAVE_SETSOCKOPT_SO_NONBLOCK OFF)
 	setcb(HAVE_IOCTL_FIONBIO ON)
+	setcb(HAVE_SETSOCKOPT_SO_NONBLOCK OFF)
+elseif(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
+	# blocksds dswifi's lwip implements all of these!
+	# prefer the use of fcntl before the others.
+	# make sure to not `#include <sys/ioctl.h>` though, it macros ioctl() to -1
+	setcb(HAVE_FCNTL_O_NONBLOCK ON)
+	setcb(HAVE_IOCTL_FIONBIO ON)
+	setcb(HAVE_SETSOCKOPT_SO_NONBLOCK ON)
 endif()
 
 # socket api

@@ -96,6 +96,7 @@ void Init()
 	// canonical mode (device-local line buffering)!
 }
 
+#ifndef NDSH_MULTICONSOLE
 void InitSingle()
 {
 	// handle the simple one-console initialization like back in the old days.
@@ -113,12 +114,20 @@ void InitSingle()
 		console.fontBg2Gfx = bgGetGfxPtr(console.bg2Id);
 		console.fontBg2Map = bgGetMapPtr(console.bg2Id);
 		console.escBufLen = 0;
-		console.fontCurPal2 = 0 << 12;
+		console.fontCurPal2 = 0;
 	}
 
 #ifdef __BLOCKSDS__
+	std::cerr << "before consoleSetCustomStdout\n";
 	consoleSetCustomStdout(con_write);
+	std::cerr << "after consoleSetCustomStdout\n";
+
+	std::cerr << "before consoleSetCustomStderr\n";
 	consoleSetCustomStderr(con_write);
+	std::cerr << "after consoleSetCustomStderr\n";
+	// i see 6 blank tiles, then `consoleSetCustomStderr2`!
+	std::cerr << "\e[30mafter \e[mconsoleSetCustomStderr2\n";
+	std::cerr << "\e[36mafter consoleSetCustomStderr3\e[m\n";
 #else
 	{ // modify the existing devoptab to use our write() and make it open()able!
 		const auto dot = (devoptab_t *)devoptab_list[STD_OUT];
@@ -138,6 +147,7 @@ void InitSingle()
 	}
 #endif
 }
+#endif
 
 #ifdef NDSH_MULTICONSOLE
 // The fun stuff
@@ -178,7 +188,7 @@ void initConsole(u8 idx, bool mainDisplay, int layer)
 		console.fontBg2Gfx = bgGetGfxPtr(console.bg2Id);
 		console.fontBg2Map = bgGetMapPtr(console.bg2Id);
 		console.escBufLen = 0;
-		console.fontCurPal2 = 0 << 12; // bg color: black
+		console.fontCurPal2 = 0; // bg color: black
 	}
 
 	if (idx == 1)

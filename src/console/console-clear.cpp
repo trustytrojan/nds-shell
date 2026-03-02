@@ -3,8 +3,8 @@
 void consoleClearScreen(const char mode) {
 	MyPrintConsole *const c = getCurrentConsole();
 	const u16 blank = ' ' + c->fontCharOffset - c->font.asciiOffset;
-	const u16 blank_main = (15 << 12) | blank;
-	const u16 blank_bg2 = (0 << 12) | blank;
+	const u16 blank_main = TILE_PALETTE(15) | blank;
+	const u16 blank_bg2 = TILE_PALETTE(0) | blank;
 
 	switch (mode) {
 	case '[': // if not specified, mode is 0
@@ -72,8 +72,8 @@ void consoleClearLine(const char mode) {
 
 	for (int i = start; i < end; ++i) {
 		// Clear with default colors (fg: white, bg: black) regardless of current palette.
-		*consoleFontBgMapAt(i, line) = (15 << 12) | blank;
+		*consoleFontBgMapAt(i, line) = TILE_PALETTE(15) | blank;
 		if (c->bg2Id != -1)
-			*consoleFontBg2MapAt(i, line) = (0 << 12) | blank;
+			*consoleFontBg2MapAt(i, line) = TILE_PALETTE(0) | blank;
 	}
 }

@@ -16,14 +16,14 @@ void consoleRestoreTileUnderCursor(void) {
 
 void consoleDrawCursor(void) {
 	// foreground: this is the character itself. we need to turn it black,
-	// which would usually be a fontCurPal of (0 << 12). however fbmvUnderCursor
+	// which would usually be a fontCurPal of TILE_PALETTE(0). however fbmvUnderCursor
 	// is not being computed on the fly (like below), so 99% of the time it 
 	// does not have those bits zeroed inside. (who uses black on black?)
 	// so we need to zero-out those bits to make it black:
 	*consoleFontBgMapAtCursor() = 0x0fff & fbmvUnderCursor;
 
-	// background: just use bright write (15)
-	*consoleFontBg2MapAtCursor() = (15 << 12) | consoleComputeFontBg2MapValue(CONSOLE_CURSOR_CHAR);
+	// background: just use bright white (15)
+	*consoleFontBg2MapAtCursor() = TILE_PALETTE(15) | consoleComputeFontBg2MapValue(CONSOLE_CURSOR_CHAR);
 }
 
 void consoleSetCursorPos(const int x, const int y) {
