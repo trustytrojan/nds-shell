@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         toolchain:
           - { id: dkp, name: devkitPro, container: devkitpro/devkitarm:latest, preset: dkp-release }
@@ -23,6 +24,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install CMake
+        if: ${{ matrix.toolchain.id }} == 'blocks'
+        run: apt-get install -y cmake && which cmake
 
       - name: Configure CMake
         run: cmake --preset ${{ matrix.toolchain.preset }}
