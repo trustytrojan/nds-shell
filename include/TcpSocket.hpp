@@ -20,12 +20,12 @@
 struct TcpSocket
 {
 	const int fd{socket(AF_INET, SOCK_STREAM, 0)};
-	~TcpSocket() { closesocket(fd); }
+	constexpr ~TcpSocket() { closesocket(fd); }
 
 	// direct system call wrappers
-	constexpr int connect(sockaddr_in &sain) { return ::connect(fd, (sockaddr *)&sain, sizeof(sockaddr_in)); }
-	constexpr int recv(void *data, size_t recvlength) { return ::recv(fd, data, recvlength, 0); }
-	constexpr int send(const void *data, size_t sendlength) { return ::send(fd, data, sendlength, 0); }
+	constexpr int connect(sockaddr_in &sain) const { return ::connect(fd, (sockaddr *)&sain, sizeof(sockaddr_in)); }
+	constexpr int recv(void *data, size_t recvlength) const { return ::recv(fd, data, recvlength, 0); }
+	constexpr int send(const void *data, size_t sendlength) const { return ::send(fd, data, sendlength, 0); }
 
 	constexpr std::expected<void, const char *> connect(const std::string_view &hostport, const int defaultPort = -1)
 	{
@@ -37,9 +37,9 @@ struct TcpSocket
 		return {};
 	}
 
-	constexpr int send(const std::string_view &s) { return send(s.data(), s.size()); }
+	constexpr int send(const std::string_view &s) const { return send(s.data(), s.size()); }
 
-	constexpr std::expected<void, const char *> setNonblocking(bool yes)
+	constexpr std::expected<void, const char *> setNonblocking(bool yes) const
 	{
 		// blocksds: we will rely on ioctl() because it is easier to use than fcntl()
 		if (::ioctl(fd, FIONBIO, &yes) == -1)

@@ -1,14 +1,13 @@
 #include "Commands.hpp"
 #include "NetUtils.hpp"
+#include "TcpSocket.hpp"
 
 #include <dswifi9.h>
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <sys/ioctl.h>
 #include <sys/select.h>
 #include <sys/socket.h>
-#include <wfc.h>
 
 #include <iostream>
 #include <libtelnet.h>
@@ -18,23 +17,25 @@ static const telnet_telopt_t telopts[]{
 
 struct TelnetCtx
 {
-	int sock;
+	const TcpSocket &sock;
 	const Commands::Context &shellCtx;
 };
 
-static void _send(int sock, const char *buffer, size_t size)
+static void _send(const TcpSocket &sock, const char *buffer, size_t size)
 {
 	int rs;
 
 	/* send data */
 	while (size > 0)
 	{
-		if ((rs = send(sock, buffer, size, 0)) == -1)
+		if ((rs = sock.send(buffer, size)) == -1)
 		{
 			// This is non-blocking, so we might get EAGAIN
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 			{
+#ifdef NDSH_THREADING
 				threadYield();
+#endif
 				continue;
 			}
 			// A real error occurred
@@ -106,54 +107,29 @@ void Commands::telnet(const Context &ctx)
 
 	const auto debug = ctx.env.contains("DEBUG");
 
-	// parse the address
-	sockaddr_in sain;
-	if (const auto rc = NetUtils::ParseAddress(sain, ctx.args[1], 23); rc != NetUtils::Error::NO_ERROR)
-	{
-		ctx.err << "\e[91mtelnet: " << NetUtils::StrError(rc) << "\e[39m\n";
-		return;
-	}
-
 	// open a connection to the server
-	const auto sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock == -1)
+	TcpSocket sock;
+	if (sock.fd < 0)
 	{
 		ctx.err << "\e[91mtelnet: socket: " << strerror(errno) << "\e[39m\n";
 		return;
 	}
 
 	if (debug)
-		ctx.err << "\e[90mtelnet: socket: " << sock << "\n\e[39m";
+		ctx.err << "\e[90mtelnet: socket: " << sock.fd << "\n\e[39m";
 
-	bool connected{};
-	while (pmMainLoop() && !connected)
+	if (const auto ex = sock.connect(ctx.args[1], 23); !ex)
 	{
-#ifdef NDSH_THREADING
-		threadYield();
-#else
-		swiWaitForVBlank();
-#endif
-		switch (connect(sock, (sockaddr *)&sain, sizeof(sockaddr_in)))
-		{
-		case -1:
-			if (errno == EINPROGRESS || errno == EALREADY)
-				break;
-			ctx.err << "\e[91mtelnet: connect: " << strerror(errno) << "\e[39m\n";
-			closesocket(sock);
-			return;
-		case 0:
-			connected = true;
-		}
+		ctx.err << "\e[91mtelnet: connect: " << ex.error() << "\e[39m\n";
+		return;
 	}
 
 	if (debug)
 		ctx.err << "\e[90mtelnet: connected\e[39m\n";
 
-	int yes = 1;
-	if (ioctl(sock, FIONBIO, &yes) == -1)
+	if (const auto ex = sock.setNonblocking(true); !ex)
 	{
-		ctx.err << "\e[91mtelnet: ioctl: " << strerror(errno) << "\e[39m\n";
-		closesocket(sock);
+		ctx.err << "\e[91mtelnet: ioctl: " << ex.error() << "\e[39m\n";
 		return;
 	}
 
@@ -174,7 +150,7 @@ void Commands::telnet(const Context &ctx)
 		swiWaitForVBlank();
 #endif
 		char buf[200]{};
-		const auto bytesRead = recv(sock, buf, sizeof(buf), 0);
+		const auto bytesRead = sock.recv(buf, sizeof(buf));
 		if (bytesRead > 0)
 		{
 			telnet_recv(telnet, buf, bytesRead);
@@ -194,6 +170,9 @@ void Commands::telnet(const Context &ctx)
 		if (!ctx.shell.IsFocused())
 			continue;
 #endif
+
+		// this is REQUIRED since neither dkp or blocks call it internally!
+		scanKeys();
 
 		std::string seq;
 		switch (const auto key = keyboardUpdate())
@@ -230,5 +209,4 @@ void Commands::telnet(const Context &ctx)
 		ctx.err << "\e[90mtelnet: after loop\e[39m\n";
 
 	telnet_free(telnet);
-	closesocket(sock);
 }
