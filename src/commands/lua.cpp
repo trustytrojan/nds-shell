@@ -25,9 +25,14 @@ void Commands::lua(const Context &ctx)
 
 	if (ctx.args.size() > 1)
 	{
+		// setup `arg` global just like the standalone Lua interpreter
+		lua["arg"] = std::span{ctx.args}.subspan(2);
+
 		const auto &result = lua.safe_script_file(ctx.args[1]);
+
 		if (!result.valid())
 			ctx.err << "\e[91mlua: " << sol::error{result}.what() << "\e[39m\n";
+
 		return;
 	}
 

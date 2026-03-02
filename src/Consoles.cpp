@@ -118,16 +118,8 @@ void InitSingle()
 	}
 
 #ifdef __BLOCKSDS__
-	std::cerr << "before consoleSetCustomStdout\n";
 	consoleSetCustomStdout(con_write);
-	std::cerr << "after consoleSetCustomStdout\n";
-
-	std::cerr << "before consoleSetCustomStderr\n";
 	consoleSetCustomStderr(con_write);
-	std::cerr << "after consoleSetCustomStderr\n";
-	// i see 6 blank tiles, then `consoleSetCustomStderr2`!
-	std::cerr << "\e[30mafter \e[mconsoleSetCustomStderr2\n";
-	std::cerr << "\e[36mafter consoleSetCustomStderr3\e[m\n";
 #else
 	{ // modify the existing devoptab to use our write() and make it open()able!
 		const auto dot = (devoptab_t *)devoptab_list[STD_OUT];

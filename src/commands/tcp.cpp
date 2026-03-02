@@ -1,6 +1,7 @@
 #include "CliPrompt.hpp"
 #include "Commands.hpp"
 #include "NetUtils.hpp"
+#include "TcpSocket.hpp"
 
 #include <dswifi9.h>
 #include <sys/ioctl.h>
@@ -13,40 +14,6 @@
 
 #include <expected>
 #include <iostream>
-
-struct TcpSocket
-{
-	const int fd{socket(AF_INET, SOCK_STREAM, 0)};
-	~TcpSocket() { closesocket(fd); }
-
-	// direct system call wrappers
-	int connect(sockaddr_in &sain) { return ::connect(fd, (sockaddr *)&sain, sizeof(sockaddr_in)); }
-	int recv(void *data, size_t recvlength) { return ::recv(fd, data, recvlength, 0); }
-	int send(const void *data, size_t sendlength) { return ::send(fd, data, sendlength, 0); }
-
-	std::expected<void, const char *> connect(const std::string_view &hostport)
-	{
-		sockaddr_in sain;
-		if (const auto rc = NetUtils::ParseAddress(sain, hostport.data()); rc != NetUtils::Error::NO_ERROR)
-			return std::unexpected{NetUtils::StrError(rc)};
-		if (connect(sain) == -1)
-			return std::unexpected{strerror(errno)};
-		return {};
-	}
-
-	int send(const std::string_view &s) { return send(s.data(), s.size()); }
-
-	std::expected<void, const char *> setNonblocking(bool yes)
-	{
-#ifdef __BLOCKSDS__
-		if (::fcntl(fd, F_SETFL, O_NONBLOCK))
-#else
-		if (::ioctl(fd, FIONBIO, &yes) == -1)
-#endif
-			return std::unexpected{strerror(errno)};
-		return {};
-	}
-};
 
 void Commands::tcp(const Context &ctx)
 {

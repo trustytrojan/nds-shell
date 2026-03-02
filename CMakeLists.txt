@@ -35,6 +35,7 @@ option(NDSH_LUA "Enable Lua support with sol2" ON)
 
 set(NDSH_SSL_BACKEND "WolfSSL" CACHE STRING "SSL backend to use for libcurl/libssh2. May be empty.")
 set_property(CACHE NDSH_SSL_BACKEND PROPERTY STRINGS "WolfSSL" "MbedTLS")
+message(STATUS "**** Selected SSL backend: '${NDSH_SSL_BACKEND}'")
 
 ## validation
 if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
@@ -45,6 +46,10 @@ endif()
 
 if(NDSH_THREADING AND NOT NDSH_MULTICONSOLE)
 	message(FATAL_ERROR "Multithreading with a single console is not supported.")
+endif()
+
+if(NDSH_SSH AND NOT NDSH_SSL_BACKEND)
+	message(WARNING "SSH enabled without an SSL backend, expect build errors!")
 endif()
 
 ## sources
