@@ -3,6 +3,5 @@
 		"--query-driver=/opt/devkitpro/devkitARM/bin/arm-none-eabi-g++,/opt/wonderful/toolchain/gcc-arm-none-eabi/bin/arm-none-eabi-g++"
 	],
 	"cmake.configureOnOpen": false,
-	"cmake.useCMakePresets": "always",
-	"deno.enable": true
+	"cmake.useCMakePresets": "always"
 }
