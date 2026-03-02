@@ -7,6 +7,9 @@
 namespace Consoles
 {
 
+void Init();
+
+#ifdef NDSH_MULTICONSOLE
 enum class Display
 {
 	TOP,
@@ -15,9 +18,6 @@ enum class Display
 
 const int NUM_CONSOLES = 3;
 
-void Init();
-void InitMulti();
-
 void toggleFocusedDisplay();
 void switchConsoleLeft();
 void switchConsoleRight();
@@ -25,5 +25,6 @@ void switchConsoleRight();
 u8 GetFocusedConsole();
 bool IsFocused(u8 console);
 std::ostream &GetStream(u8 console);
+#endif
 
 } // namespace Consoles

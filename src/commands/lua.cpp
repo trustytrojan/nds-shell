@@ -47,8 +47,10 @@ void Commands::lua(const Context &ctx)
 		swiWaitForVBlank();
 #endif
 
+#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
+#endif
 
 		prompt.update();
 

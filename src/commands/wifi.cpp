@@ -60,8 +60,10 @@ static std::span<WlanBssDesc> ScanAPs(const Commands::Context &ctx)
 	{
 #ifdef NDSH_THREADING
 		threadYield();
+#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
+#endif
 #else
 		swiWaitForVBlank();
 		scanKeys();
@@ -91,8 +93,10 @@ int GetHiddenSSID(const Commands::Context &ctx, WlanBssDesc &ap)
 	{
 #ifdef NDSH_THREADING
 		threadYield();
+#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
+#endif
 #else
 		swiWaitForVBlank();
 		scanKeys();
@@ -144,8 +148,10 @@ int GetPassword(const Commands::Context &ctx, WlanBssDesc &ap)
 	{
 #ifdef NDSH_THREADING
 		threadYield();
+#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
+#endif
 #else
 		swiWaitForVBlank();
 		scanKeys();

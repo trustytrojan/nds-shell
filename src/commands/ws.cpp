@@ -60,9 +60,11 @@ void Commands::ws(const Context &ctx)
 		// Poll the websocket for events
 		ws.poll();
 
+#ifdef NDSH_MULTICONSOLE
 		// Lastly update & check the prompt for a line to send
 		if (!ctx.shell.IsFocused())
 			continue;
+#endif
 
 		prompt.update();
 

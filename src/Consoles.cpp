@@ -34,9 +34,10 @@ int con_open(struct _reent *, void *, const char *, int, int)
 	return 0;
 }
 
-extern const devoptab_t dotab_stdnull; // from newlib:iosupport.c
-
-void PrintGreeting(int console, bool clearScreen = true);
+#ifdef NDSH_MULTICONSOLE
+// from newlib/iosupport.c
+extern const devoptab_t dotab_stdnull;
+#endif
 
 namespace Consoles
 {
@@ -49,7 +50,13 @@ void Init()
 	vramSetBankA(VRAM_A_MAIN_BG);
 	vramSetBankC(VRAM_C_SUB_BG);
 
+#ifdef NDSH_MULTICONSOLE
+	void InitMulti();
 	InitMulti();
+#else
+	void InitSingle();
+	InitSingle();
+#endif
 
 	// Show keyboard on bottom screen (no scrolling animation)
 	keyboardDemoInit()->scrollSpeed = 0;
@@ -61,9 +68,37 @@ void Init()
 
 void InitSingle()
 {
-	// handle the simple one-console initialization like back in the old days
+	// handle the simple one-console initialization like back in the old days.
+	static PrintConsole console;
+
+	consoleInit(
+		&console,
+		0,				  // layer
+		BgType_Text4bpp,  // type
+		BgSize_T_256x256, // size
+		20,				  // mapBase (22 is recommended, but as found below, 20 is fine)
+		3,				  // tileBase
+		true,			  // mainDisplay
+		true,			  // loadGraphics
+		true);			  // ansiBgColors
+
+	devoptab_t *dot = (devoptab_t *)devoptab_list[STD_OUT];
+
+	// Sanity check
+	if (dot != devoptab_list[STD_ERR])
+	{
+		// stdout & stderr devices are not the same!
+		// trap here so that HOPEFULLY the PC address points here for me to see 🙏
+		__builtin_trap();
+	}
+
+	// keep the name "con" since it will be the only one.
+	dot->write_r = new_con_write;
+	dot->open_r = con_open;
+	dot->deviceData = &console;
 }
 
+#ifdef NDSH_MULTICONSOLE
 // The fun stuff
 PrintConsole consoles[NUM_CONSOLES];
 std::ofstream streams[NUM_CONSOLES];
@@ -148,6 +183,7 @@ void initConsole(u8 idx, bool mainDisplay, int layer)
 void InitMulti()
 {
 	// Just for my sanity, prevent a segfault in newlib:iosupport.c:AddDevice()
+
 	for (int i = 16; i < STD_MAX; ++i)
 		devoptab_list[i] = &dotab_stdnull;
 
@@ -258,5 +294,6 @@ void toggleFocusedDisplay()
 
 	consoleSelect(consoles + focused_console);
 }
+#endif
 
 } // namespace Consoles

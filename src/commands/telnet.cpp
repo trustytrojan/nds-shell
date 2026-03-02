@@ -190,8 +190,10 @@ void Commands::telnet(const Context &ctx)
 			break;
 		}
 
+#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
+#endif
 
 		std::string seq;
 		switch (const auto key = keyboardUpdate())

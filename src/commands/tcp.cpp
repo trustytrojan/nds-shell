@@ -108,8 +108,10 @@ void Commands::tcp(const Context &ctx)
 			break;
 		}
 
+#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
+#endif
 
 		prompt.update();
 

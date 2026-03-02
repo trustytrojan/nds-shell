@@ -26,14 +26,20 @@ if(NDS_TOOLCHAIN_VENDOR STREQUAL "dkp")
 endif()
 
 ## options
-option(NDSH_THREADING "Enable multithreading for multiconsole support" ON)
-option(NDSH_CURL "Enable cURL/HTTPS support" ON)
-option(NDSH_SSH "Enable SSH support" ON)
-option(NDSH_TELNET "Enable TELNET support" ON)
-option(NDSH_LUA "Enable Lua support" ON)
+option(NDSH_MULTICONSOLE "Enable multiconsole" ON)
+option(NDSH_THREADING "Enable multithreading" ON)
+option(NDSH_CURL "Enable libcurl for HTTP(S) and WebSocket" ON)
+option(NDSH_SSH "Enable SSH" ON)
+option(NDSH_TELNET "Enable TELNET" ON)
+option(NDSH_LUA "Enable Lua support with sol2" ON)
 
 set(NDSH_SSL_BACKEND "WolfSSL" CACHE STRING "SSL backend to use for libcurl/libssh2. May be empty.")
 set_property(CACHE NDSH_SSL_BACKEND PROPERTY STRINGS "WolfSSL" "MbedTLS")
+
+## validation
+if(NDSH_THREADING AND NOT NDSH_MULTICONSOLE)
+	message(FATAL_ERROR "Multithreading with a single console is not supported.")
+endif()
 
 ## sources
 set(NDSH_SOURCES
@@ -130,8 +136,15 @@ else()
 endif()
 
 if(NDSH_CURL AND NOT CURL_DISABLE_VERBOSE_STRINGS)
-	message("********************* CURL VERBOSE STRINGS ARE ON! THREADED HTTPS WILL CRASH!!! *********************")
 	target_compile_definitions(nds-shell PRIVATE CURL_DEBUG)
+	message("********************* CURL VERBOSE STRINGS ARE ON! THREADED HTTPS WILL CRASH!!! *********************")
+endif()
+
+if(NDSH_MULTICONSOLE)
+	target_compile_definitions(nds-shell PRIVATE NDSH_MULTICONSOLE)
+	message("********************* MULTICONSOLE IS ON  ********************")
+else()
+	message("********************* MULTICONSOLE IS OFF ********************")
 endif()
 
 ## turn the ELF into an NDS file

@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -16,7 +17,13 @@ std::ostream &operator<<(std::ostream &ostr, const Token &t)
 }
 
 Shell::Shell(const int console)
-	: ostr{Consoles::GetStream(console)},
+	: ostr{
+#ifdef NDSH_MULTICONSOLE
+		Consoles::GetStream(console)
+#else
+		std::cout
+#endif
+	},
 	  console{console}
 {
 	prompt.setOutputStream(ostr);
@@ -257,9 +264,10 @@ void Shell::StartPrompt()
 	{
 #ifdef NDSH_THREADING
 		threadYield();
-
+#ifdef NDSH_MULTICONSOLE
 		if (!Consoles::IsFocused(console))
 			continue;
+#endif
 #else
 		swiWaitForVBlank();
 #endif
