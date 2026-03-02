@@ -10,24 +10,24 @@ on:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        toolchain:
+          - { id: dkp, name: devkitPro, container: devkitpro/devkitarm:latest, preset: dkp-release }
+          - { id: blocks, name: BlocksDS, container: skylyrac/blocksds:slim-latest, preset: blocksds-release }
+
+    name: ${{ matrix.toolchain.name }}
     runs-on: ubuntu-latest
-    container: devkitpro/devkitarm:latest
+    container: ${{ matrix.toolchain.container }}
 
     steps:
-      - name: Uninstall system libnds, build and install my fork
-        run: |
-          sudo dkp-pacman -Rdd libnds --noconfirm
-          git clone https://github.com/trustytrojan/libnds -b console-rework
-          cd libnds
-          sudo -E make install -j`nproc`
-
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Configure CMake
-        run: cmake --preset dkp-release
+        run: cmake --preset ${{ matrix.toolchain.preset }}
 
-      - name: Build
+      - name: Build project
         run: cmake --build build -j
 
       - name: Upload build artifacts
