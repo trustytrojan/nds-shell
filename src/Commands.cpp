@@ -2,8 +2,10 @@
 #include "NetUtils.hpp"
 #include "Shell.hpp"
 
+#include <dirent.h>
 #include <dswifi9.h>
 #include <nds.h>
+#include <sys/_default_fcntl.h>
 #ifndef __BLOCKSDS__
 	#include <wfc.h>
 #endif
@@ -20,7 +22,7 @@
 namespace fs = std::filesystem;
 
 #ifndef __BLOCKSDS__
-#include <sys/iosupport.h>
+	#include <sys/iosupport.h>
 
 // from newlib:libgloss/libsysbase/iosupport.c
 extern const devoptab_t dotab_stdnull;
@@ -40,27 +42,51 @@ void ls(const Context &ctx)
 {
 	if (!Shell::fsInitialized())
 	{
-		ctx.err << "\e[91mshell: fs not initialized\e[39m\n";
+		ctx.err << "\e[91mls: fs not initialized\e[m\n";
 		return;
 	}
 
 	const auto &path = (ctx.args.size() == 1) ? ctx.GetEnv("PWD") : ctx.args[1];
 
-	if (!fs::exists(path))
+#ifdef __BLOCKSDS__
+	// i guess directory_iterator just isn't portable? 🤷‍♂️
+	// spent too much time looking into WF's gcc to find nothing, i give up
+	// just use the standard POSIX C API
+
+	DIR *dp = opendir(path.c_str());
+
+	if (dp == NULL)
 	{
-		ctx.err << "\e[91mpath does not exist\e[39m\n";
+		ctx.err << "\e[91mls: opendir: " << strerror(errno) << "\e[m\n";
 		return;
 	}
 
-	for (const auto &entry : fs::directory_iterator{path})
+	// Iterate through all files and directories
+	while (auto entry = readdir(dp))
+		if (entry->d_type == DT_DIR)
+			ctx.out << "\e[94m" << entry->d_name << "\e[m\n";
+		else
+			ctx.out << entry->d_name << '\n';
+
+	closedir(dp);
+#else
+	fs::directory_iterator di{path, ec};
+	if (ec)
+	{
+		ctx.err << "\e[91mls: " << ec.message() << "\e[m\n";
+		return;
+	}
+
+	for (const auto &entry : di)
 	{
 		const auto filename = entry.path().filename().string();
 		if (entry.is_directory())
-			ctx.out << "\e[94m" << filename << "\e[39m ";
+			ctx.out << "\e[94m" << filename << "\e[m ";
 		else
 			ctx.out << filename << ' ';
 		ctx.out << '\n';
 	}
+#endif
 }
 
 void cd(const Context &ctx)
@@ -332,6 +358,7 @@ const Map MAP{
 #endif
 	{"source", source},
 	{"poweroff", poweroff},
+	{"dylib", dylib},
 #ifdef NDSH_LIBSSH2
 	{"ssh", ssh},
 #endif

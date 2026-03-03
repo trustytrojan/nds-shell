@@ -63,6 +63,7 @@ set(NDSH_SOURCES
 	src/Parser.cpp
 	src/NetUtils.cpp
 	src/PrintVersions.cpp
+	src/commands/dylib.cpp
 	src/commands/tcp.cpp
 	src/commands/wifi.cpp
 	src/console/console-clear.cpp
@@ -167,3 +168,51 @@ endif()
 
 ## turn the ELF into an NDS file
 nds_create_rom(nds-shell)
+
+if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
+	option(NDSH_BUILD_DYLIB_DEMO "Build sample DSL for the 'dylib' command" ON)
+
+	if(NDSH_BUILD_DYLIB_DEMO)
+		set(NDSH_DYLIB_DEMO_SRC ${CMAKE_SOURCE_DIR}/src/dylib_demo/demo.c)
+		set(NDSH_DYLIB_DEMO_ELF ${CMAKE_BINARY_DIR}/ndsh_dylib_demo.elf)
+		set(NDSH_DYLIB_DEMO_DSL ${CMAKE_BINARY_DIR}/ndsh_dylib_demo.dsl)
+		set(NDSH_DSLTOOL "$ENV{BLOCKSDS}/tools/dsltool/dsltool")
+		set(NDSH_DSL_SPECS "$ENV{BLOCKSDS}/sys/crts/ds_arm9_dsl.specs")
+
+		if(NOT EXISTS ${NDSH_DSLTOOL})
+			message(FATAL_ERROR "dsltool not found at ${NDSH_DSLTOOL}")
+		endif()
+
+		if(NOT EXISTS ${NDSH_DSL_SPECS})
+			message(FATAL_ERROR "BlocksDS DSL specs file not found at ${NDSH_DSL_SPECS}")
+		endif()
+
+		add_custom_command(
+			OUTPUT ${NDSH_DYLIB_DEMO_ELF}
+			COMMAND ${CMAKE_C_COMPILER}
+				-mthumb -mcpu=arm946e-s+nofp
+				-O2 -ffunction-sections -fdata-sections
+				-fvisibility=hidden
+				-nostdlib
+				-specs=${NDSH_DSL_SPECS}
+				-Wl,--emit-relocs
+				-Wl,--unresolved-symbols=ignore-all
+				-Wl,--nmagic
+				-Wl,--target1-abs
+				${NDSH_DYLIB_DEMO_SRC}
+				-o ${NDSH_DYLIB_DEMO_ELF}
+			DEPENDS ${NDSH_DYLIB_DEMO_SRC}
+			VERBATIM
+		)
+
+		add_custom_command(
+			OUTPUT ${NDSH_DYLIB_DEMO_DSL}
+			COMMAND ${NDSH_DSLTOOL} -i ${NDSH_DYLIB_DEMO_ELF} -o ${NDSH_DYLIB_DEMO_DSL}
+			DEPENDS ${NDSH_DYLIB_DEMO_ELF}
+			VERBATIM
+		)
+
+		add_custom_target(ndsh-dylib-demo ALL DEPENDS ${NDSH_DYLIB_DEMO_DSL})
+		message(STATUS "BlocksDS dynamic library demo enabled: ${NDSH_DYLIB_DEMO_DSL}")
+	endif()
+endif()

@@ -17,6 +17,7 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 - Filesystem manipulation using typical POSIX commands: `ls`, `cd`, `cat`, etc
   - Since we aren't an operating system (yet), commands are built into the shell
 - Networking commands: `wifi`, `dns`, `tcp`, `curl`, `ssh`, `telnet`, `ws`
+- BlocksDS dynamic library demo command: `dylib`
 - Lua interpreter, with an API to make your scripts feel just like builtin commands!
   - With a `fetch()` HTTP API and `WebSocket` class, resembling the JS/browser equivalents!
   - *I didn't know about the [Pico-8](https://www.lexaloffle.com/pico-8.php) or the [TIC-80](https://tic80.com/) before... turns out I've unknowingly been creating just that, but **for real hardware!***
@@ -52,6 +53,17 @@ This project supports both **devkitPro** and **BlocksDS** toolchains. Currently 
     ```sh
     cmake --preset blocksds-release && cmake --build build -j
     ```
+
+#### BlocksDS dynamic library demo
+- BlocksDS builds also generate a sample DSL file at `build/ndsh_dylib_demo.dsl` (disable with `-DNDSH_BUILD_DYLIB_DEMO=OFF`).
+- In `nds-shell`, run:
+  ```sh
+  dylib /path/to/ndsh_dylib_demo.dsl
+  ```
+- Optional args:
+  ```sh
+  dylib /path/to/file.dsl <symbol-name> <int-arg>
+  ```
 
 ## Lua scripting notes
 - For JSON support, I recommend [rxi/json.lua](https://github.com/rxi/json.lua). It's extremely lightweight.
