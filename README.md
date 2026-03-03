@@ -43,7 +43,7 @@ This project supports both **devkitPro** and **BlocksDS** toolchains. Currently 
 2.  Install the `nds-dev` metapackage: `(dkp-)pacman -S nds-dev`
 3.  Clone the repository, configure, and build:
     ```sh
-    cmake --preset dkp-release && cmake --build build -j
+    cmake --preset dkp && cmake --build build -j
     ```
 
 ### BlocksDS
@@ -51,7 +51,7 @@ This project supports both **devkitPro** and **BlocksDS** toolchains. Currently 
 2.  Install the `blocksds-toolchain` package: `wf-pacman -S blocksds-toolchain`
 3.  Clone the repository, configure, and build:
     ```sh
-    cmake --preset blocksds-release && cmake --build build -j
+    cmake --preset blocks && cmake --build build -j
     ```
 
 #### BlocksDS dynamic library demo

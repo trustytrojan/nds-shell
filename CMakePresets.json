@@ -12,7 +12,7 @@
 			}
 		},
 		{
-			"name": "blocksds",
+			"name": "blocks",
 			"displayName": "BlocksDS",
 			"binaryDir": "${sourceDir}/build/blocks",
 			"toolchainFile": "$env{BLOCKSDS}/cmake/BlocksDS.cmake",
