@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -16,7 +17,13 @@ std::ostream &operator<<(std::ostream &ostr, const Token &t)
 }
 
 Shell::Shell(const int console)
-	: ostr{Consoles::GetStream(console)},
+	: ostr{
+#ifdef NDSH_MULTICONSOLE
+		Consoles::GetStream(console)
+#else
+		std::cout
+#endif
+	},
 	  console{console}
 {
 	prompt.setOutputStream(ostr);
@@ -248,7 +255,7 @@ void Shell::RedirectOutput(int fd, std::ostream &ostr)
 
 void Shell::StartPrompt()
 {
-	ostr << "\e[96mtrustytrojan/nds-shell\nstar me on github!!!\e[39m\n\nrun 'help' for help\n\n";
+	ostr << "run 'help' for help\n\n";
 
 	prompt.prepareForNextLine();
 	prompt.printFullPrompt(false);
@@ -257,9 +264,10 @@ void Shell::StartPrompt()
 	{
 #ifdef NDSH_THREADING
 		threadYield();
-
+#ifdef NDSH_MULTICONSOLE
 		if (!Consoles::IsFocused(console))
 			continue;
+#endif
 #else
 		swiWaitForVBlank();
 #endif

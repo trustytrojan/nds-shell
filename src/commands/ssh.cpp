@@ -1,5 +1,6 @@
 #include "Commands.hpp"
 #include "NetUtils.hpp"
+#include "TcpSocket.hpp"
 #include <libssh2.h>
 #include <nds.h>
 
@@ -34,13 +35,13 @@ void Commands::ssh(const Context &ctx)
 		address = address_arg;
 	}
 
-	int sock = -1;
 	LIBSSH2_SESSION *session = nullptr;
 	LIBSSH2_CHANNEL *channel = nullptr;
 	char *err_msg = nullptr;
 
 	do
 	{
+		// apparently this isn't thread safe so if you try it just remember to read this again
 		if (libssh2_init(0))
 		{
 			ctx.err << "libssh2 initialization failed\n";
@@ -48,23 +49,16 @@ void Commands::ssh(const Context &ctx)
 		}
 
 		// Create socket and connect
-		sockaddr_in sin;
-		if (const auto err = NetUtils::ParseAddress(sin, address, 22); err != NetUtils::Error::NO_ERROR)
-		{
-			ctx.err << "Could not parse address: " << NetUtils::StrError(err) << '\n';
-			break;
-		}
-
-		sock = socket(AF_INET, SOCK_STREAM, 0);
-		if (sock < 0)
+		TcpSocket sock;
+		if (sock.fd < 0)
 		{
 			ctx.err << "Failed to create socket: " << strerror(errno) << '\n';
 			break;
 		}
 
-		if (connect(sock, (struct sockaddr *)(&sin), sizeof(struct sockaddr_in)) != 0)
+		if (const auto ex = sock.connect(address, 22); !ex)
 		{
-			ctx.err << "Failed to connect to " << address << ": " << strerror(errno) << '\n';
+			ctx.err << "Failed to connect to " << address << ": " << ex.error() << '\n';
 			break;
 		}
 
@@ -77,7 +71,7 @@ void Commands::ssh(const Context &ctx)
 		}
 
 		// Handshake
-		if (libssh2_session_handshake(session, sock))
+		if (libssh2_session_handshake(session, sock.fd))
 		{
 			libssh2_session_last_error(session, &err_msg, NULL, 0);
 			ctx.err << "SSH handshake failed: " << err_msg << '\n';
@@ -180,12 +174,13 @@ void Commands::ssh(const Context &ctx)
 		libssh2_session_set_blocking(session, 0);
 		libssh2_channel_set_blocking(channel, 0);
 
-		int flags = 1;
-		if (ioctl(sock, FIONBIO, &flags) == -1)
+		if (const auto ex = sock.setNonblocking(true); !ex)
 		{
-			ctx.err << "ioctl: " << strerror(errno) << '\n';
+			ctx.err << "sock.setNonblocking: " << ex.error() << '\n';
 			break;
 		}
+
+		ctx.out << "ssh: Press START button to disconnect\n\n";
 
 		while (!libssh2_channel_eof(channel) && pmMainLoop())
 		{
@@ -194,10 +189,11 @@ void Commands::ssh(const Context &ctx)
 #else
 			swiWaitForVBlank();
 #endif
+
 			char buffer[1024];
 
 			// Read from channel
-			const auto nbytes = libssh2_channel_read(channel, buffer, sizeof(buffer));
+			const auto nbytes = libssh2_channel_read(channel, (char *)buffer, sizeof(buffer));
 			if (nbytes > 0)
 			{
 				for (const auto c : std::string_view{buffer, static_cast<size_t>(nbytes)})
@@ -216,9 +212,17 @@ void Commands::ssh(const Context &ctx)
 				break;
 			}
 
+#ifdef NDSH_MULTICONSOLE
 			// Don't process input if not focused
 			if (!ctx.shell.IsFocused())
 				continue;
+#endif
+
+			// scanKeys() must be called before keyboardUpdate()
+			scanKeys();
+
+			if (keysDown() & KEY_START)
+				break;
 
 			std::string seq;
 			switch (const auto key = keyboardUpdate())
@@ -269,7 +273,5 @@ void Commands::ssh(const Context &ctx)
 		libssh2_session_free(session);
 	}
 
-	if (sock >= 0)
-		close(sock);
 	libssh2_exit();
 }

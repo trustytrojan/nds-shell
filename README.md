@@ -8,7 +8,7 @@ Click [here](https://nightly.link/trustytrojan/nds-shell/workflows/ci/main/nds-s
 Join the [Discord server](https://discord.gg/YNSPCgPnAB)!
 
 ## Synopsis
-Although it may seem like it, the scope of this project is *not* to be an operating system. That has been attempted several times before, not to mention the existence of [DSLinux](https://www.dslinux.org/), which has been long abandoned. Thanks to the [devkitPro](https://devkitpro.org) team, turning the DS into a general-purpose computer is a lot easier than it was back then. That's what this project aims to do: make the work of [libnds](https://github.com/devkitPro/libnds) fully interactive, while adding some fun features on top!
+Although it may seem like it, the scope of this project is *not* to be an operating system. That has been attempted several times before, not to mention the existence of [DSLinux](https://www.dslinux.org/), which has been long abandoned. Thanks to the [devkitPro](https://devkitpro.org) and [BlocksDS](https://blocksds.github.io/docs/) teams, turning the DS into a general-purpose computer is a lot easier than it was back then. That's what this project aims to do: make the work of each toolchain's libnds fully interactive, while adding some fun features on top!
 
 ## Features
 - Typical shell features: cursor navigation, I/O redirection, environment variables, variable substitution, command history
@@ -20,11 +20,12 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 - Lua interpreter, with an API to make your scripts feel just like builtin commands!
   - With a `fetch()` HTTP API and `WebSocket` class, resembling the JS/browser equivalents!
   - *I didn't know about the [Pico-8](https://www.lexaloffle.com/pico-8.php) or the [TIC-80](https://tic80.com/) before... turns out I've unknowingly been creating just that, but **for real hardware!***
-- HTTPS via cURL with configurable TLS backend (`SSL_BACKEND`): MbedTLS or WolfSSL
+- HTTPS via cURL with configurable TLS backend (`NDSH_SSL_BACKEND`): MbedTLS or WolfSSL
   - HUGE thanks to [this blogpost](https://git.vikingsoftware.com/blog/libcurl-with-mbedtls) for figuring out the CMake quirks for the MbedTLS backend
 
 ## Dependencies
-- [libnds (my console rework fork)](https://github.com/trustytrojan/libnds/tree/console-rework), [dswifi](https://github.com/devkitPro/dswifi) and [libfat](https://github.com/devkitPro/libfat)
+- devkitPro [libnds](https://github.com/devkitPro/libnds), [dswifi](https://github.com/devkitPro/dswifi), [libfat](https://github.com/devkitPro/libfat)
+- BlocksDS [libnds](https://github.com/blocksds/libnds), [dswifi](https://github.com/blocksds/dswifi/)
 - [MbedTLS 3.6.4 (my fork with CMake changes)](https://github.com/trustytrojan/mbedtls/tree/3.6.4-nds)
 - [WolfSSL 5.8.4](https://github.com/wolfSSL/wolfssl/tree/v5.8.4-stable)
 - [curl 8.18.0](https://github.com/curl/curl/tree/curl-8_18_0)
@@ -34,30 +35,23 @@ Although it may seem like it, the scope of this project is *not* to be an operat
 - [libtelnet (my fork with CMake changes)](https://github.com/trustytrojan/libtelnet/tree/cmake-changes)
 
 ## Building
+This project supports both **devkitPro** and **BlocksDS** toolchains. Currently when building with BlocksDS multi-console/-threading functionality will not work due to the lack of a POSIX Threads API implementation and due to a different code architecture for file-related system-calls.
 
-### Windows
-1. Download the latest version of the [devkitPro installer](https://github.com/devkitPro/installer/releases) and select the `nds` option during installation
-2. Open the `MSys2` shell from your start menu after installation and uninstall `libnds` with `pacman -Rdd libnds` 
-*note: if you already have msys2 installed make sure you open the one that is exactly called `MSys2`, this is the one installed by devkitPro*
-3. Clone, build and install [my libnds fork](https://github.com/trustytrojan/libnds/tree/console-rework):
-   ```sh
-   git clone https://github.com/trustytrojan/libnds -b console-rework
-   cd libnds
-   make install -j$(nproc)
-   ```
-5. Clone this repo and build with `$DEVKITPRO/tools/bin/catnip -Tnds`
+### devkitPro
+1.  Install devkitPro Pacman following the [official installation guide](https://devkitpro.org/wiki/Getting_Started)
+2.  Install the `nds-dev` metapackage: `(dkp-)pacman -S nds-dev`
+3.  Clone the repository, configure, and build:
+    ```sh
+    cmake --preset dkp-release && cmake --build build -j
+    ```
 
-### Linux
-1. Get [devkitPro pacman](https://devkitpro.org/wiki/Getting_Started) on your system
-2. Install the `nds-dev` metapackage (explained in the link above)
-3. **Uninstall** `libnds` with `sudo (dkp-)pacman -Rdd libnds`
-4. Clone, build, and install [my libnds fork](https://github.com/trustytrojan/libnds/tree/console-rework):
-   ```sh
-   git clone https://github.com/trustytrojan/libnds -b console-rework
-   cd libnds
-   sudo -E make install -j$(nproc)
-   ```
-5. Clone this repo and build with `cmake --preset dkp-release && cmake --build build -j`
+### BlocksDS
+1.  Install `wf-pacman` following the [official installation guide](https://wonderful.asie.pl/wiki/doku.php?id=getting_started)
+2.  Install the `blocksds-toolchain` package: `wf-pacman -S blocksds-toolchain`
+3.  Clone the repository, configure, and build:
+    ```sh
+    cmake --preset blocksds-release && cmake --build build -j
+    ```
 
 ## Lua scripting notes
 - For JSON support, I recommend [rxi/json.lua](https://github.com/rxi/json.lua). It's extremely lightweight.

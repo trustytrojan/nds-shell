@@ -1,11 +1,18 @@
 #include "my_state.hpp"
+#include <sol/property.hpp>
 
 void my_state::load_Shell()
 {
 	// clang-format off
 	new_usertype<Shell>("Shell",
 		sol::no_constructor,
-		"focused", sol::readonly_property(&Shell::IsFocused),
+		"focused",
+#ifdef NDSH_MULTICONSOLE
+		sol::readonly_property(&Shell::IsFocused)
+#else
+		sol::readonly_property([] { return true; })
+#endif
+		,
 		"run", [&](Shell &self, const sol::string_view &line)
 		{
 			// of course, if the line has an i/o redirect,

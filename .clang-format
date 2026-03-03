@@ -16,6 +16,7 @@ TabWidth: 4
 AccessModifierOffset: -4
 IndentCaseBlocks: false
 IndentCaseLabels: false
+IndentPPDirectives: BeforeHash
 
 # Namespace
 CompactNamespaces: true

@@ -11,8 +11,10 @@ my_state::my_state(const Commands::Context &ctx)
 	load_CliPrompt();
 	load_Shell();
 	load_CommandContext();
+#ifdef NDSH_CURL
 	load_fetch();
 	load_WebSocket();
+#endif
 
 	set("ctx", ctx);
 	set("print", [&](const sol::string_view &s) { ctx.out << s << '\n'; });

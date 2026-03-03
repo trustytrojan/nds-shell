@@ -3,8 +3,8 @@
 
 #include <curl/curl.h>
 
-#ifdef CURL_DEBUG
-static int curl_debug(CURL *, curl_infotype type, char *const data, const size_t size, void *userp)
+#ifdef NDSH_CURL_DEBUG
+int curl_debug(CURL *, curl_infotype type, char *const data, const size_t size, void *userp)
 {
 	if (type != CURLINFO_TEXT)
 		// we only want debug messages, not req/resp data
@@ -17,10 +17,12 @@ static int curl_debug(CURL *, curl_infotype type, char *const data, const size_t
 }
 #endif
 
+#ifndef __BLOCKSDS__
 curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr)
 {
 	return socket(addr->family, addr->socktype, 0);
 }
+#endif
 
 size_t curl_write(char *const buffer, const size_t size, const size_t nitems, void *userp)
 {
@@ -49,7 +51,7 @@ void Commands::curl(const Context &ctx)
 	curl_easy_setopt(easy, CURLOPT_URL, ctx.args[1].c_str());
 
 	// set a timeout so we aren't stuck connecting/reading
-	const auto timeout = atoi(ctx.GetEnv("CURL_TIMEOUT", "5").c_str());
+	const auto timeout = atoi(ctx.GetEnv("CURL_TIMEOUT", "10").c_str());
 	curl_easy_setopt(easy, CURLOPT_TIMEOUT, timeout);
 	curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT, timeout);
 
@@ -64,23 +66,21 @@ void Commands::curl(const Context &ctx)
 	curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, curl_write);
 	curl_easy_setopt(easy, CURLOPT_WRITEDATA, &ctx.out);
 
+#ifndef __BLOCKSDS__
 	// we need a custom opensocket callback because of
 	// https://github.com/devkitPro/dswifi/blob/f61bbc661dc7087fc5b354cd5ec9a878636d4cbf/source/sgIP/sgIP_sockets.c#L98
 	// note to self... DO NOT USE C++ LAMBDAS
 	curl_easy_setopt(easy, CURLOPT_OPENSOCKETFUNCTION, curl_opensocket);
+#endif
 
 	// get curl errors
 	char curl_errbuf[CURL_ERROR_SIZE]{};
 	curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, curl_errbuf);
 
-#ifdef CURL_DEBUG
-	// debug output
-	if (ctx.env.contains("CURL_DEBUG"))
-	{
-		curl_easy_setopt(easy, CURLOPT_VERBOSE, 1L);
-		curl_easy_setopt(easy, CURLOPT_DEBUGFUNCTION, curl_debug);
-		curl_easy_setopt(easy, CURLOPT_DEBUGDATA, &ctx.err);
-	}
+#ifdef NDSH_CURL_DEBUG
+	curl_easy_setopt(easy, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(easy, CURLOPT_DEBUGFUNCTION, curl_debug);
+	curl_easy_setopt(easy, CURLOPT_DEBUGDATA, &ctx.err);
 #endif
 
 #ifdef NDSH_THREADING

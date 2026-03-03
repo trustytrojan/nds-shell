@@ -24,7 +24,9 @@ struct Context
 
 // these are defined in commands/*.cpp
 void wifi(const Context &);
+#ifdef NDSH_CURL
 void curl(const Context &);
+#endif
 void tcp(const Context &);
 void lua(const Context &);
 void ssh(const Context &);

@@ -67,10 +67,12 @@ public:
 	// Set the `shouldExit` flag. If set the shell will exit the prompt loop on its next iteration.
 	void SetShouldExit() { shouldExit = true; }
 
+#ifdef NDSH_MULTICONSOLE
 	// Returns whether the console this shell is running on is focused.
 	// **Commands should use this to avoid calling `CliPrompt::update()`
 	// as to not consome inputs that a focused console should receive.**
 	bool IsFocused() const { return Consoles::IsFocused(console); }
+#endif
 
 	// For POSIX shell "builtin" commands like cd, history, unset, etc.
 	void SetEnv(const std::string &key, const std::string &value) { env.insert_or_assign(key, value); }

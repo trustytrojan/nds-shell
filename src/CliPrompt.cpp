@@ -125,7 +125,7 @@ void CliPrompt::processKeyboard()
 {
 	// this needs to be cast to a char for printing
 	// keep it signed because of the negative value enums to check against!
-	switch (const s8 c = keyboardUpdate())
+	switch (const auto c = keyboardUpdate())
 	{
 	case 0: // just in case
 	case NOKEY:
@@ -169,7 +169,7 @@ void CliPrompt::processKeyboard()
 		if (cursorPos == input.size())
 		{
 			input += c;
-			*ostr << c;
+			*ostr << (char)c;
 		}
 		else
 		{

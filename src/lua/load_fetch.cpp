@@ -4,8 +4,15 @@
 
 #include <curl/curl.h>
 
+#ifndef __BLOCKSDS__
 // from curl.cpp
 curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr);
+#endif
+
+#ifdef NDSH_CURL_DEBUG
+int curl_debug(CURL *, curl_infotype type, char *const data, const size_t size, void *userp);
+#endif
+
 // userp must be a std::ostream *
 size_t curl_write(char *const buffer, const size_t size, const size_t nitems, void *userp);
 
@@ -23,14 +30,22 @@ void my_state::load_fetch()
 			if (!easy)
 				return {sol::nil, sol::make_object(*this, "curl_easy_init failed")};
 
+#ifdef NDSH_CURL_DEBUG
+			curl_easy_setopt(easy, CURLOPT_VERBOSE, 1L);
+			curl_easy_setopt(easy, CURLOPT_DEBUGFUNCTION, curl_debug);
+			curl_easy_setopt(easy, CURLOPT_DEBUGDATA, &ctx.err);
+#endif
+
 			// Data that needs to live until the callback is fired.
 			// For the sync case, shared_ptr is slight overkill but allows code reuse.
 			auto response_body = std::make_shared<std::ostringstream>();
 			auto error_buffer = std::make_shared<std::array<char, CURL_ERROR_SIZE>>();
 			(*error_buffer)[0] = '\0';
 
+#ifndef __BLOCKSDS__
 			// most important! socket() fails otherwise
 			curl_easy_setopt(easy, CURLOPT_OPENSOCKETFUNCTION, curl_opensocket);
+#endif
 
 			// url, method, body
 			curl_easy_setopt(easy, CURLOPT_URL, url.data());
@@ -45,7 +60,7 @@ void my_state::load_fetch()
 			{
 				for (const auto &[k, v] : headers_tbl.get<sol::table>())
 				{
-					const auto header = k.as<std::string>() + ": " + v.as<std::string_view>();
+					const auto header = k.as<std::string>() + ": " + v.as<std::string>();
 					headers = curl_slist_append(headers, header.c_str());
 				}
 				curl_easy_setopt(easy, CURLOPT_HTTPHEADER, headers);

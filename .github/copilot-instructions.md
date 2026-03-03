@@ -1,8 +1,8 @@
-This is a C++ project implementing a POSIX-like shell & environment for the Nintendo DS. Currently we depend on devkitPro's devkitARM toolchain and libnds, dswifi, and libfat libraries. It also has Lua scripting support with a currently basic API for doing just what the built-in commands can do.
+This is a C++ project implementing a POSIX-like shell & environment for the Nintendo DS. It supports both devkitPro's devkitARM toolchain and the BlocksDS toolchain, along with their respective libnds, dswifi, and libfat libraries. It also has Lua scripting support with a currently basic API for doing just what the built-in commands can do.
 
 ## Developer Environment Requirements
 - `clang-format` for formatting, which is provided along with the clang toolchain.
-- The devkitPro devkitARM toolchain, including dswifi, libfat, and libnds.
+- **Either** the devkitPro devkitARM toolchain **or** the BlocksDS toolchain, including dswifi, libfat, and libnds.
 - See `README.md` and `.github/workflows/ci.yml` for instructions on how to get it setup
 
 ## Similar Projects
@@ -16,8 +16,10 @@ This is a C++ project implementing a POSIX-like shell & environment for the Nint
 - Run `./format.sh` before committing any changes to ensure proper code formatting. This **requires** that `clang-format` is installed, which is usually only provided along with the clang toolchain.
 
 ### Development Flow
-- Build: `catnip -Tnds` (Read `CMakeLists.txt` for reference. Catnip is a CMake wrapper provided by devkitPro. Make sure it is installed in your environment before running this command.)
+- Build (devkitPro): `catnip -Tnds` or `cmake --preset dkp-release && cmake --build build -j`
+- Build (BlocksDS): `cmake --preset blocksds-release && cmake --build build -j`
 - Format: `./format.sh`
+- Read `CMakeLists.txt` and `CMakePresets.json` for reference. Catnip is a CMake wrapper provided by devkitPro.
 
 ## Respository Structure
 - `src`: sources

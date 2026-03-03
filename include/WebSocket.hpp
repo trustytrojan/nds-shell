@@ -7,9 +7,6 @@
 #include <string>
 #include <string_view>
 
-// from curl.cpp
-curl_socket_t curl_opensocket(void *, curlsocktype, curl_sockaddr *const addr);
-
 class WebSocket
 {
 public:
@@ -32,17 +29,18 @@ public:
 	WebSocket(const std::string_view &s);
 	~WebSocket();
 
-	void setConnectTimeout(int seconds)
+	constexpr void setConnectTimeout(int seconds)
 	{
 		curl_easy_setopt(easy, CURLOPT_TIMEOUT, seconds);
 		curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT, seconds);
 	}
-	void setCaFile(const std::string_view &s) { curl_easy_setopt(easy, CURLOPT_CAINFO, s.data()); }
 
-	void on_open(const OpenCb &cb) { _on_open = cb; }
-	void on_message(const MessageCb &cb) { _on_message = cb; }
-	void on_error(const ErrorCb &cb) { _on_error = cb; }
-	void on_close(const CloseCb &cb) { _on_close = cb; }
+	constexpr void setCaFile(const std::string_view &s) { curl_easy_setopt(easy, CURLOPT_CAINFO, s.data()); }
+
+	constexpr void on_open(const OpenCb &cb) { _on_open = cb; }
+	constexpr void on_message(const MessageCb &cb) { _on_message = cb; }
+	constexpr void on_error(const ErrorCb &cb) { _on_error = cb; }
+	constexpr void on_close(const CloseCb &cb) { _on_close = cb; }
 
 	// Connects the WebSocket to the endpoint URL.
 	// Blocks until connected, yielding the current thread.
