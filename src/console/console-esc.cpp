@@ -107,7 +107,6 @@ static void consoleParseColor(const char *const escapeseq) {
 static void consoleParseCsiSequence(void) {
 	MyPrintConsole *const c = getCurrentConsole();
 	const char *const seq = c->escBuf + 2; // Skip "\e["
-	const int len = c->escBufLen - 2;
 
 	// The last character decides the function of the sequence
 	const char command = c->escBuf[c->escBufLen - 1];
@@ -162,14 +161,20 @@ static void consoleParseCsiSequence(void) {
 	}
 
 	// Screen clear
-	case 'J':
-		consoleClearScreen(seq[len - 2]);
+	case 'J': {
+		int mode = 0;
+		siscanf(seq, "%d", &mode);
+		consoleClearScreen('0' + mode);
 		break;
+	}
 
 	// Line clear
-	case 'K':
-		consoleClearLine(seq[len - 2]);
+	case 'K': {
+		int mode = 0;
+		siscanf(seq, "%d", &mode);
+		consoleClearLine('0' + mode);
 		break;
+	}
 
 	// Save cursor position
 	case 's':
