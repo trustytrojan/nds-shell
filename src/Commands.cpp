@@ -96,12 +96,6 @@ void cat(const Context &ctx)
 		return;
 	}
 
-	if (ctx.args.size() == 1)
-	{
-		ctx.err << "\e[91mshell: fs not initialized!\e[39m\n";
-		return;
-	}
-
 	if (ctx.args.size() < 2)
 	{
 		ctx.err << "args: <filepath>\n";

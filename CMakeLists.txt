@@ -62,6 +62,7 @@ set(NDSH_SOURCES
 	src/Lexer.cpp
 	src/Parser.cpp
 	src/NetUtils.cpp
+	src/PrintVersions.cpp
 	src/commands/tcp.cpp
 	src/commands/wifi.cpp
 	src/console/console-clear.cpp

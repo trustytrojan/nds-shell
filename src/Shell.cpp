@@ -255,7 +255,7 @@ void Shell::RedirectOutput(int fd, std::ostream &ostr)
 
 void Shell::StartPrompt()
 {
-	ostr << "\e[96mtrustytrojan/nds-shell\nstar me on github!!!\e[39m\n\nrun 'help' for help\n\n";
+	ostr << "run 'help' for help\n\n";
 
 	prompt.prepareForNextLine();
 	prompt.printFullPrompt(false);

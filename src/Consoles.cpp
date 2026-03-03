@@ -46,7 +46,7 @@ ssize_t con_write(_reent *r, void *fd, const char *ptr, size_t len)
 	for (size_t i = 0; i < len; ++i)
 	{
 		const char chr = ptr[i];
-		if (chr == '\e' || myConsole->escBufLen > 0)
+		if (chr == '\e' || getCurrentConsole()->escBufLen > 0)
 			consoleUpdateEscapeSequence(chr);
 		else
 			myConsolePrintChar(chr);
@@ -186,7 +186,7 @@ void initConsole(u8 idx, bool mainDisplay, int layer)
 	if (idx == 1)
 	{
 		bgHide(console.bgId);
-		if (console.bg2Id)
+		if (console.bg2Id != -1)
 			bgHide(console.bg2Id);
 	}
 

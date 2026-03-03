@@ -2,10 +2,6 @@
 #include "Shell.hpp"
 #include "version.h"
 
-#ifdef NDSH_CURL
-	#include <curl/curl.h>
-#endif
-
 #if defined(NDSH_THREADING) && defined(NDSH_CURL)
 	#include "CurlMulti.hpp"
 #endif
@@ -18,8 +14,6 @@
 #endif
 
 #include <thread>
-
-void subcommand_autoconnect(std::ostream &ostr); // from wifi.cpp
 
 static bool fsInit{}, wifiInit{};
 
@@ -70,13 +64,12 @@ void InitResources()
 	{
 		ostr << "\r\e[2K\e[92mwifi initialized!\n\e[39mautoconnecting...";
 		wifiInit = true;
+		void subcommand_autoconnect(std::ostream & ostr); // from wifi.cpp
 		subcommand_autoconnect(ostr);
 	}
 
 #if defined(NDSH_THREADING) && defined(NDSH_CURL)
-	ostr << "initializing curl multi...";
 	CurlMulti::Init();
-	ostr << "\r\e[2K\e[92mcurl multi initialized!\n";
 #endif
 
 	ostr << '\n';
@@ -118,16 +111,12 @@ int main()
 	Consoles::Init();
 	InitResources();
 
-#ifdef NDSH_CURL
-	std::cout << curl_version() << '\n';
-	const auto protocols = curl_version_info(CURLVERSION_TWELFTH)->protocols;
-	std::cout << "curl protocols: ";
-	for (auto p = protocols; *p; ++p)
-		std::cout << *p << ' ';
-	std::cout << "\n\n";
-#endif
+	{ // because why not?
+		void PrintVersions();
+		PrintVersions();
+	}
 
-#ifdef NDSH_THREADING
+#if defined(NDSH_THREADING) && !defined(__BLOCKSDS__)
 	// Threads created with the C/C++ APIs are minimum priority by default:
 	// https://github.com/devkitPro/calico/blob/6d437b7651ba5c95036a90f534c30079bb926945/source/system/newlib_syscalls.c#L166
 	// The main thread is higher initially. Make sure we can yield to the others.
@@ -161,8 +150,7 @@ int main()
 		const auto down = keysDown();
 		const auto console = Consoles::GetFocusedConsole();
 
-		if (
-			(down & KEY_START)
+		if ((down & KEY_START)
 #ifdef NDSH_MULTICONSOLE
 			&& !running[console]
 #endif

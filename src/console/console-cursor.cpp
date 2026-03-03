@@ -2,6 +2,8 @@
 
 // These save the palette and character of whatever tile the cursor moves on top of.
 // fb2mv should always contain the full block ASCII character (219).
+// Copilot mentioned a data race possibility here: this is disproved by the fact that 
+// (as of right now) both toolchains only provide cooperative multithreading (manual yielding).
 static u16 fbmvUnderCursor, fb2mvUnderCursor;
 
 void consoleSaveTileUnderCursor(void) {
