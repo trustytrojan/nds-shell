@@ -19,8 +19,6 @@
 #include <filesystem>
 #include <fstream>
 
-namespace fs = std::filesystem;
-
 #ifndef __BLOCKSDS__
 	#include <sys/iosupport.h>
 
@@ -70,6 +68,8 @@ void ls(const Context &ctx)
 
 	closedir(dp);
 #else
+	std::error_code ec;
+
 	fs::directory_iterator di{path, ec};
 	if (ec)
 	{
@@ -358,7 +358,9 @@ const Map MAP{
 #endif
 	{"source", source},
 	{"poweroff", poweroff},
+#ifdef __BLOCKSDS__
 	{"dylib", dylib},
+#endif
 #ifdef NDSH_LIBSSH2
 	{"ssh", ssh},
 #endif

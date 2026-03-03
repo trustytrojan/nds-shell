@@ -199,10 +199,21 @@ void CliPrompt::setLineHistoryFromFile(const std::string &filename)
 	if (!Shell::fsInitialized())
 		return;
 
+	std::error_code ec;
+	const auto exists = fs::exists(filename, ec);
+	if (ec)
+	{
+		std::cerr << "\e[91mfailed to load line history: fs::exists(): " << ec.message() << "\e[m\n";
+		return;
+	}
+
+	if (!exists)
+		return;
+
 	std::ifstream lineHistoryFile{filename};
 	if (!lineHistoryFile)
 	{
-		std::cerr << "\e[91mfailed to load line history\n\e[39m";
+		std::cerr << "\e[91mfailed to load line history\n\e[m";
 		return;
 	}
 

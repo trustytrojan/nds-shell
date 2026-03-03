@@ -14,6 +14,7 @@ endif()
 
 FetchContent_Declare(wolfssl
 	URL https://github.com/wolfSSL/wolfssl/archive/v5.8.4-stable.tar.gz
+	SOURCE_DIR ${CMAKE_SOURCE_DIR}/.cmake_deps/wolfssl-src
 	PATCH_COMMAND bash "${CMAKE_SOURCE_DIR}/config/wolfssl_patch.sh"
 )
 FetchContent_MakeAvailable(wolfssl)
@@ -25,9 +26,8 @@ target_compile_definitions(wolfssl PRIVATE
 	$<$<STREQUAL:"${NDS_TOOLCHAIN_VENDOR}","blocks">:HAVE_GETADDRINFO>
 )
 
-target_compile_definitions(wolfssl PUBLIC
-	WOLFSSL_NDS # for libcurl
-)
+# needs to be PUBLIC because it's used in wolfssl's public headers, which screws up libcurl & libssh2
+target_compile_definitions(wolfssl PUBLIC WOLFSSL_NDS)
 
 # we have to be the find_package(WolfSSL) because nobody else does it right
 set(WOLFSSL_LIBRARY "wolfssl" CACHE STRING "" FORCE)

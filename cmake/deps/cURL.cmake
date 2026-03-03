@@ -77,7 +77,10 @@ setcb(HTTP_ONLY ON) # http(s), ws(s)
 setcb(PICKY_COMPILER OFF) # -Wpedantic is annoying
 setcb(USE_MANUAL OFF)
 
-FetchContent_Declare(curl URL https://github.com/curl/curl/archive/curl-8_18_0.tar.gz)
+FetchContent_Declare(curl
+	URL https://github.com/curl/curl/archive/curl-8_18_0.tar.gz
+	SOURCE_DIR ${CMAKE_SOURCE_DIR}/.cmake_deps/curl-src
+)
 FetchContent_MakeAvailable(curl)
 
 if(NDSH_SSL_BACKEND STREQUAL "WolfSSL")

@@ -9,5 +9,6 @@ print('encoded: ' .. encoded)
 
 local decoded = json.decode(encoded)
 for key, value in ipairs(decoded) do
+	-- this should error when it gets to the table (4th element)!
 	print(key .. ': ' .. value)
 end

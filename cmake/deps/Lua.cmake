@@ -5,6 +5,7 @@ setcb(LUA_BUILD_BINARY OFF)
 setcb(LUA_BUILD_COMPILER OFF)
 FetchContent_Declare(lua
 	URL https://github.com/walterschell/Lua/archive/v5.4.7.tar.gz
+	SOURCE_DIR ${CMAKE_SOURCE_DIR}/.cmake_deps/lua-src
 	# enable 32-bit numbers. needs double-escaping as it passes through cmake's ExternalProject_Add()
 	PATCH_COMMAND sed -i "s/#define LUA_32BITS\\\\s\\\\+0/#define LUA_32BITS 1/" "lua-5.4.7/include/luaconf.h"
 )

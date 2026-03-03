@@ -29,7 +29,10 @@ add_compile_definitions(
 	MBEDTLS_TEST_SW_INET_PTON # libnds doesn't provide inet_pton()
 )
 
-FetchContent_Declare(mbedtls URL https://github.com/trustytrojan/mbedtls/releases/download/3.6.4-nds-r1/mbedtls-3.6.4-nds.7z)
+FetchContent_Declare(mbedtls
+	URL https://github.com/trustytrojan/mbedtls/releases/download/3.6.4-nds-r1/mbedtls-3.6.4-nds.7z
+	SOURCE_DIR ${CMAKE_SOURCE_DIR}/.cmake_deps/mbedtls-src
+)
 FetchContent_MakeAvailable(mbedtls)
 
 set(MBEDTLS_INCLUDE_DIR "${mbedtls_SOURCE_DIR}/include" CACHE STRING "" FORCE)

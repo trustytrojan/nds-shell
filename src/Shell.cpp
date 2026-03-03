@@ -9,8 +9,6 @@
 #include <fstream>
 #include <iostream>
 
-namespace fs = std::filesystem;
-
 std::ostream &operator<<(std::ostream &ostr, const Token &t)
 {
 	return ostr << (char)t.type << '(' << t.value << ')';

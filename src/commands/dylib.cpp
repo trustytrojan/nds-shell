@@ -1,10 +1,8 @@
+// this file is only compiled with BlocksDS
+
 #include "Commands.hpp"
-
-#ifdef __BLOCKSDS__
-	#include <dlfcn.h>
-#endif
-
 #include <cstdlib>
+#include <dlfcn.h>
 
 void Commands::dylib(const Context &ctx)
 {
@@ -14,10 +12,6 @@ void Commands::dylib(const Context &ctx)
 		return;
 	}
 
-#ifndef __BLOCKSDS__
-	ctx.err << "\e[91mdylib: only available with BlocksDS builds\e[39m\n";
-	return;
-#else
 	if (!Shell::fsInitialized())
 	{
 		ctx.err << "\e[91mdylib: fs not initialized\e[39m\n";
@@ -42,7 +36,7 @@ void Commands::dylib(const Context &ctx)
 	}
 
 	void *handle = dlopen(dslPath.c_str(), RTLD_NOW | RTLD_LOCAL);
-	if (const char *error = dlerror(); error)
+	if (const char *error = dlerror())
 	{
 		ctx.err << "\e[91mdylib: dlopen: " << error << "\e[39m\n";
 		return;
@@ -51,10 +45,9 @@ void Commands::dylib(const Context &ctx)
 	ctx.out << "loaded: " << dslPath << "\n"
 			<< "membase: " << dlmembase(handle) << '\n';
 
-	dlerror();
 	using DemoFn = int (*)(int);
 	auto fn = reinterpret_cast<DemoFn>(dlsym(handle, symbolName));
-	if (const char *error = dlerror(); error)
+	if (const char *error = dlerror())
 	{
 		ctx.err << "\e[91mdylib: dlsym(" << symbolName << "): " << error << "\e[39m\n";
 		dlclose(handle);
@@ -67,12 +60,7 @@ void Commands::dylib(const Context &ctx)
 
 	if (dlclose(handle) != 0)
 	{
-		if (const char *error = dlerror(); error)
+		if (const char *error = dlerror())
 			ctx.err << "\e[91mdylib: dlclose: " << error << "\e[39m\n";
 	}
-	else
-	{
-		ctx.out << "unloaded library\n";
-	}
-#endif
 }

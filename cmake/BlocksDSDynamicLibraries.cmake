@@ -17,6 +17,7 @@ include(CMakeParseArguments)
 #     [INCLUDE_DIRECTORIES <dir1> [dir2...]]
 #     [COMPILE_DEFINITIONS <def1> [def2...]]
 #     [MAIN_ELF <path/to/main.elf>]
+#     [MAIN_TARGET <target_name>]
 #   )
 #
 # Exposed parent-scope variables (for TARGET foo):
@@ -52,11 +53,12 @@ function(ndsh_add_blocksds_dsl_library)
 	#
 	# Optional:
 	# - OUTPUT_NAME         : final artifact basename (default: TARGET)
-	# - MAIN_ELF            : if provided, passed to dsltool -m for symbol resolution
+	# - MAIN_ELF            : if provided, passed to dsltool -m for symbol resolution (file path)
+	# - MAIN_TARGET         : if provided, uses the output file of this CMake target (preferred over MAIN_ELF)
 	# - INCLUDE_DIRECTORIES : include paths for compiling the DSL sources
 	# - COMPILE_DEFINITIONS : compile definitions for this DSL only
 	set(options)
-	set(oneValueArgs TARGET OUTPUT_NAME MAIN_ELF)
+	set(oneValueArgs TARGET OUTPUT_NAME MAIN_ELF MAIN_TARGET)
 	set(multiValueArgs SOURCES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS)
 	cmake_parse_arguments(NDSL "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -77,6 +79,7 @@ function(ndsh_add_blocksds_dsl_library)
 	set(_dsl_target "${NDSL_TARGET}__dsl")
 	set(_elf "${CMAKE_BINARY_DIR}/${_basename}.elf")
 	set(_dsl "${CMAKE_BINARY_DIR}/${_basename}.dsl")
+	set(_obj_files $<TARGET_OBJECTS:${_obj_target}>)
 
 	# Compile to object files first; this makes per-DSL compile options easy and
 	# lets us keep CMake target semantics while producing a non-native artifact.
@@ -111,23 +114,33 @@ function(ndsh_add_blocksds_dsl_library)
 			-Wl,--unresolved-symbols=ignore-all
 			-Wl,--nmagic
 			-Wl,--target1-abs
-			$<TARGET_OBJECTS:${_obj_target}>
+			${_obj_files}
 			-o ${_elf}
-		DEPENDS ${_obj_target}
+		# Depend on object target (to bring compile rules) and object files
+		# (so source edits retrigger ELF link).
+		DEPENDS ${_obj_target} ${_obj_files}
 		VERBATIM
 	)
 
 	set(_dsltool_args -i ${_elf} -o ${_dsl})
-	# MAIN_ELF is optional. Use it when you want dsltool to resolve symbols
-	# against the main binary at build-time.
-	if(NDSL_MAIN_ELF)
+	set(_dsltool_deps ${_elf})
+	
+	# MAIN_TARGET (preferred) or MAIN_ELF is optional.
+	# Use it when you want dsltool to resolve symbols against the main binary at build-time.
+	if(NDSL_MAIN_TARGET)
+		# Prefer MAIN_TARGET: establish a dependency on the target and use its output file
+		list(APPEND _dsltool_args -m $<TARGET_FILE:${NDSL_MAIN_TARGET}>)
+		list(APPEND _dsltool_deps ${NDSL_MAIN_TARGET})
+	elseif(NDSL_MAIN_ELF)
+		# Fallback to MAIN_ELF: use the provided file path directly (must exist or be built elsewhere)
 		list(APPEND _dsltool_args -m ${NDSL_MAIN_ELF})
+		list(APPEND _dsltool_deps ${NDSL_MAIN_ELF})
 	endif()
 
 	add_custom_command(
 		OUTPUT ${_dsl}
 		COMMAND ${NDSH_DSLTOOL} ${_dsltool_args}
-		DEPENDS ${_elf}
+		DEPENDS ${_dsltool_deps}
 		VERBATIM
 	)
 

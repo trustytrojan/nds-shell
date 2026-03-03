@@ -11,6 +11,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 // Asynchronous command-line interface prompt, taking input from the
 // keypad (physical buttons) and libnds virtual keyboard. Provides:

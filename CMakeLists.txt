@@ -63,7 +63,6 @@ set(NDSH_SOURCES
 	src/Parser.cpp
 	src/NetUtils.cpp
 	src/PrintVersions.cpp
-	src/commands/dylib.cpp
 	src/commands/tcp.cpp
 	src/commands/wifi.cpp
 	src/console/console-clear.cpp
@@ -71,6 +70,10 @@ set(NDSH_SOURCES
 	src/console/console-esc.cpp
 	src/console/console-print.cpp
 )
+
+if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
+	list(APPEND NDSH_SOURCES src/commands/dylib.cpp)
+endif()
 
 if(NDSH_CURL)
 	list(APPEND NDSH_SOURCES
@@ -182,6 +185,7 @@ if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 			TARGET ndsh_dylib_demo
 			OUTPUT_NAME ndsh_dylib_demo
 			SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/demo.cpp
+			MAIN_TARGET nds-shell
 		)
 
 		# Add more DSLs by calling ndsh_add_blocksds_dsl_library() again, then
@@ -196,3 +200,19 @@ if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 		message(STATUS "Remember to use mangled names when calling dlsym(), or use extern \"C\" in the library")
 	endif()
 endif()
+
+# this helps clangd not be confused
+# Only create the symlink after the target is built
+add_custom_command(TARGET nds-shell POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+        "${CMAKE_BINARY_DIR}/compile_commands.json" 
+        "${CMAKE_SOURCE_DIR}/build/compile_commands.json"
+    COMMENT "Updating build/compile_commands.json symlink"
+)
+
+add_custom_command(TARGET nds-shell POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+        "${CMAKE_BINARY_DIR}/nds-shell.nds" 
+        "${CMAKE_SOURCE_DIR}/build/nds-shell.nds"
+    COMMENT "Updating build/nds-shell.nds symlink"
+)
