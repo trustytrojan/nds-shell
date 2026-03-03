@@ -136,7 +136,7 @@ void Commands::telnet(const Context &ctx)
 	if (debug)
 		ctx.err << "\e[90mtelnet: ioctl succeeded\e[39m\n";
 
-	ctx.out << "press fold/esc key to exit\n";
+	ctx.out << "telnet: Press START button to disconnect\n";
 
 	TelnetCtx telnetCtx{sock, ctx};
 	telnet_t *telnet = telnet_init(telopts, _event_handler, 0, &telnetCtx);
@@ -174,11 +174,14 @@ void Commands::telnet(const Context &ctx)
 		// this is REQUIRED since neither dkp or blocks call it internally!
 		scanKeys();
 
+		if (keysDown() & KEY_START)
+			shouldExit = true;
+
 		std::string seq;
 		switch (const auto key = keyboardUpdate())
 		{
 		case DVK_FOLD:
-			shouldExit = true;
+			seq = '\e';
 			break;
 		case DVK_ENTER:
 			seq = "\r\n";

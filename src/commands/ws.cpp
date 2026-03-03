@@ -34,14 +34,14 @@ void Commands::ws(const Context &ctx)
 		});
 
 	ws.on_error([&](auto code, auto msg)
-				{ ctx.err << "\e[91mws: " << curl_easy_strerror(code) << ": " << msg << "\e[39m\n"; });
+				{ ctx.err << "\e[91mws: " << curl_easy_strerror(code) << ": " << msg << "\e[m\n"; });
 
 	bool closed{};
 	ws.on_close([&](auto, auto) { closed = true; });
 
 	if (const auto res = ws.connect(); res != CURLE_OK)
 	{
-		ctx.err << "\e[91mws: connect: " << curl_easy_strerror(res) << '\n';
+		ctx.err << "\e[91mws: connect: " << curl_easy_strerror(res) << "\e[m\n";
 		return;
 	}
 

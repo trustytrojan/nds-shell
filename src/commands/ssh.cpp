@@ -41,6 +41,7 @@ void Commands::ssh(const Context &ctx)
 
 	do
 	{
+		// apparently this isn't thread safe so if you try it just remember to read this again
 		if (libssh2_init(0))
 		{
 			ctx.err << "libssh2 initialization failed\n";
@@ -179,6 +180,8 @@ void Commands::ssh(const Context &ctx)
 			break;
 		}
 
+		ctx.out << "ssh: Press START button to disconnect\n\n";
+
 		while (!libssh2_channel_eof(channel) && pmMainLoop())
 		{
 #ifdef NDSH_THREADING
@@ -217,6 +220,9 @@ void Commands::ssh(const Context &ctx)
 
 			// scanKeys() must be called before keyboardUpdate()
 			scanKeys();
+
+			if (keysDown() & KEY_START)
+				break;
 
 			std::string seq;
 			switch (const auto key = keyboardUpdate())
