@@ -7,7 +7,6 @@ void consoleClearScreen(const char mode) {
 	const u16 blank_bg2 = TILE_PALETTE(0) | blank;
 
 	switch (mode) {
-	case '[': // if not specified, mode is 0
 	case '0': // from cursor to end of screen
 		// Clear from cursor to end of line
 		consoleClearLine('0');
