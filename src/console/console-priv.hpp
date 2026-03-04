@@ -3,11 +3,6 @@
 #include <nds/arm9/console.h>
 #include <nds/ndstypes.h>
 
-// BlocksDS provides TILE_PALETTE, but devkitPro does not
-#ifndef TILE_PALETTE
-	#define TILE_PALETTE(n) ((n) << 12)
-#endif
-
 #ifdef __BLOCKSDS__
 	#define CONSOLE_CURSOR_CHAR '_'
 #else

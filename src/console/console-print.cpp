@@ -24,6 +24,13 @@ u16 *consoleFontBg2MapAtCursor(void) {
 	return consoleFontBg2MapAt(c->cursorX, c->cursorY);
 }
 
+#ifndef __BLOCKSDS__
+	// dkp's consoleInit() assigns fontCurPal (15 << 12), and not just 15 like BlocksDS
+	// so let's just treat all fontCurPal assignments the same, depending on the toolchain
+	#undef TILE_PALETTE
+	#define TILE_PALETTE(x) (x)
+#endif
+
 u16 consoleComputeFontBgMapValue(const char ch) {
 	const PrintConsole *const c = getCurrentConsole();
 	return TILE_PALETTE(c->fontCurPal) | (u16)(ch + c->fontCharOffset - c->font.asciiOffset);

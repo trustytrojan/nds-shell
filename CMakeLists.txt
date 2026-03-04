@@ -54,21 +54,22 @@ endif()
 
 ## sources
 set(NDSH_SOURCES
-	src/main.cpp
-	src/Shell.cpp
-	src/CliPrompt.cpp
-	src/Consoles.cpp
-	src/Commands.cpp
-	src/Lexer.cpp
-	src/Parser.cpp
-	src/NetUtils.cpp
-	src/PrintVersions.cpp
-	src/commands/tcp.cpp
-	src/commands/wifi.cpp
-	src/console/console-clear.cpp
-	src/console/console-cursor.cpp
-	src/console/console-esc.cpp
-	src/console/console-print.cpp
+	src/custom_swi_test.cpp
+	# src/main.cpp
+	# src/Shell.cpp
+	# src/CliPrompt.cpp
+	# src/Consoles.cpp
+	# src/Commands.cpp
+	# src/Lexer.cpp
+	# src/Parser.cpp
+	# src/NetUtils.cpp
+	# src/PrintVersions.cpp
+	# src/commands/tcp.cpp
+	# src/commands/wifi.cpp
+	# src/console/console-clear.cpp
+	# src/console/console-cursor.cpp
+	# src/console/console-esc.cpp
+	# src/console/console-print.cpp
 )
 
 if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
@@ -201,18 +202,18 @@ if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 	endif()
 endif()
 
+## toolchain specific symlinks
 # this helps clangd not be confused
-# Only create the symlink after the target is built
-add_custom_command(TARGET nds-shell POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink 
-        "${CMAKE_BINARY_DIR}/compile_commands.json" 
-        "${CMAKE_SOURCE_DIR}/build/compile_commands.json"
-    COMMENT "Updating build/compile_commands.json symlink"
+execute_process(
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+		"${CMAKE_BINARY_DIR}/compile_commands.json"
+		"${CMAKE_SOURCE_DIR}/build/compile_commands.json"
+	COMMAND_ERROR_IS_FATAL ANY
 )
 
-add_custom_command(TARGET nds-shell POST_BUILD
+execute_process(
     COMMAND ${CMAKE_COMMAND} -E create_symlink 
-        "${CMAKE_BINARY_DIR}/nds-shell.nds" 
-        "${CMAKE_SOURCE_DIR}/build/nds-shell.nds"
-    COMMENT "Updating build/nds-shell.nds symlink"
+		"${CMAKE_BINARY_DIR}/nds-shell.nds"
+		"${CMAKE_SOURCE_DIR}/build/nds-shell.nds"
+	COMMAND_ERROR_IS_FATAL ANY
 )

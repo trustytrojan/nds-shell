@@ -98,10 +98,17 @@ static void consoleParseColor(const char *const escapeseq) {
 
 	// final_color and bgcolor are 4-bit palette indices (0-15).
 
+#ifdef __BLOCKSDS__
+	// dkp's consoleInit() assigns fontCurPal (15 << 12), and not just 15 like BlocksDS
+	// so let's just treat all fontCurPal assignments the same, depending on the toolchain
+	#undef TILE_PALETTE
+	#define TILE_PALETTE(x) (x)
+#endif
+
 	if (final_color != -1)
-		c->fontCurPal = final_color;
+		c->fontCurPal = TILE_PALETTE(final_color);
 	if (bgcolor != -1)
-		c->fontCurPal2 = bgcolor;
+		c->fontCurPal2 = TILE_PALETTE(bgcolor);
 }
 
 static void consoleParseCsiSequence(void) {

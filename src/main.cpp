@@ -102,7 +102,7 @@ void ShellThread(int console)
 }
 #endif
 
-int main()
+int main2()
 {
 	defaultExceptionHandler();
 #ifndef __BLOCKSDS__
