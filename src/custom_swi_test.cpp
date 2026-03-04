@@ -39,18 +39,20 @@ The remaining modes, SYSTEM and USER, of course, work fine.
 */
 #define SWI_RETURN_MODE CPSR_MODE_SYSTEM
 
-extern "C" void my_swi_log()
+extern "C" void my_swi_log(uint32_t arg /* r0 */)
 {
 	// ALL exception handlers are entered in SUPERVISOR mode.
 	// The stack size for SUPERVISOR code is EXTREMELY small.
 	// Stack usage must be kept minimal. Avoid heavy libc calls (especially ANYTHING print-like).
 	// Here, to signal to main() that we ran, we just set a char pointer to our own message.
-	message = "set by my_swi_log!";
+	if (arg == 0x67)
+		message = "my_swi_log: 67!";
+	else
+		message = "my_swi_log: called!";
 
-	// This is EXTREMELY important for two reasons: stack size, and permissions.
-	// We MUST set SPSR to the mode we want to switch back to when returning.
+	// Here, we can set the desired CPSR mode to return to the caller as.
 	// If you comment this line out, SPSR is simply the CPSR before the SWI was executed,
-	// so the `movs` call below will reflect that.
+	// AKA the mode our caller had. The `movs` call below will reflect that.
 	// asm("msr spsr, %0" : : "i"(SWI_RETURN_MODE));
 
 	// `movs` performs the specified move and a `CPSR <- SPSR` move simultaneously.
@@ -58,27 +60,6 @@ extern "C" void my_swi_log()
 	// If we DON'T do this (by commenting the line out), execution continues in SUPERVISOR mode with a TINY stack,
 	// which WILL cause stack smashing due to our use of `std::println` in `main()`!!!!!
 	asm("movs pc, lr");
-}
-
-// This is unused right now, but writing a naked ASM function is the only way to dynamically dispatch
-// between our custom code and the BIOS code based on the argument passed to the `swi` instruction.
-// Generally arguments 0x20 or lower MUST be handled by BIOS code.
-__attribute__((naked)) static void my_swi_handler(void)
-{
-	asm(
-		// Save SWI call context (args + lr_svc)
-		"stmdb sp!, {r0-r3, r12, lr}        \n"
-
-		// Call our code
-		"bl my_swi_log                        \n"
-
-		// Restore exact original context
-		"ldmia sp!, {r0-r3, r12, lr}         \n"
-
-		// Tail-chain to original SWI handler (do NOT 'bl' it)
-		"ldr r12, =g_oldSwiHandler           \n"
-		"ldr r12, [r12]                      \n"
-		"bx  r12                             \n");
 }
 
 int main(void)
@@ -97,9 +78,7 @@ int main(void)
 #endif
 
 	g_oldSwiHandler = SystemVectors.swi;
-	SystemVectors.swi = my_swi_log;
-
-	// REG_IME = 0;
+	SystemVectors.swi = (VoidFn)my_swi_log;
 
 #ifdef __BLOCKSDS__
 	setVectorBase(0);
@@ -129,6 +108,7 @@ int main(void)
 	std::println("calling swi...");
 
 	// we called as USER
+	asm("mov r0, #0x67"); // ARGUMENT PASSING TEST: WORKS!
 	asm("swi 0x80");
 	// but here we should be whatever SWI_RETURN_MODE is
 
