@@ -54,22 +54,22 @@ endif()
 
 ## sources
 set(NDSH_SOURCES
-	src/custom_swi_test.cpp
-	# src/main.cpp
-	# src/Shell.cpp
-	# src/CliPrompt.cpp
-	# src/Consoles.cpp
-	# src/Commands.cpp
-	# src/Lexer.cpp
-	# src/Parser.cpp
-	# src/NetUtils.cpp
-	# src/PrintVersions.cpp
-	# src/commands/tcp.cpp
-	# src/commands/wifi.cpp
-	# src/console/console-clear.cpp
-	# src/console/console-cursor.cpp
-	# src/console/console-esc.cpp
-	# src/console/console-print.cpp
+	# src/custom_swi_test.cpp
+	src/main.cpp
+	src/Shell.cpp
+	src/CliPrompt.cpp
+	src/Consoles.cpp
+	src/Commands.cpp
+	src/Lexer.cpp
+	src/Parser.cpp
+	src/NetUtils.cpp
+	src/PrintVersions.cpp
+	src/commands/tcp.cpp
+	src/commands/wifi.cpp
+	src/console/console-clear.cpp
+	src/console/console-cursor.cpp
+	src/console/console-esc.cpp
+	src/console/console-print.cpp
 )
 
 if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
@@ -199,6 +199,13 @@ if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 		add_custom_target(ndsh-dylib-demo ALL DEPENDS ${ndsh_dylib_demo_DSL_TARGET})
 		message(STATUS "BlocksDS dynamic library demo enabled: ${ndsh_dylib_demo_DSL}")
 		message(STATUS "Remember to use mangled names when calling dlsym(), or use extern \"C\" in the library")
+
+		execute_process(
+			COMMAND ${CMAKE_COMMAND} -E create_symlink 
+				"${CMAKE_BINARY_DIR}/ndsh_dylib_demo.dsl"
+				"${CMAKE_SOURCE_DIR}/melonds-sdcard/ndsh_dylib_demo.dsl"
+			COMMAND_ERROR_IS_FATAL ANY
+		)
 	endif()
 endif()
 

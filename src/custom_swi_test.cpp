@@ -105,12 +105,12 @@ __attribute((naked)) void my_swi_handler()
 	// We only do this if our dispatcher returned true (NE condition).
 	asm("movnes pc, lr");
 
-	// FALLTHROUGH: If dispatcher returned false (EQ), we "Tail-chain" to the original BIOS handler.
-	// We load the address of the old handler into R12 and branch to it.
-	// Because we restored R0-R3 and didn't change LR, the BIOS will think it was called directly!
+	// FALLTHROUGH: If my_swi_callback() returned false (`movnes` did not execute), we "Tail-chain" to the original BIOS
+	// handler. We load the address of the old handler into R12 and branch to it. Because we restored R0-R3 and didn't
+	// change LR, the BIOS will think it was called directly!
 	asm("ldr r12, =g_oldSwiHandler");
 	asm("ldr r12, [r12]");
-	asm("bx  r12");
+	asm("bx r12");
 }
 
 int main(void)
