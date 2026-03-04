@@ -39,27 +39,78 @@ The remaining modes, SYSTEM and USER, of course, work fine.
 */
 #define SWI_RETURN_MODE CPSR_MODE_SYSTEM
 
-extern "C" void my_swi_log(uint32_t arg /* r0 */)
+static void my_swi_log(uint32_t arg)
 {
 	// ALL exception handlers are entered in SUPERVISOR mode.
 	// The stack size for SUPERVISOR code is EXTREMELY small.
 	// Stack usage must be kept minimal. Avoid heavy libc calls (especially ANYTHING print-like).
-	// Here, to signal to main() that we ran, we just set a char pointer to our own message.
+	// Here, to signal to main() that we ran, we just set a static char pointer to our own message.
 	if (arg == 0x67)
 		message = "my_swi_log: 67!";
 	else
 		message = "my_swi_log: called!";
+}
 
-	// Here, we can set the desired CPSR mode to return to the caller as.
-	// If you comment this line out, SPSR is simply the CPSR before the SWI was executed,
-	// AKA the mode our caller had. The `movs` call below will reflect that.
-	// asm("msr spsr, %0" : : "i"(SWI_RETURN_MODE));
+extern "C" bool my_swi_callback(uint32_t swi_arg /* r0 */, uint32_t *regs /* r1 */)
+{
+	if (swi_arg == 0x80)
+	{
+		// Here, `regs[0]` is the SWI caller's R0, which is on the stack.
+		// It is NOT our R0! Our R0 is `swi_arg`. Do not confuse the two!
+		my_swi_log(regs[0]);
+		return true;
+	}
+	return false;
+}
 
-	// `movs` performs the specified move and a `CPSR <- SPSR` move simultaneously.
-	// We must do this instead of the compiler-generated `bx lr`, which is just an undonditional jump.
-	// If we DON'T do this (by commenting the line out), execution continues in SUPERVISOR mode with a TINY stack,
-	// which WILL cause stack smashing due to our use of `std::println` in `main()`!!!!!
-	asm("movs pc, lr");
+// https://problemkaputt.de/gbatek.htm#armopcodesbranchandbranchwithlinkbblbxblxswibkpt
+__attribute((naked)) void my_swi_handler()
+{
+	// Save the caller's registers to the stack.
+	asm("stmdb sp!, {r0-r3, r12, lr}");
+
+	/// We are NOT (and should not be) in THUMB mode, so we can just extract the SWI immediate the ARM way.
+
+	// Load SPSR to R1
+	asm("mrs r1, spsr");
+
+	// Load the 32-bit immediate from the SWI instruction, which is literally
+	// right before the return address (stored in `lr`).
+	asm("ldr r0, [lr, #-4]");
+
+	// `bic` stands for "Bit Clear".
+	// In the immediate argument, we are specifying the bits to "clear" or "zero out", because internally, it takes the
+	// complement of the immediate, then bitwise ANDs it with r0. (Yes, it's a wrapper over `and`, which can also be
+	// used here.)
+	asm("bic r0, r0, #0xff000000");
+
+	// Move stack pointer to R1. This will be the 2nd argument to my_swi_dispatcher().
+	asm("mov r1, sp");
+
+	// Call my_swi_callback().
+	// BL means "branch and link".
+	asm("bl my_swi_callback");
+
+	// NEW LOGIC: R0 now contains the return value from my_swi_dispatcher (true or false).
+	// We compare it to see if we should return to the user or jump to the BIOS.
+	asm("cmp r0, #0");
+
+	// Restore the caller's registers from the stack.
+	// This is critical: if we are going to the BIOS, the BIOS needs the original R0-R3 back!
+	asm("ldmia sp!, {r0-r3, r12, lr}");
+
+	// THIS IS THE KILLER!
+	// `movs` performs both the usual move AND a CPSR <- SPSR move.
+	// This restores the caller's CPSR mode.
+	// We only do this if our dispatcher returned true (NE condition).
+	asm("movnes pc, lr");
+
+	// FALLTHROUGH: If dispatcher returned false (EQ), we "Tail-chain" to the original BIOS handler.
+	// We load the address of the old handler into R12 and branch to it.
+	// Because we restored R0-R3 and didn't change LR, the BIOS will think it was called directly!
+	asm("ldr r12, =g_oldSwiHandler");
+	asm("ldr r12, [r12]");
+	asm("bx  r12");
 }
 
 int main(void)
@@ -78,7 +129,7 @@ int main(void)
 #endif
 
 	g_oldSwiHandler = SystemVectors.swi;
-	SystemVectors.swi = (VoidFn)my_swi_log;
+	SystemVectors.swi = my_swi_handler;
 
 #ifdef __BLOCKSDS__
 	setVectorBase(0);
@@ -108,9 +159,11 @@ int main(void)
 	std::println("calling swi...");
 
 	// we called as USER
-	asm("mov r0, #0x67"); // ARGUMENT PASSING TEST: WORKS!
+	asm("mov r0, #0x67"); // This is the argument we pass to `my_swi_log!`
+	// If not commented out, message should be "my_swi_log: 67!", otherwise "my_swi_log: called!"
 	asm("swi 0x80");
-	// but here we should be whatever SWI_RETURN_MODE is
+	swiDelay(1); // If all our code above is right, this should not cause an abort!
+	// here we should still be USER
 
 	std::println("message after swi: \e[46m'{}'\e[47m", message);
 
