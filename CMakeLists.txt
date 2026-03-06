@@ -174,39 +174,8 @@ endif()
 nds_create_rom(nds-shell)
 
 if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
-	# BlocksDS-only helper module for generating .dsl artifacts.
-	# See cmake/BlocksDSDynamicLibraries.md for detailed usage.
-	include(BlocksDSDynamicLibraries)
-
-	option(NDSH_BUILD_DYLIB_DEMO "Build sample DSL for the 'dylib' command" ON)
-
-	if(NDSH_BUILD_DYLIB_DEMO)
-		# Example DSL library (default symbol: ndsh_dylib_demo in src/dylib_demo/demo.cpp)
-		ndsh_add_blocksds_dsl_library(
-			TARGET ndsh_dylib_demo
-			OUTPUT_NAME ndsh_dylib_demo
-			SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/demo.cpp
-			MAIN_TARGET nds-shell
-		)
-
-		# Add more DSLs by calling ndsh_add_blocksds_dsl_library() again, then
-		# aggregate their *_DSL_TARGET variables here:
-		#   ndsh_add_blocksds_dsl_library(TARGET plugin_math SOURCES src/dylib_demo/math.cpp)
-		#   ndsh_add_blocksds_dsl_library(TARGET plugin_time SOURCES src/dylib_demo/time.cpp)
-		#   add_custom_target(ndsh-dylibs ALL
-		#       DEPENDS ${ndsh_dylib_demo_DSL_TARGET} ${plugin_math_DSL_TARGET} ${plugin_time_DSL_TARGET})
-
-		add_custom_target(ndsh-dylib-demo ALL DEPENDS ${ndsh_dylib_demo_DSL_TARGET})
-		message(STATUS "BlocksDS dynamic library demo enabled: ${ndsh_dylib_demo_DSL}")
-		message(STATUS "Remember to use mangled names when calling dlsym(), or use extern \"C\" in the library")
-
-		execute_process(
-			COMMAND ${CMAKE_COMMAND} -E create_symlink 
-				"${CMAKE_BINARY_DIR}/ndsh_dylib_demo.dsl"
-				"${CMAKE_SOURCE_DIR}/melonds-sdcard/ndsh_dylib_demo.dsl"
-			COMMAND_ERROR_IS_FATAL ANY
-		)
-	endif()
+	include(BlocksDSDylibDemo)
+	ndsh_configure_blocksds_dylib_demo(MAIN_TARGET nds-shell)
 endif()
 
 ## toolchain specific symlinks

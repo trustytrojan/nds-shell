@@ -27,6 +27,9 @@ ndsh_add_blocksds_dsl_library(
   [INCLUDE_DIRECTORIES <dir1> [dir2...]]
   [COMPILE_DEFINITIONS <def1> [def2...]]
   [MAIN_ELF <path/to/main.elf>]
+  [MAIN_TARGET <target_name>]
+  [DEPENDENCY_TARGETS <target1> [target2...]]
+  [DEPENDENCY_ELFS <path1> [path2...]]
 )
 ```
 
@@ -44,6 +47,12 @@ ndsh_add_blocksds_dsl_library(
   - Compile definitions used only for this DSL.
 - `MAIN_ELF` (optional)
   - If set, passed as `dsltool -m <main.elf>` to resolve unknown symbols at build time.
+- `MAIN_TARGET` (optional)
+  - Preferred over `MAIN_ELF`; uses `TARGET_FILE` of an existing CMake target for `dsltool -m`.
+- `DEPENDENCY_TARGETS` (optional)
+  - Target file(s) passed as repeated `dsltool -d dep.elf` arguments.
+- `DEPENDENCY_ELFS` (optional)
+  - Explicit dependency ELF file path(s) passed as repeated `dsltool -d dep.elf` arguments.
 
 ## Returned variables
 
@@ -83,6 +92,31 @@ add_custom_target(ndsh-dylibs ALL
   DEPENDS
     ${plugin_math_DSL_TARGET}
     ${plugin_time_DSL_TARGET}
+)
+```
+
+## Interdependency example (A depends on B and C)
+
+```cmake
+ndsh_add_blocksds_dsl_library(
+  TARGET libB
+  SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp
+  MAIN_TARGET nds-shell
+)
+
+ndsh_add_blocksds_dsl_library(
+  TARGET libC
+  SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp
+  MAIN_TARGET nds-shell
+)
+
+ndsh_add_blocksds_dsl_library(
+  TARGET libA
+  SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp
+  MAIN_TARGET nds-shell
+  DEPENDENCY_ELFS
+    ${libB_ELF}
+    ${libC_ELF}
 )
 ```
 

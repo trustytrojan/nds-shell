@@ -18,6 +18,8 @@ include(CMakeParseArguments)
 #     [COMPILE_DEFINITIONS <def1> [def2...]]
 #     [MAIN_ELF <path/to/main.elf>]
 #     [MAIN_TARGET <target_name>]
+#     [DEPENDENCY_TARGETS <target1> [target2...]]
+#     [DEPENDENCY_ELFS <path1> [path2...]]
 #   )
 #
 # Exposed parent-scope variables (for TARGET foo):
@@ -55,11 +57,13 @@ function(ndsh_add_blocksds_dsl_library)
 	# - OUTPUT_NAME         : final artifact basename (default: TARGET)
 	# - MAIN_ELF            : if provided, passed to dsltool -m for symbol resolution (file path)
 	# - MAIN_TARGET         : if provided, uses the output file of this CMake target (preferred over MAIN_ELF)
+	# - DEPENDENCY_TARGETS  : CMake target(s) whose output ELF(s) are passed as dsltool -d dep.elf
+	# - DEPENDENCY_ELFS     : explicit dependency ELF file path(s) passed as dsltool -d dep.elf
 	# - INCLUDE_DIRECTORIES : include paths for compiling the DSL sources
 	# - COMPILE_DEFINITIONS : compile definitions for this DSL only
 	set(options)
 	set(oneValueArgs TARGET OUTPUT_NAME MAIN_ELF MAIN_TARGET)
-	set(multiValueArgs SOURCES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS)
+	set(multiValueArgs SOURCES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS DEPENDENCY_TARGETS DEPENDENCY_ELFS)
 	cmake_parse_arguments(NDSL "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 	if(NOT NDSL_TARGET)
@@ -136,6 +140,16 @@ function(ndsh_add_blocksds_dsl_library)
 		list(APPEND _dsltool_args -m ${NDSL_MAIN_ELF})
 		list(APPEND _dsltool_deps ${NDSL_MAIN_ELF})
 	endif()
+
+	foreach(_dep_target IN LISTS NDSL_DEPENDENCY_TARGETS)
+		list(APPEND _dsltool_args -d $<TARGET_FILE:${_dep_target}>)
+		list(APPEND _dsltool_deps ${_dep_target})
+	endforeach()
+
+	foreach(_dep_elf IN LISTS NDSL_DEPENDENCY_ELFS)
+		list(APPEND _dsltool_args -d ${_dep_elf})
+		list(APPEND _dsltool_deps ${_dep_elf})
+	endforeach()
 
 	add_custom_command(
 		OUTPUT ${_dsl}
