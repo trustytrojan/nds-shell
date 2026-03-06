@@ -1,14 +1,11 @@
 #include <cstdio>
 
-extern "C" __attribute__((visibility("default"))) int ndsh_libB_value(int value)
+extern "C" __attribute__((visibility("default"))) void libB_print()
 {
-	std::printf("libB: ndsh_libB_value(%d)\n", value);
-	return value + 10;
+	puts("libB called");
 }
 
-extern "C" __attribute__((visibility("default"))) int ndsh_dylib_demo(int value)
+extern "C" __attribute__((visibility("default"))) void ndsh_dylib_demo()
 {
-	std::puts("libB ndsh_dylib_demo called!");
-	return 67;
+	libB_print();
 }
-
