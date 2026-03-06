@@ -37,8 +37,8 @@ if(NOT NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 	return()
 endif()
 
-set(NDSH_DSLTOOL "$ENV{BLOCKSDS}/tools/dsltool/dsltool")
-set(NDSH_DSL_SPECS "$ENV{BLOCKSDS}/sys/crts/ds_arm9_dsl.specs")
+set(NDSH_DSLTOOL "$ENV{BLOCKSDS}/tools/dsltool/dsltool" CACHE STRING "")
+set(NDSH_DSL_SPECS "$ENV{BLOCKSDS}/sys/crts/ds_arm9_dsl.specs" CACHE STRING "")
 
 if(NOT EXISTS ${NDSH_DSLTOOL})
 	message(FATAL_ERROR "dsltool not found at ${NDSH_DSLTOOL}")
@@ -106,6 +106,9 @@ function(ndsh_add_blocksds_dsl_library)
 		target_compile_definitions(${_obj_target} PRIVATE ${NDSL_COMPILE_DEFINITIONS})
 	endif()
 
+	set(_rsp_file "${CMAKE_CURRENT_BINARY_DIR}/${NDSL_TARGET}_objects.rsp")
+	file(GENERATE OUTPUT "${_rsp_file}" CONTENT "$<JOIN:${_obj_files}, >")
+
 	# Link raw objects into a relocatable-friendly ARM9 ELF for dsltool.
 	add_custom_command(
 		OUTPUT ${_elf}
@@ -118,7 +121,7 @@ function(ndsh_add_blocksds_dsl_library)
 			-Wl,--unresolved-symbols=ignore-all
 			-Wl,--nmagic
 			-Wl,--target1-abs
-			${_obj_files}
+			@${_rsp_file}
 			-o ${_elf}
 		# Depend on object target (to bring compile rules) and object files
 		# (so source edits retrigger ELF link).

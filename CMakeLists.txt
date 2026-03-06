@@ -144,10 +144,61 @@ endif()
 add_compile_options(-fno-rtti -fno-exceptions) # this should be global for any C++ dependencies
 target_include_directories(nds-shell PRIVATE include ${CMAKE_BINARY_DIR})
 
+function(target_link_undefined_symbols TARGET_NAME)
+    set(LINK_OPTIONS "")
+    
+    # ARGN contains all arguments passed after TARGET_NAME
+    foreach(SYMBOL IN LISTS ARGN)
+        list(APPEND LINK_OPTIONS "-Wl,--undefined=${SYMBOL}")
+    endforeach()
+
+    # Apply the options to the target
+    target_link_options(${TARGET_NAME} PRIVATE ${LINK_OPTIONS})
+endfunction()
+
 if(NDS_TOOLCHAIN_VENDOR STREQUAL "dkp")
 	target_link_libraries(nds-shell PRIVATE dswifi9 fat) # libnds is linked by default
 elseif(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 	target_link_libraries(nds-shell PRIVATE dswifi9)
+
+	# the below commented code should be appended curl-src/lib/CMakeLists.txt
+	# annoyingly this will make every object build twice (since nds-shell links to it), but for now, i don't care
+	# all that matters is... it works... see src/dylib_demo/libC.cpp
+
+# # Include your DSL helper module
+# include(BlocksDSDynamicLibraries)
+
+# # libcurl uses 'curl_transform_makefile_inc' to set CSOURCES.
+# # We use those same sources to build our DSL target.
+# ndsh_add_blocksds_dsl_library(
+#     TARGET curl_dsl
+#     OUTPUT_NAME curl
+#     SOURCES ${CSOURCES}
+#     INCLUDE_DIRECTORIES 
+#         ${CMAKE_CURRENT_SOURCE_DIR} 
+#         ${CMAKE_CURRENT_BINARY_DIR}
+#         ${CMAKE_CURRENT_SOURCE_DIR}/../include
+#     COMPILE_DEFINITIONS 
+#         BUILDING_LIBCURL 
+#         CURL_STATICLIB  # We build objects as static, then link to DSL
+#     MAIN_TARGET nds-shell
+#     DEPENDENCY_TARGETS 
+#         # Add other DSLs curl might need (e.g., mbedtls or wolfssl)
+#         ${SSL_DSL_TARGET} 
+# )
+
+# # This forces the DSL to be built when you run 'make' or 'cmake --build'
+# add_custom_target(build_curl_dsl ALL 
+#     DEPENDS ${curl_dsl_DSL_TARGET}
+# )
+
+
+	target_link_undefined_symbols(nds-shell
+		__aeabi_lmul
+		accept
+		getpeername
+		strpbrk
+	)
 endif()
 
 ## VERY important options
