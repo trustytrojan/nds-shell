@@ -12,14 +12,10 @@ include(CMakeParseArguments)
 # Main function:
 #   ndsh_add_blocksds_dsl_library(
 #     TARGET <logical_name>
-#     SOURCES <src1> [src2...]
+#     STATIC_TARGET <existing_static_library_target>
 #     [OUTPUT_NAME <artifact_base_name>]
-#     [INCLUDE_DIRECTORIES <dir1> [dir2...]]
-#     [COMPILE_DEFINITIONS <def1> [def2...]]
-#     [MAIN_ELF <path/to/main.elf>]
 #     [MAIN_TARGET <target_name>]
 #     [DEPENDENCY_TARGETS <target1> [target2...]]
-#     [DEPENDENCY_ELFS <path1> [path2...]]
 #   )
 #
 # Exposed parent-scope variables (for TARGET foo):
@@ -28,8 +24,8 @@ include(CMakeParseArguments)
 # - foo_DSL_TARGET : custom target that builds the DSL
 #
 # Typical multi-DSL pattern in the caller:
-#   ndsh_add_blocksds_dsl_library(TARGET plugin_a SOURCES a.cpp)
-#   ndsh_add_blocksds_dsl_library(TARGET plugin_b SOURCES b.cpp)
+#   ndsh_add_blocksds_dsl_library(TARGET plugin_a STATIC_TARGET plugin_a_static)
+#   ndsh_add_blocksds_dsl_library(TARGET plugin_b STATIC_TARGET plugin_b_static)
 #   add_custom_target(all-dsls ALL
 #       DEPENDS ${plugin_a_DSL_TARGET} ${plugin_b_DSL_TARGET})
 
@@ -51,27 +47,35 @@ endif()
 function(ndsh_add_blocksds_dsl_library)
 	# Required:
 	# - TARGET  : logical name used to create internal build targets
-	# - SOURCES : source files for this dynamic library
+	# - STATIC_TARGET : existing static library target used as linker input for the DSL ELF
 	#
 	# Optional:
 	# - OUTPUT_NAME         : final artifact basename (default: TARGET)
-	# - MAIN_ELF            : if provided, passed to dsltool -m for symbol resolution (file path)
-	# - MAIN_TARGET         : if provided, uses the output file of this CMake target (preferred over MAIN_ELF)
-	# - DEPENDENCY_TARGETS  : CMake target(s) whose output ELF(s) are passed as dsltool -d dep.elf
-	# - DEPENDENCY_ELFS     : explicit dependency ELF file path(s) passed as dsltool -d dep.elf
-	# - INCLUDE_DIRECTORIES : include paths for compiling the DSL sources
-	# - COMPILE_DEFINITIONS : compile definitions for this DSL only
+	# - MAIN_TARGET         : if provided, uses TARGET_FILE of this CMake target for dsltool -m
+	# - DEPENDENCY_TARGETS  : target(s) passed to dsltool -d
+	#                         If an entry names a CMake target, its TARGET_FILE is used.
+	#                         If an entry names another ndsh_add_blocksds_dsl_library() logical TARGET,
+	#                         that helper's <TARGET>_ELF output is used.
 	set(options)
-	set(oneValueArgs TARGET OUTPUT_NAME MAIN_ELF MAIN_TARGET)
-	set(multiValueArgs SOURCES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS DEPENDENCY_TARGETS DEPENDENCY_ELFS)
+	set(oneValueArgs TARGET STATIC_TARGET OUTPUT_NAME MAIN_TARGET)
+	set(multiValueArgs DEPENDENCY_TARGETS)
 	cmake_parse_arguments(NDSL "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 	if(NOT NDSL_TARGET)
 		message(FATAL_ERROR "ndsh_add_blocksds_dsl_library(): TARGET is required")
 	endif()
 
-	if(NOT NDSL_SOURCES)
-		message(FATAL_ERROR "ndsh_add_blocksds_dsl_library(): SOURCES is required")
+	if(NOT NDSL_STATIC_TARGET)
+		message(FATAL_ERROR "ndsh_add_blocksds_dsl_library(): STATIC_TARGET is required")
+	endif()
+
+	if(NOT TARGET ${NDSL_STATIC_TARGET})
+		message(FATAL_ERROR "ndsh_add_blocksds_dsl_library(): STATIC_TARGET '${NDSL_STATIC_TARGET}' does not exist")
+	endif()
+
+	get_target_property(_static_target_type ${NDSL_STATIC_TARGET} TYPE)
+	if(NOT _static_target_type STREQUAL "STATIC_LIBRARY")
+		message(FATAL_ERROR "ndsh_add_blocksds_dsl_library(): STATIC_TARGET '${NDSL_STATIC_TARGET}' must be a STATIC library target")
 	endif()
 
 	set(_basename "${NDSL_TARGET}")
@@ -79,37 +83,11 @@ function(ndsh_add_blocksds_dsl_library)
 		set(_basename "${NDSL_OUTPUT_NAME}")
 	endif()
 
-	set(_obj_target "${NDSL_TARGET}__obj")
 	set(_dsl_target "${NDSL_TARGET}__dsl")
 	set(_elf "${CMAKE_BINARY_DIR}/${_basename}.elf")
 	set(_dsl "${CMAKE_BINARY_DIR}/${_basename}.dsl")
-	set(_obj_files $<TARGET_OBJECTS:${_obj_target}>)
 
-	# Compile to object files first; this makes per-DSL compile options easy and
-	# lets us keep CMake target semantics while producing a non-native artifact.
-	add_library(${_obj_target} OBJECT ${NDSL_SOURCES})
-
-	target_compile_options(${_obj_target} PRIVATE
-		-mthumb
-		-mcpu=arm946e-s+nofp
-		-O2
-		-ffunction-sections
-		-fdata-sections
-		-fvisibility=hidden
-	)
-
-	if(NDSL_INCLUDE_DIRECTORIES)
-		target_include_directories(${_obj_target} PRIVATE ${NDSL_INCLUDE_DIRECTORIES})
-	endif()
-
-	if(NDSL_COMPILE_DEFINITIONS)
-		target_compile_definitions(${_obj_target} PRIVATE ${NDSL_COMPILE_DEFINITIONS})
-	endif()
-
-	set(_rsp_file "${CMAKE_CURRENT_BINARY_DIR}/${NDSL_TARGET}_objects.rsp")
-	file(GENERATE OUTPUT "${_rsp_file}" CONTENT "$<JOIN:${_obj_files}, >")
-
-	# Link raw objects into a relocatable-friendly ARM9 ELF for dsltool.
+	# Link static library objects into a relocatable-friendly ARM9 ELF for dsltool.
 	add_custom_command(
 		OUTPUT ${_elf}
 		COMMAND ${CMAKE_CXX_COMPILER}
@@ -121,37 +99,51 @@ function(ndsh_add_blocksds_dsl_library)
 			-Wl,--unresolved-symbols=ignore-all
 			-Wl,--nmagic
 			-Wl,--target1-abs
-			@${_rsp_file}
+			-Wl,--whole-archive
+			$<TARGET_FILE:${NDSL_STATIC_TARGET}>
+			-Wl,--no-whole-archive
 			-o ${_elf}
-		# Depend on object target (to bring compile rules) and object files
-		# (so source edits retrigger ELF link).
-		DEPENDS ${_obj_target} ${_obj_files}
+		DEPENDS ${NDSL_STATIC_TARGET}
 		VERBATIM
 	)
 
 	set(_dsltool_args -i ${_elf} -o ${_dsl})
 	set(_dsltool_deps ${_elf})
 	
-	# MAIN_TARGET (preferred) or MAIN_ELF is optional.
+	# MAIN_TARGET is optional.
 	# Use it when you want dsltool to resolve symbols against the main binary at build-time.
 	if(NDSL_MAIN_TARGET)
-		# Prefer MAIN_TARGET: establish a dependency on the target and use its output file
+		if(NOT TARGET ${NDSL_MAIN_TARGET})
+			message(FATAL_ERROR "ndsh_add_blocksds_dsl_library(): MAIN_TARGET '${NDSL_MAIN_TARGET}' does not exist")
+		endif()
+
 		list(APPEND _dsltool_args -m $<TARGET_FILE:${NDSL_MAIN_TARGET}>)
 		list(APPEND _dsltool_deps ${NDSL_MAIN_TARGET})
-	elseif(NDSL_MAIN_ELF)
-		# Fallback to MAIN_ELF: use the provided file path directly (must exist or be built elsewhere)
-		list(APPEND _dsltool_args -m ${NDSL_MAIN_ELF})
-		list(APPEND _dsltool_deps ${NDSL_MAIN_ELF})
 	endif()
 
 	foreach(_dep_target IN LISTS NDSL_DEPENDENCY_TARGETS)
-		list(APPEND _dsltool_args -d $<TARGET_FILE:${_dep_target}>)
-		list(APPEND _dsltool_deps ${_dep_target})
-	endforeach()
-
-	foreach(_dep_elf IN LISTS NDSL_DEPENDENCY_ELFS)
-		list(APPEND _dsltool_args -d ${_dep_elf})
-		list(APPEND _dsltool_deps ${_dep_elf})
+		if(TARGET ${_dep_target})
+			list(APPEND _dsltool_args -d $<TARGET_FILE:${_dep_target}>)
+			list(APPEND _dsltool_deps ${_dep_target})
+		elseif(DEFINED ${_dep_target}_ELF)
+			list(APPEND _dsltool_args -d ${${_dep_target}_ELF})
+			if(DEFINED ${_dep_target}_DSL_TARGET)
+				list(APPEND _dsltool_deps ${${_dep_target}_DSL_TARGET})
+			endif()
+		else()
+			get_property(_dep_has_elf GLOBAL PROPERTY NDSH_DSL_${_dep_target}_ELF SET)
+			if(_dep_has_elf)
+				get_property(_dep_elf GLOBAL PROPERTY NDSH_DSL_${_dep_target}_ELF)
+				list(APPEND _dsltool_args -d ${_dep_elf})
+				get_property(_dep_has_dsl_target GLOBAL PROPERTY NDSH_DSL_${_dep_target}_DSL_TARGET SET)
+				if(_dep_has_dsl_target)
+					get_property(_dep_dsl_target GLOBAL PROPERTY NDSH_DSL_${_dep_target}_DSL_TARGET)
+					list(APPEND _dsltool_deps ${_dep_dsl_target})
+				endif()
+			else()
+				message(FATAL_ERROR "ndsh_add_blocksds_dsl_library(): dependency '${_dep_target}' is neither a CMake target nor a known ndsh DSL logical target")
+			endif()
+		endif()
 	endforeach()
 
 	add_custom_command(
@@ -168,4 +160,9 @@ function(ndsh_add_blocksds_dsl_library)
 	set(${NDSL_TARGET}_ELF ${_elf} PARENT_SCOPE)
 	set(${NDSL_TARGET}_DSL ${_dsl} PARENT_SCOPE)
 	set(${NDSL_TARGET}_DSL_TARGET ${_dsl_target} PARENT_SCOPE)
+
+	# Also register globally so dependencies can be resolved across directories.
+	set_property(GLOBAL PROPERTY NDSH_DSL_${NDSL_TARGET}_ELF ${_elf})
+	set_property(GLOBAL PROPERTY NDSH_DSL_${NDSL_TARGET}_DSL ${_dsl})
+	set_property(GLOBAL PROPERTY NDSH_DSL_${NDSL_TARGET}_DSL_TARGET ${_dsl_target})
 endfunction()

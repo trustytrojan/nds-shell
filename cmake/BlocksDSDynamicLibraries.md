@@ -4,15 +4,15 @@ This project provides a reusable CMake helper in:
 
 - `cmake/BlocksDSDynamicLibraries.cmake`
 
-Use it to build one or more BlocksDS dynamic libraries (`.dsl`) from C++ sources.
+Use it to build one or more BlocksDS dynamic libraries (`.dsl`) from existing static library targets.
 
 ## Why a helper function exists
 
 CMake `add_library()` does not allow arbitrary custom library types for project-built artifacts.
 For DSLs, we need a custom pipeline:
 
-1. compile sources to objects
-2. link objects into an ELF with DSL-compatible linker flags
+1. build a static library target (`.a`)
+2. link that archive into an ELF with DSL-compatible linker flags
 3. run `dsltool` to convert ELF -> DSL
 
 The helper function wraps this pipeline.
@@ -22,14 +22,10 @@ The helper function wraps this pipeline.
 ```cmake
 ndsh_add_blocksds_dsl_library(
   TARGET <logical_name>
-  SOURCES <src1> [src2...]
+  STATIC_TARGET <existing_static_library_target>
   [OUTPUT_NAME <artifact_base_name>]
-  [INCLUDE_DIRECTORIES <dir1> [dir2...]]
-  [COMPILE_DEFINITIONS <def1> [def2...]]
-  [MAIN_ELF <path/to/main.elf>]
   [MAIN_TARGET <target_name>]
   [DEPENDENCY_TARGETS <target1> [target2...]]
-  [DEPENDENCY_ELFS <path1> [path2...]]
 )
 ```
 
@@ -37,22 +33,16 @@ ndsh_add_blocksds_dsl_library(
 
 - `TARGET` (required)
   - Logical name for internal targets and output variables.
-- `SOURCES` (required)
-  - Source files for the dynamic library.
+- `STATIC_TARGET` (required)
+  - Existing static library target used as linker input for this DSL.
 - `OUTPUT_NAME` (optional)
   - Basename for generated files in `build/`.
-- `INCLUDE_DIRECTORIES` (optional)
-  - Include dirs used only for this DSL.
-- `COMPILE_DEFINITIONS` (optional)
-  - Compile definitions used only for this DSL.
-- `MAIN_ELF` (optional)
-  - If set, passed as `dsltool -m <main.elf>` to resolve unknown symbols at build time.
 - `MAIN_TARGET` (optional)
-  - Preferred over `MAIN_ELF`; uses `TARGET_FILE` of an existing CMake target for `dsltool -m`.
+  - Uses `TARGET_FILE` of an existing CMake target for `dsltool -m`.
 - `DEPENDENCY_TARGETS` (optional)
-  - Target file(s) passed as repeated `dsltool -d dep.elf` arguments.
-- `DEPENDENCY_ELFS` (optional)
-  - Explicit dependency ELF file path(s) passed as repeated `dsltool -d dep.elf` arguments.
+  - Each entry may be:
+    - a CMake target name (its `TARGET_FILE` is passed to `dsltool -d`), or
+    - another `ndsh_add_blocksds_dsl_library()` logical `TARGET` name (its generated `<TARGET>_ELF` is passed to `dsltool -d`).
 
 ## Returned variables
 
@@ -67,8 +57,8 @@ For `TARGET my_plugin`, the function sets:
 ```cmake
 ndsh_add_blocksds_dsl_library(
   TARGET ndsh_dylib_demo
+  STATIC_TARGET ndsh_dylib_demo_static
   OUTPUT_NAME ndsh_dylib_demo
-  SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/demo.cpp
 )
 
 add_custom_target(ndsh-dylib-demo ALL
@@ -78,14 +68,17 @@ add_custom_target(ndsh-dylib-demo ALL
 ## Multiple DSL example
 
 ```cmake
+add_library(plugin_math_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/math.cpp)
+add_library(plugin_time_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/time.cpp)
+
 ndsh_add_blocksds_dsl_library(
   TARGET plugin_math
-  SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/math.cpp
+  STATIC_TARGET plugin_math_static
 )
 
 ndsh_add_blocksds_dsl_library(
   TARGET plugin_time
-  SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/time.cpp
+  STATIC_TARGET plugin_time_static
 )
 
 add_custom_target(ndsh-dylibs ALL
@@ -98,25 +91,29 @@ add_custom_target(ndsh-dylibs ALL
 ## Interdependency example (A depends on B and C)
 
 ```cmake
+add_library(libB_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp)
+add_library(libC_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp)
+add_library(libA_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp)
+
 ndsh_add_blocksds_dsl_library(
   TARGET libB
-  SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp
+  STATIC_TARGET libB_static
   MAIN_TARGET nds-shell
 )
 
 ndsh_add_blocksds_dsl_library(
   TARGET libC
-  SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp
+  STATIC_TARGET libC_static
   MAIN_TARGET nds-shell
 )
 
 ndsh_add_blocksds_dsl_library(
   TARGET libA
-  SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp
+  STATIC_TARGET libA_static
   MAIN_TARGET nds-shell
-  DEPENDENCY_ELFS
-    ${libB_ELF}
-    ${libC_ELF}
+  DEPENDENCY_TARGETS
+    libB
+    libC
 )
 ```
 

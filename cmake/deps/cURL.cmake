@@ -15,12 +15,15 @@ setcb(BUILD_TESTING OFF)
 setcb(BUILD_EXAMPLES OFF)
 setcb(BUILD_CURL_EXE OFF)
 setcb(BUILD_STATIC_LIBS ON) # !!!
+
 setcb(CURL_ENABLE_EXPORT_TARGET OFF)
 setcb(CURL_USE_LIBSSH2 OFF)
 setcb(CURL_USE_LIBPSL OFF)
 setcb(CURL_DISABLE_INSTALL ON)
 setcb(CURL_DISABLE_BINDLOCAL ON)
 setcb(CURL_DISABLE_SOCKETPAIR ON)
+setcb(CURL_DISABLE_ALTSVC ON)
+setcb(CURL_ZLIB OFF)
 
 ## THIS SETTING IS THE DECIDING FACTOR FOR WHETHER HTTPS WILL WORK IN THREADS!!!!!!!
 # for some reason allowing verbose strings (which allows for debugging curl code)
@@ -88,5 +91,13 @@ if(NDSH_SSL_BACKEND STREQUAL "WolfSSL")
 	target_compile_definitions(libcurl_static PRIVATE HAVE_WOLFSSL_BIO_NEW)
 endif()
 
-target_link_libraries(nds-shell PRIVATE CURL::libcurl_static)
-target_compile_definitions(nds-shell PRIVATE NDSH_CURL)
+# target_link_libraries(nds-shell PRIVATE CURL::libcurl_static)
+# target_compile_definitions(nds-shell PRIVATE NDSH_CURL)
+
+include(BlocksDSDynamicLibraries)
+ndsh_add_blocksds_dsl_library(
+    TARGET curl_dsl
+    STATIC_TARGET libcurl_static
+    OUTPUT_NAME curl
+    MAIN_TARGET nds-shell
+)

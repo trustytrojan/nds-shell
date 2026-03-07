@@ -124,8 +124,9 @@ if(NDSH_SSL_BACKEND)
 endif()
 
 if(NDSH_CURL)
-	include(deps/cURL)
 endif()
+
+include(deps/cURL)
 
 if(NDSH_LUA)
 	include(deps/Lua)
@@ -168,23 +169,16 @@ elseif(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 # # Include your DSL helper module
 # include(BlocksDSDynamicLibraries)
 
-# # libcurl uses 'curl_transform_makefile_inc' to set CSOURCES.
-# # We use those same sources to build our DSL target.
+# # Example: create a static library, then wrap it as a DSL.
+# add_library(curl_dsl_static STATIC ${CSOURCES})
 # ndsh_add_blocksds_dsl_library(
 #     TARGET curl_dsl
+#     STATIC_TARGET curl_dsl_static
 #     OUTPUT_NAME curl
-#     SOURCES ${CSOURCES}
-#     INCLUDE_DIRECTORIES 
-#         ${CMAKE_CURRENT_SOURCE_DIR} 
-#         ${CMAKE_CURRENT_BINARY_DIR}
-#         ${CMAKE_CURRENT_SOURCE_DIR}/../include
-#     COMPILE_DEFINITIONS 
-#         BUILDING_LIBCURL 
-#         CURL_STATICLIB  # We build objects as static, then link to DSL
 #     MAIN_TARGET nds-shell
 #     DEPENDENCY_TARGETS 
 #         # Add other DSLs curl might need (e.g., mbedtls or wolfssl)
-#         ${SSL_DSL_TARGET} 
+#         ${SSL_DSL_TARGET}
 # )
 
 # # This forces the DSL to be built when you run 'make' or 'cmake --build'
@@ -198,6 +192,7 @@ elseif(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 		accept
 		getpeername
 		strpbrk
+		__aeabi_d2lz __ctzdi2 __popcountdi2 arc4random fcntl fgets getsockname getsockopt htonl qsort select setsockopt strcspn strrchr strspn
 	)
 endif()
 

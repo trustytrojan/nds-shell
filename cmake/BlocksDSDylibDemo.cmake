@@ -27,28 +27,33 @@ function(ndsh_configure_blocksds_dylib_demo)
 		return()
 	endif()
 
+	add_library(ndsh_dylib_libB_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp)
+	add_library(ndsh_dylib_libC_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp)
+	add_library(ndsh_dylib_libA_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp)
+
 	ndsh_add_blocksds_dsl_library(
 		TARGET ndsh_dylib_libB
+		STATIC_TARGET ndsh_dylib_libB_static
 		OUTPUT_NAME libB
-		SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp
 		MAIN_TARGET ${NDD_MAIN_TARGET}
 	)
 
 	ndsh_add_blocksds_dsl_library(
 		TARGET ndsh_dylib_libC
+		STATIC_TARGET ndsh_dylib_libC_static
 		OUTPUT_NAME libC
-		SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp
 		MAIN_TARGET ${NDD_MAIN_TARGET}
+		DEPENDENCY_TARGETS curl_dsl
 	)
 
 	ndsh_add_blocksds_dsl_library(
 		TARGET ndsh_dylib_libA
+		STATIC_TARGET ndsh_dylib_libA_static
 		OUTPUT_NAME libA
-		SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp
 		MAIN_TARGET ${NDD_MAIN_TARGET}
-		DEPENDENCY_ELFS
-			${ndsh_dylib_libB_ELF}
-			${ndsh_dylib_libC_ELF}
+		DEPENDENCY_TARGETS
+			ndsh_dylib_libB
+			ndsh_dylib_libC
 	)
 
 	add_custom_target(ndsh-dylib-demo ALL
