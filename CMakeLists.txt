@@ -174,36 +174,34 @@ endif()
 nds_create_rom(nds-shell)
 
 if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
-	# BlocksDS-only helper module for generating .dsl artifacts.
-	# See cmake/BlocksDSDynamicLibraries.md for detailed usage.
-	include(BlocksDSDynamicLibraries)
-
 	option(NDSH_BUILD_DYLIB_DEMO "Build sample DSL for the 'dylib' command" ON)
-
 	if(NDSH_BUILD_DYLIB_DEMO)
 		# Example DSL library (default symbol: ndsh_dylib_demo in src/dylib_demo/demo.cpp)
-		ndsh_add_blocksds_dsl_library(
-			TARGET ndsh_dylib_demo
-			OUTPUT_NAME ndsh_dylib_demo
-			SOURCES ${CMAKE_SOURCE_DIR}/src/dylib_demo/demo.cpp
+		add_library(dylib_demo STATIC src/dylib_demo/demo.cpp)
+
+		# New function that I'm PR'ing into the SDK
+		blocksds_create_dsl(
+			# The actual DSL target will be 'dylib_demo__dsl', so it doesn't conflict with
+			# our STATIC library target name from above.
+			# The ELF file will be at "${CMAKE_BINARY_DIR}/dylib_demo.elf".
+			# The DSL file will be at "${CMAKE_BINARY_DIR}/dylib_demo.dsl".
+			TARGET dylib_demo
+			# Specify an existing STATIC library target for the function to link into an ELF.
+			STATIC_TARGET dylib_demo
+			# Specify the executable target of our libnds application so the function can
+			# use its ELF for the `-m` option of dsltool.
 			MAIN_TARGET nds-shell
 		)
 
-		# Add more DSLs by calling ndsh_add_blocksds_dsl_library() again, then
-		# aggregate their *_DSL_TARGET variables here:
-		#   ndsh_add_blocksds_dsl_library(TARGET plugin_math SOURCES src/dylib_demo/math.cpp)
-		#   ndsh_add_blocksds_dsl_library(TARGET plugin_time SOURCES src/dylib_demo/time.cpp)
-		#   add_custom_target(ndsh-dylibs ALL
-		#       DEPENDS ${ndsh_dylib_demo_DSL_TARGET} ${plugin_math_DSL_TARGET} ${plugin_time_DSL_TARGET})
+		if(NOT TARGET dylib_demo__dsl)
+			message(FATAL_ERROR "blocksds_create_dsl did not create a target!")
+		endif()
 
-		add_custom_target(ndsh-dylib-demo ALL DEPENDS ${ndsh_dylib_demo_DSL_TARGET})
-		message(STATUS "BlocksDS dynamic library demo enabled: ${ndsh_dylib_demo_DSL}")
-		message(STATUS "Remember to use mangled names when calling dlsym(), or use extern \"C\" in the library")
-
+		# Link the DSL to our melonDS SD card folder for convenience
 		execute_process(
 			COMMAND ${CMAKE_COMMAND} -E create_symlink 
-				"${CMAKE_BINARY_DIR}/ndsh_dylib_demo.dsl"
-				"${CMAKE_SOURCE_DIR}/melonds-sdcard/ndsh_dylib_demo.dsl"
+				"${dylib_demo_DSL}"
+				"${CMAKE_SOURCE_DIR}/melonds-sdcard/dylib_demo.dsl"
 			COMMAND_ERROR_IS_FATAL ANY
 		)
 	endif()
