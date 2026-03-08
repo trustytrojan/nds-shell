@@ -210,29 +210,6 @@ void CliPrompt::setLineHistoryFromFile(const std::string &filename)
 	if (!exists)
 		return;
 
-#ifdef __BLOCKSDS__
-	// latest blocksds update broke fstream 🤷‍♂️
-
-    FILE* file = std::fopen(filename.c_str(), "r");
-    if (!file)
-    {
-        std::cerr << "\e[91mfailed to load line history\n\e[m";
-        return;
-    }
-
-    std::string line;
-    char buffer[512];
-    while (std::fgets(buffer, sizeof(buffer), file))
-    {
-        line = buffer;
-        // Remove trailing newline
-        if (!line.empty() && line.back() == '\n')
-            line.pop_back();
-        lineHistory.emplace_back(line);
-    }
-
-    std::fclose(file);
-#else
 	std::ifstream lineHistoryFile{filename};
 	if (!lineHistoryFile)
 	{
@@ -243,5 +220,4 @@ void CliPrompt::setLineHistoryFromFile(const std::string &filename)
 	std::string line;
 	while (std::getline(lineHistoryFile, line))
 		lineHistory.emplace_back(line);
-#endif
 }

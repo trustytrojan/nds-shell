@@ -180,20 +180,10 @@ if(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 		add_library(dylib_demo STATIC src/dylib_demo/demo.cpp)
 
 		# New function that I'm PR'ing into the SDK
-		blocksds_create_dsl(
-			# The actual DSL target will be 'dylib_demo__dsl', so it doesn't conflict with
-			# our STATIC library target name from above.
-			# The ELF file will be at "${CMAKE_BINARY_DIR}/dylib_demo.elf".
-			# The DSL file will be at "${CMAKE_BINARY_DIR}/dylib_demo.dsl".
-			TARGET dylib_demo
-			# Specify an existing STATIC library target for the function to link into an ELF.
-			STATIC_TARGET dylib_demo
-			# Specify the executable target of our libnds application so the function can
-			# use its ELF for the `-m` option of dsltool.
-			MAIN_TARGET nds-shell
-		)
+		# https://codeberg.org/blocksds/sdk/pulls/353
+		blocksds_create_dsl(dylib_demo MAIN_TARGET nds-shell)
 
-		if(NOT TARGET dylib_demo__dsl)
+		if(NOT TARGET dylib_demo_dsl)
 			message(FATAL_ERROR "blocksds_create_dsl did not create a target!")
 		endif()
 
