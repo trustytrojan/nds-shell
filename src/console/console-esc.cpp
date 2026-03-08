@@ -27,6 +27,13 @@ static void updateColorBright(const int param, int *const color, int *const bgco
 	}
 }
 
+#ifdef __BLOCKSDS__
+	// dkp's consoleInit() assigns fontCurPal (15 << 12), and not just 15 like BlocksDS
+	// so let's just treat all fontCurPal assignments the same, depending on the toolchain
+	#undef TILE_PALETTE
+	#define TILE_PALETTE(x) (x)
+#endif
+
 static void consoleParseColor(const char *const escapeseq) {
 	MyPrintConsole *const c = getCurrentConsole();
 
@@ -35,8 +42,8 @@ static void consoleParseColor(const char *const escapeseq) {
 
 	// Special case: \x1b[m resets attributes
 	if (*escapeseq == 'm') {
-		c->fontCurPal = 15; // Default color (bright white)
-		c->fontCurPal2 = 0;	 // black bg
+		c->fontCurPal = TILE_PALETTE(15); // Default color (bright white)
+		c->fontCurPal2 = TILE_PALETTE(0);	 // black bg
 		return;
 	}
 
@@ -49,7 +56,7 @@ static void consoleParseColor(const char *const escapeseq) {
 	// support it, but just use 0-15, ignore everything else.
 	if (siscanf(escapeseq, "38;5;%um", &id) > 0) {
 		if (id <= 15)
-			c->fontCurPal = id;
+			c->fontCurPal = TILE_PALETTE(id);
 		return;
 	}
 
@@ -97,13 +104,6 @@ static void consoleParseColor(const char *const escapeseq) {
 	}
 
 	// final_color and bgcolor are 4-bit palette indices (0-15).
-
-#ifdef __BLOCKSDS__
-	// dkp's consoleInit() assigns fontCurPal (15 << 12), and not just 15 like BlocksDS
-	// so let's just treat all fontCurPal assignments the same, depending on the toolchain
-	#undef TILE_PALETTE
-	#define TILE_PALETTE(x) (x)
-#endif
 
 	if (final_color != -1)
 		c->fontCurPal = TILE_PALETTE(final_color);
