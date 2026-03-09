@@ -125,8 +125,7 @@ endif()
 
 if(NDSH_CURL)
 endif()
-
-include(deps/cURL)
+# include(deps/cURL)
 
 if(NDSH_LUA)
 	include(deps/Lua)
@@ -162,38 +161,14 @@ if(NDS_TOOLCHAIN_VENDOR STREQUAL "dkp")
 elseif(NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 	target_link_libraries(nds-shell PRIVATE dswifi9)
 
-	# the below commented code should be appended curl-src/lib/CMakeLists.txt
-	# annoyingly this will make every object build twice (since nds-shell links to it), but for now, i don't care
-	# all that matters is... it works... see src/dylib_demo/libC.cpp
-
-# # Include your DSL helper module
-# include(BlocksDSDynamicLibraries)
-
-# # Example: create a static library, then wrap it as a DSL.
-# add_library(curl_dsl_static STATIC ${CSOURCES})
-# ndsh_add_blocksds_dsl_library(
-#     TARGET curl_dsl
-#     STATIC_TARGET curl_dsl_static
-#     OUTPUT_NAME curl
-#     MAIN_TARGET nds-shell
-#     DEPENDENCY_TARGETS 
-#         # Add other DSLs curl might need (e.g., mbedtls or wolfssl)
-#         ${SSL_DSL_TARGET}
-# )
-
-# # This forces the DSL to be built when you run 'make' or 'cmake --build'
-# add_custom_target(build_curl_dsl ALL 
-#     DEPENDS ${curl_dsl_DSL_TARGET}
-# )
-
-
-	target_link_undefined_symbols(nds-shell
-		__aeabi_lmul
-		accept
-		getpeername
-		strpbrk
-		__aeabi_d2lz __ctzdi2 __popcountdi2 arc4random fcntl fgets getsockname getsockopt htonl qsort select setsockopt strcspn strrchr strspn
-	)
+	## this is only needed when building curl as a DSL
+	# target_link_undefined_symbols(nds-shell
+	# 	__aeabi_lmul
+	# 	accept
+	# 	getpeername
+	# 	strpbrk
+	# 	__aeabi_d2lz __ctzdi2 __popcountdi2 arc4random fcntl fgets getsockname getsockopt htonl qsort select setsockopt strcspn strrchr strspn
+	# )
 endif()
 
 ## VERY important options

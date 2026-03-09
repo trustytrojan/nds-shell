@@ -6,20 +6,16 @@ if(NOT NDS_TOOLCHAIN_VENDOR STREQUAL "blocks")
 	return()
 endif()
 
-include(BlocksDSDynamicLibraries)
-
 function(ndsh_configure_blocksds_dylib_demo)
-	set(options)
 	set(oneValueArgs MAIN_TARGET)
-	set(multiValueArgs)
-	cmake_parse_arguments(NDD "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+	cmake_parse_arguments(NDD "" "${oneValueArgs}" "" ${ARGN})
 
 	if(NOT NDD_MAIN_TARGET)
-		message(FATAL_ERROR "ndsh_configure_blocksds_dylib_demo(): MAIN_TARGET is required")
+		message(FATAL_ERROR "MAIN_TARGET is required")
 	endif()
 
 	if(NOT TARGET ${NDD_MAIN_TARGET})
-		message(FATAL_ERROR "ndsh_configure_blocksds_dylib_demo(): MAIN_TARGET '${NDD_MAIN_TARGET}' does not exist")
+		message(FATAL_ERROR "MAIN_TARGET '${NDD_MAIN_TARGET}' does not exist")
 	endif()
 
 	option(NDSH_BUILD_DYLIB_DEMO "Build sample DSL interdependency demo for the 'dylib' command" ON)
@@ -27,52 +23,43 @@ function(ndsh_configure_blocksds_dylib_demo)
 		return()
 	endif()
 
-	add_library(ndsh_dylib_libB_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp)
-	add_library(ndsh_dylib_libC_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp)
-	add_library(ndsh_dylib_libA_static STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp)
+	add_library(A STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp)
+	add_library(B STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp)
+	add_library(C STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp)
 
-	ndsh_add_blocksds_dsl_library(
-		TARGET ndsh_dylib_libB
-		STATIC_TARGET ndsh_dylib_libB_static
-		OUTPUT_NAME libB
+	blocksds_create_dsl(
+		B
 		MAIN_TARGET ${NDD_MAIN_TARGET}
 	)
 
-	ndsh_add_blocksds_dsl_library(
-		TARGET ndsh_dylib_libC
-		STATIC_TARGET ndsh_dylib_libC_static
-		OUTPUT_NAME libC
+	blocksds_create_dsl(
+		C
 		MAIN_TARGET ${NDD_MAIN_TARGET}
-		DEPENDENCY_TARGETS curl_dsl
+		# DEPENDENCY_TARGETS curl_dsl
 	)
 
-	ndsh_add_blocksds_dsl_library(
-		TARGET ndsh_dylib_libA
-		STATIC_TARGET ndsh_dylib_libA_static
-		OUTPUT_NAME libA
+	blocksds_create_dsl(
+		A
 		MAIN_TARGET ${NDD_MAIN_TARGET}
-		DEPENDENCY_TARGETS
-			ndsh_dylib_libB
-			ndsh_dylib_libC
+		DEPENDENCY_ELFS ${B_ELF} ${C_ELF}
 	)
 
-	add_custom_target(ndsh-dylib-demo ALL
-		DEPENDS
-			${ndsh_dylib_libA_DSL_TARGET}
-			${ndsh_dylib_libB_DSL_TARGET}
-			${ndsh_dylib_libC_DSL_TARGET}
+	add_custom_target(
+		ndsh-dylib-demo
+		ALL
+		DEPENDS A_dsl B_dsl C_dsl
 	)
 
 	message(STATUS "BlocksDS dynamic library interdependency demo enabled:")
-	message(STATUS "  libA: ${ndsh_dylib_libA_DSL}")
-	message(STATUS "  libB: ${ndsh_dylib_libB_DSL}")
-	message(STATUS "  libC: ${ndsh_dylib_libC_DSL}")
+	message(STATUS "  A: ${A_DSL}")
+	message(STATUS "  B: ${B_DSL}")
+	message(STATUS "  C: ${C_DSL}")
 
-	foreach(_demo_dsl IN ITEMS libA.dsl libB.dsl libC.dsl)
+	foreach(_demo_dsl IN ITEMS A B C)
 		execute_process(
 			COMMAND ${CMAKE_COMMAND} -E create_symlink
-				"${CMAKE_BINARY_DIR}/${_demo_dsl}"
-				"${CMAKE_SOURCE_DIR}/melonds-sdcard/${_demo_dsl}"
+				"${${_demo_dsl}_DSL}" # blocksds_create_dsl() returns ABSOLUTE paths to the generated DSLs!
+				"${CMAKE_SOURCE_DIR}/melonds-sdcard/${_demo_dsl}.dsl"
 			COMMAND_ERROR_IS_FATAL ANY
 		)
 	endforeach()
