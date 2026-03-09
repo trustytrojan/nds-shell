@@ -26,6 +26,9 @@ function(ndsh_configure_blocksds_dylib_demo)
 	add_library(A STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp)
 	add_library(B STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp)
 	add_library(C STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp)
+	add_library(demo STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/demo.cpp)
+
+	blocksds_create_dsl(demo MAIN_TARGET ${NDD_MAIN_TARGET})
 
 	blocksds_create_dsl(
 		B
@@ -55,7 +58,7 @@ function(ndsh_configure_blocksds_dylib_demo)
 	message(STATUS "  B: ${B_DSL}")
 	message(STATUS "  C: ${C_DSL}")
 
-	foreach(_demo_dsl IN ITEMS A B C)
+	foreach(_demo_dsl IN ITEMS A B C demo)
 		execute_process(
 			COMMAND ${CMAKE_COMMAND} -E create_symlink
 				"${${_demo_dsl}_DSL}" # blocksds_create_dsl() returns ABSOLUTE paths to the generated DSLs!
