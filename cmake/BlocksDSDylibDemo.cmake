@@ -43,7 +43,8 @@ function(ndsh_configure_blocksds_dylib_demo)
 	blocksds_create_dsl(
 		A
 		MAIN_TARGET ${NDD_MAIN_TARGET}
-		IGNORE_UNRESOLVED_SYMBOLS
+		# IGNORE_UNRESOLVED_SYMBOLS
+		DEPENDENCY_ELFS ${B_ELF} ${C_ELF}
 	)
 
 	add_custom_target(
