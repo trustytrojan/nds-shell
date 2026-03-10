@@ -1,13 +1,13 @@
 #include <cstdio>
 
-extern "C" __attribute__((visibility("default"))) void libC_print()
+extern "C" void libC_print()
 {
 	puts("libC called");
 }
 
-extern "C" __attribute__((visibility("default"))) void ndsh_dylib_demo()
+extern "C" void ndsh_dylib_demo()
 {
 	libC_print();
-	char *curl_version(void);
+	// char *curl_version(void);
 	// puts(curl_version());
 }

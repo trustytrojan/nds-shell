@@ -3,7 +3,7 @@
 extern "C" void libB_print();
 extern "C" void libC_print();
 
-extern "C" __attribute__((visibility("default"))) void ndsh_dylib_demo()
+extern "C" void ndsh_dylib_demo()
 {
 	puts("libA calling libB...");
 	libB_print();

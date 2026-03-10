@@ -38,13 +38,12 @@ function(ndsh_configure_blocksds_dylib_demo)
 	blocksds_create_dsl(
 		C
 		MAIN_TARGET ${NDD_MAIN_TARGET}
-		# DEPENDENCY_TARGETS curl_dsl
 	)
 
 	blocksds_create_dsl(
 		A
 		MAIN_TARGET ${NDD_MAIN_TARGET}
-		DEPENDENCY_ELFS ${B_ELF} ${C_ELF}
+		IGNORE_UNRESOLVED_SYMBOLS
 	)
 
 	add_custom_target(
