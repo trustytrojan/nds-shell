@@ -262,10 +262,10 @@ void Shell::StartPrompt()
 	{
 #ifdef NDSH_THREADING
 		threadYield();
-#ifdef NDSH_MULTICONSOLE
+	#ifdef NDSH_MULTICONSOLE
 		if (!Consoles::IsFocused(console))
 			continue;
-#endif
+	#endif
 #else
 		swiWaitForVBlank();
 #endif

@@ -2,8 +2,8 @@
 
 extern "C" __attribute__((visibility("default"))) int ndsh_dylib_demo(int value)
 {
-	puts("puts"); // puts
-	printf("printf\n"); // printf
+	puts("puts");					// puts
+	printf("printf\n");				// printf
 	printf("stdout: %p\n", stdout); // 0
 	fprintf(stdout, "fprintf(stdout)\n");
 	printf("stderr: %p\n", stderr); // 0

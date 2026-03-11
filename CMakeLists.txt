@@ -64,6 +64,7 @@ set(NDSH_SOURCES
 	src/Parser.cpp
 	src/NetUtils.cpp
 	src/PrintVersions.cpp
+	src/DylibManager.cpp
 	src/commands/tcp.cpp
 	src/commands/wifi.cpp
 	src/console/console-clear.cpp

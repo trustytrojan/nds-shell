@@ -1,25 +1,29 @@
 #include "console-priv.hpp"
 
-u16 *consoleFontBgMapAt(const int x, const int y) {
+u16 *consoleFontBgMapAt(const int x, const int y)
+{
 	const PrintConsole *const c = getCurrentConsole();
 	const int xOffset = x + c->windowX;
 	const int yOffset = (y + c->windowY) * c->consoleWidth;
 	return c->fontBgMap + xOffset + yOffset;
 }
 
-u16 *consoleFontBg2MapAt(const int x, const int y) {
+u16 *consoleFontBg2MapAt(const int x, const int y)
+{
 	const MyPrintConsole *const c = getCurrentConsole();
 	const int xOffset = x + c->windowX;
 	const int yOffset = (y + c->windowY) * c->consoleWidth;
 	return c->fontBg2Map + xOffset + yOffset;
 }
 
-u16 *consoleFontBgMapAtCursor(void) {
+u16 *consoleFontBgMapAtCursor(void)
+{
 	const PrintConsole *const c = getCurrentConsole();
 	return consoleFontBgMapAt(c->cursorX, c->cursorY);
 }
 
-u16 *consoleFontBg2MapAtCursor(void) {
+u16 *consoleFontBg2MapAtCursor(void)
+{
 	const PrintConsole *const c = getCurrentConsole();
 	return consoleFontBg2MapAt(c->cursorX, c->cursorY);
 }
@@ -31,17 +35,20 @@ u16 *consoleFontBg2MapAtCursor(void) {
 	#define TILE_PALETTE(x) (x)
 #endif
 
-u16 consoleComputeFontBgMapValue(const char ch) {
+u16 consoleComputeFontBgMapValue(const char ch)
+{
 	const PrintConsole *const c = getCurrentConsole();
 	return TILE_PALETTE(c->fontCurPal) | (u16)(ch + c->fontCharOffset - c->font.asciiOffset);
 }
 
-u16 consoleComputeFontBg2MapValue(const char ch) {
+u16 consoleComputeFontBg2MapValue(const char ch)
+{
 	const MyPrintConsole *const c = getCurrentConsole();
 	return TILE_PALETTE(c->fontCurPal2) | (u16)(ch + c->fontCharOffset - c->font.asciiOffset);
 }
 
-static void newRow() {
+static void newRow()
+{
 	MyPrintConsole *const c = getCurrentConsole();
 
 	if (c->bg2Id != -1)
@@ -49,20 +56,23 @@ static void newRow() {
 
 	c->cursorY++;
 
-	if (c->cursorY >= c->windowHeight) {
+	if (c->cursorY >= c->windowHeight)
+	{
 		int rowCount;
 		int colCount;
 
 		c->cursorY--;
 
 		for (rowCount = 0; rowCount < c->windowHeight - 1; rowCount++)
-			for (colCount = 0; colCount < c->windowWidth; colCount++) {
+			for (colCount = 0; colCount < c->windowWidth; colCount++)
+			{
 				*consoleFontBgMapAt(colCount, rowCount) = *consoleFontBgMapAt(colCount, rowCount + 1);
 				if (c->bg2Id != -1)
 					*consoleFontBg2MapAt(colCount, rowCount) = *consoleFontBg2MapAt(colCount, rowCount + 1);
 			}
 
-		for (colCount = 0; colCount < c->windowWidth; colCount++) {
+		for (colCount = 0; colCount < c->windowWidth; colCount++)
+		{
 			*consoleFontBgMapAt(colCount, rowCount) = consoleComputeFontBgMapValue(' ');
 			if (c->bg2Id != -1)
 				*consoleFontBg2MapAt(colCount, rowCount) = consoleComputeFontBg2MapValue(' ');
@@ -73,7 +83,8 @@ static void newRow() {
 		consoleSaveTileUnderCursor();
 }
 
-void consoleCommitChar(const char ch) {
+void consoleCommitChar(const char ch)
+{
 	MyPrintConsole *const c = getCurrentConsole();
 
 	*consoleFontBgMapAtCursor() = consoleComputeFontBgMapValue(ch); // fg
@@ -83,14 +94,16 @@ void consoleCommitChar(const char ch) {
 
 	++c->cursorX;
 
-	if (c->bg2Id != -1) {
+	if (c->bg2Id != -1)
+	{
 		consoleSaveTileUnderCursor();
 		consoleDrawCursor();
 	}
 }
 
 // could have a better name, since we aren't always printing a character
-void myConsolePrintChar(const char ch) {
+void myConsolePrintChar(const char ch)
+{
 	if (!ch)
 		return;
 
@@ -106,7 +119,8 @@ void myConsolePrintChar(const char ch) {
 	if (c->PrintChar && c->PrintChar(c, ch))
 		return;
 
-	if (c->cursorX >= c->windowWidth) {
+	if (c->cursorX >= c->windowWidth)
+	{
 		if (c->bg2Id == -1)
 			c->cursorX = 0;
 		else
@@ -114,7 +128,8 @@ void myConsolePrintChar(const char ch) {
 		newRow();
 	}
 
-	switch (ch) {
+	switch (ch)
+	{
 	case '\a':
 		// bell character: TODO: add a callback for applications to respond to this. e.g. playing a bell sound
 		break;
@@ -175,7 +190,8 @@ void myConsolePrintChar(const char ch) {
 
 		++c->cursorX;
 
-		if (c->bg2Id != -1) {
+		if (c->bg2Id != -1)
+		{
 			consoleSaveTileUnderCursor();
 			consoleDrawCursor();
 		}

@@ -11,11 +11,12 @@
 
 struct MyPrintConsole : PrintConsole
 {
-	int bg2Id; // ID of bg used for ANSI background colors!
+	int bg2Id;					  // ID of bg used for ANSI background colors!
 	u16 *fontBg2Map, *fontBg2Gfx; // map & gfx for the 2nd bg
-	u16 fontCurPal2; // palette for background colors
+	u16 fontCurPal2;			  // palette for background colors
 
-	// Internal buffer for potential ANSI escape sequences, as all the characters may not be available in one con_write() call.
+	// Internal buffer for potential ANSI escape sequences, as all the characters may not be available in one
+	// con_write() call.
 	char escBuf[32];
 	int escBufLen;
 };

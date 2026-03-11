@@ -8,10 +8,10 @@
 	#define swiWaitForVBlank() cothread_yield_irq(IRQ_VBLANK)
 #endif
 
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <filesystem>
 
 namespace fs = std::filesystem;
 

@@ -6,24 +6,38 @@
 	#define siscanf sscanf
 #endif
 
-static void updateColorBright(const int param, int *const color, int *const bgcolor, int *const bright) {
-	if (param == 0) { // Reset
+static void updateColorBright(const int param, int *const color, int *const bgcolor, int *const bright)
+{
+	if (param == 0)
+	{				  // Reset
 		*color = 15;  // fg: bright white
 		*bgcolor = 0; // bg: black
 		*bright = 0;
-	} else if (param == 1) { // Bright/bold
+	}
+	else if (param == 1)
+	{ // Bright/bold
 		*bright = 1;
-	} else if (param >= 30 && param <= 37) { // fg color
+	}
+	else if (param >= 30 && param <= 37)
+	{ // fg color
 		*color = param - 30;
-	} else if (param >= 40 && param <= 47) { // bg color
+	}
+	else if (param >= 40 && param <= 47)
+	{ // bg color
 		*bgcolor = param - 40;
-	} else if (param >= 90 && param <= 97) { // bright fg color
+	}
+	else if (param >= 90 && param <= 97)
+	{ // bright fg color
 		*color = param - 90 + 8;
-	} else if (param >= 100 && param <= 107) { // bright bg color
+	}
+	else if (param >= 100 && param <= 107)
+	{ // bright bg color
 		*bgcolor = param - 100 + 8;
-	} else if (param == 39 || param == 49) { // Default color
-		*color = 15;						 // fg: bright white
-		*bgcolor = 0;						 // bg: black
+	}
+	else if (param == 39 || param == 49)
+	{				  // Default color
+		*color = 15;  // fg: bright white
+		*bgcolor = 0; // bg: black
 	}
 }
 
@@ -34,16 +48,18 @@ static void updateColorBright(const int param, int *const color, int *const bgco
 	#define TILE_PALETTE(x) (x)
 #endif
 
-static void consoleParseColor(const char *const escapeseq) {
+static void consoleParseColor(const char *const escapeseq)
+{
 	MyPrintConsole *const c = getCurrentConsole();
 
 	if (!c)
 		return;
 
 	// Special case: \x1b[m resets attributes
-	if (*escapeseq == 'm') {
+	if (*escapeseq == 'm')
+	{
 		c->fontCurPal = TILE_PALETTE(15); // Default color (bright white)
-		c->fontCurPal2 = TILE_PALETTE(0);	 // black bg
+		c->fontCurPal2 = TILE_PALETTE(0); // black bg
 		return;
 	}
 
@@ -54,7 +70,8 @@ static void consoleParseColor(const char *const escapeseq) {
 	unsigned id;
 	// 256 color format sequence: `ESC[38;5;{ID}m`
 	// support it, but just use 0-15, ignore everything else.
-	if (siscanf(escapeseq, "38;5;%um", &id) > 0) {
+	if (siscanf(escapeseq, "38;5;%um", &id) > 0)
+	{
 		if (id <= 15)
 			c->fontCurPal = TILE_PALETTE(id);
 		return;
@@ -68,11 +85,13 @@ static void consoleParseColor(const char *const escapeseq) {
 	// consumed thus far into the next pointer! use this to advance `p`.
 
 	// start consuming arguments, delimited with ';'
-	while (true) {
+	while (true)
+	{
 		// Try to parse a parameter followed by a semicolon
 		chars_consumed = 0;
 		items_matched = siscanf(p, "%d;%n", &param, &chars_consumed);
-		if (items_matched > 0 && chars_consumed > 0) {
+		if (items_matched > 0 && chars_consumed > 0)
+		{
 			updateColorBright(param, &color, &bgcolor, &bright);
 			p += chars_consumed;
 			continue;
@@ -90,11 +109,14 @@ static void consoleParseColor(const char *const escapeseq) {
 	// handle cases when only bold (1) modifier is used. this only affects foreground.
 	// this should simply turn the current color into its bright variant.
 	int final_color = -1;
-	if (color != -1) {
+	if (color != -1)
+	{
 		final_color = color;
 		if (bright && final_color < 8)
 			final_color += 8;
-	} else if (bright) {
+	}
+	else if (bright)
+	{
 		// if only intensity is set, brighten the current color
 		int current_color = c->fontCurPal;
 		if (current_color < 8)
@@ -111,21 +133,24 @@ static void consoleParseColor(const char *const escapeseq) {
 		c->fontCurPal2 = TILE_PALETTE(bgcolor);
 }
 
-static void consoleParseCsiSequence(void) {
+static void consoleParseCsiSequence(void)
+{
 	MyPrintConsole *const c = getCurrentConsole();
 	const char *const seq = c->escBuf + 2; // Skip "\e["
 
 	// The last character decides the function of the sequence
 	const char command = c->escBuf[c->escBufLen - 1];
 
-	switch (command) {
+	switch (command)
+	{
 	// Private modes - commonly end in 'h' or 'l'. We don't implement any (yet), so just consume them.
 	case 'h':
 	case 'l':
 		break;
 
 	// Move cursor up
-	case 'A': {
+	case 'A':
+	{
 		int dy = 1;
 		siscanf(seq, "%dA", &dy);
 		consoleMoveCursorY(-dy);
@@ -133,7 +158,8 @@ static void consoleParseCsiSequence(void) {
 	}
 
 	// Move cursor down
-	case 'B': {
+	case 'B':
+	{
 		int dy = 1;
 		siscanf(seq, "%dB", &dy);
 		consoleMoveCursorY(dy);
@@ -141,7 +167,8 @@ static void consoleParseCsiSequence(void) {
 	}
 
 	// Move cursor right
-	case 'C': {
+	case 'C':
+	{
 		int dx = 1;
 		siscanf(seq, "%dC", &dx);
 		consoleMoveCursorX(dx);
@@ -149,7 +176,8 @@ static void consoleParseCsiSequence(void) {
 	}
 
 	// Move cursor left
-	case 'D': {
+	case 'D':
+	{
 		int dx = 1;
 		siscanf(seq, "%dD", &dx);
 		consoleMoveCursorX(-dx);
@@ -158,7 +186,8 @@ static void consoleParseCsiSequence(void) {
 
 	// Set cursor position
 	case 'H':
-	case 'f': {
+	case 'f':
+	{
 		int x, y;
 		if (siscanf(seq, "%d;%d", &y, &x) == 2)
 			consoleSetCursorPos(x, y);
@@ -168,7 +197,8 @@ static void consoleParseCsiSequence(void) {
 	}
 
 	// Screen clear
-	case 'J': {
+	case 'J':
+	{
 		int mode = 0;
 		siscanf(seq, "%d", &mode);
 		consoleClearScreen('0' + mode);
@@ -176,7 +206,8 @@ static void consoleParseCsiSequence(void) {
 	}
 
 	// Line clear
-	case 'K': {
+	case 'K':
+	{
 		int mode = 0;
 		siscanf(seq, "%d", &mode);
 		consoleClearLine('0' + mode);
@@ -201,20 +232,23 @@ static void consoleParseCsiSequence(void) {
 	}
 }
 
-static void dumpAndResetEscBuf(void) {
+static void dumpAndResetEscBuf(void)
+{
 	MyPrintConsole *const c = getCurrentConsole();
 	for (int i = 0; i < c->escBufLen; i++)
 		myConsolePrintChar(c->escBuf[i]);
 	c->escBufLen = 0;
 }
 
-void consoleUpdateEscapeSequence(const char ch) {
+void consoleUpdateEscapeSequence(const char ch)
+{
 	MyPrintConsole *const c = getCurrentConsole();
 
 	if (!c)
 		return;
 
-	if (ch == '\e') {
+	if (ch == '\e')
+	{
 		// We're most likely supposed to start buffering a new sequence.
 		dumpAndResetEscBuf();
 	}
@@ -229,13 +263,17 @@ void consoleUpdateEscapeSequence(const char ch) {
 		return;
 
 	// Do we have a CSI at the beginning of the buffer?
-	if (c->escBuf[0] == '\e' && c->escBuf[1] == '[') {
+	if (c->escBuf[0] == '\e' && c->escBuf[1] == '[')
+	{
 		// Did we just form a full sequence? The sequences we parse all end in alphabetical characters.
-		if (isalpha(ch)) {
+		if (isalpha(ch))
+		{
 			consoleParseCsiSequence();
 			c->escBufLen = 0;
 		}
-	} else {
+	}
+	else
+	{
 		dumpAndResetEscBuf();
 	}
 

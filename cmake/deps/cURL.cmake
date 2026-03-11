@@ -94,10 +94,4 @@ endif()
 # target_link_libraries(nds-shell PRIVATE CURL::libcurl_static)
 # target_compile_definitions(nds-shell PRIVATE NDSH_CURL)
 
-include(BlocksDSDynamicLibraries)
-ndsh_add_blocksds_dsl_library(
-    TARGET curl_dsl
-    STATIC_TARGET libcurl_static
-    OUTPUT_NAME curl
-    MAIN_TARGET nds-shell
-)
+blocksds_create_dsl(libcurl_static MAIN_TARGET nds-shell)

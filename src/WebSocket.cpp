@@ -1,7 +1,7 @@
 #include "WebSocket.hpp"
+#include "CliPrompt.hpp" // yes, just for the pmMainLoop() macro
 #include <arpa/inet.h>
 #include <iostream>
-#include "CliPrompt.hpp" // yes, just for the pmMainLoop() macro
 
 WebSocket::WebSocket(const char *url)
 	: easy{curl_easy_init()}

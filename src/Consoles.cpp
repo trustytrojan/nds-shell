@@ -117,10 +117,10 @@ void InitSingle()
 		console.fontCurPal2 = 0;
 	}
 
-#ifdef __BLOCKSDS__
+	#ifdef __BLOCKSDS__
 	consoleSetCustomStdout(con_write);
 	consoleSetCustomStderr(con_write);
-#else
+	#else
 	{ // modify the existing devoptab to use our write() and make it open()able!
 		const auto dot = (devoptab_t *)devoptab_list[STD_OUT];
 
@@ -137,7 +137,7 @@ void InitSingle()
 		dot->open_r = con_open;
 		dot->deviceData = &console;
 	}
-#endif
+	#endif
 }
 #endif
 

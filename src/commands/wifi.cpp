@@ -87,16 +87,16 @@ static std::span<WlanBssDesc> ScanAPs(const Commands::Context &ctx)
 
 	while (pmMainLoop() && !(aplist = wfcGetScanBssList(&count)))
 	{
-#ifdef NDSH_THREADING
+	#ifdef NDSH_THREADING
 		threadYield();
-#ifdef NDSH_MULTICONSOLE
+		#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
-#endif
-#else
+		#endif
+	#else
 		swiWaitForVBlank();
 		scanKeys();
-#endif
+	#endif
 
 		if (keysDown() & KEY_START)
 		{
@@ -120,16 +120,16 @@ int GetHiddenSSID(const Commands::Context &ctx, WlanBssDesc &ap)
 	bool ok;
 	do
 	{
-#ifdef NDSH_THREADING
+	#ifdef NDSH_THREADING
 		threadYield();
-#ifdef NDSH_MULTICONSOLE
+		#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
-#endif
-#else
+		#endif
+	#else
 		swiWaitForVBlank();
 		scanKeys();
-#endif
+	#endif
 
 		if (keysDown() & KEY_START)
 			// user canceled
@@ -175,16 +175,16 @@ int GetPassword(const Commands::Context &ctx, WlanBssDesc &ap)
 	bool ok;
 	do
 	{
-#ifdef NDSH_THREADING
+	#ifdef NDSH_THREADING
 		threadYield();
-#ifdef NDSH_MULTICONSOLE
+		#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
-#endif
-#else
+		#endif
+	#else
 		swiWaitForVBlank();
 		scanKeys();
-#endif
+	#endif
 
 		if (keysDown() & KEY_START)
 			// user canceled
@@ -271,16 +271,16 @@ static std::vector<Wifi_AccessPoint> ScanAPs(const Commands::Context &ctx)
 
 	while (pmMainLoop())
 	{
-#ifdef NDSH_THREADING
+	#ifdef NDSH_THREADING
 		threadYield();
-#ifdef NDSH_MULTICONSOLE
+		#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
-#endif
-#else
+		#endif
+	#else
 		swiWaitForVBlank();
 		scanKeys();
-#endif
+	#endif
 
 		if (keysDown() & KEY_START)
 		{
@@ -331,16 +331,16 @@ static int GetPassword(const Commands::Context &ctx, const Wifi_AccessPoint &ap,
 	bool ok = false;
 	do
 	{
-#ifdef NDSH_THREADING
+	#ifdef NDSH_THREADING
 		threadYield();
-#ifdef NDSH_MULTICONSOLE
+		#ifdef NDSH_MULTICONSOLE
 		if (!ctx.shell.IsFocused())
 			continue;
-#endif
-#else
+		#endif
+	#else
 		swiWaitForVBlank();
 		scanKeys();
-#endif
+	#endif
 
 		if (keysDown() & KEY_START)
 			return USER_CANCEL;
@@ -425,7 +425,6 @@ static int WaitForConnection(std::ostream &out)
 
 	return EXIT_SUCCESS;
 }
-
 
 #ifndef __BLOCKSDS__
 int ConnectAP(const Commands::Context &ctx, WlanBssDesc &ap)
@@ -534,9 +533,7 @@ void subcommand_connect(const Commands::Context &ctx)
 	ap = it.base();
 
 	if (!ap)
-	{
 		return;
-	}
 
 	switch (ConnectAP(ctx, *ap))
 	{
@@ -598,7 +595,6 @@ void subcommand_status(const Commands::Context &ctx)
 
 	if (status == ASSOCSTATUS_ASSOCIATED)
 	{
-
 #ifndef __BLOCKSDS__
 		const auto *ap = wfcGetActiveSlot();
 		if (ap && ap->ssid_len > 0)
