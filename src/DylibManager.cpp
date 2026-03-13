@@ -1,11 +1,14 @@
 #include "DylibManager.hpp"
 #include <algorithm>
+#include <cstring>
 #include <dlfcn.h>
 #include <iostream>
 #include <memory>
 #include <ranges>
 #include <span>
 #include <vector>
+
+using namespace std::literals;
 
 static auto read_dep_names(FILE *const f) -> std::expected<std::vector<std::string>, std::string>
 {
@@ -37,9 +40,42 @@ static auto read_dep_names(FILE *const f) -> std::expected<std::vector<std::stri
 	return dep_names;
 }
 
-static constexpr auto dlopen_FILE_with_deps(FILE *f, int mode, std::span<void *const> deps)
+std::span<void *const> deps;
+
+// THIS is overridable!
+extern "C" void my_func(int x)
 {
-	return dlopen_FILE_with_deps(f, mode, deps.data(), deps.size());
+	std::cerr << "my_func called with x=" << x << '\n';
+}
+
+static void my_other_func(int x)
+{
+	printf("my_other_func: x=%d\n", x);
+}
+
+constexpr auto lib_func = "exit"sv;
+
+static void dep_symbol_resolver(const char *const name, uint32_t *const value, const uint32_t attributes)
+{
+	// Override a symbol's value with our own function!
+	if (name == lib_func)
+	{
+		std::cerr << "current " << lib_func << " value: " << (void *)*value << '\n';
+		*value = (uint32_t)my_other_func;
+		std::cerr << "set " << lib_func << " value to " << (void *)my_other_func << '\n';
+		return;
+	}
+
+	// Only resolve symbols marked unresolved by dsltool.
+	// This means already-resolved main binary symbols won't pass this.
+	if (!(attributes & DSL_SYMBOL_UNRESOLVED))
+		return;
+
+	// Search all dependencies for the symbol's name.
+	for (const auto dep : deps)
+		if ((*value = (uint32_t)dlsym(dep, name)))
+			// dlsym() did not return NULL, so this dependency had the symbol!
+			break;
 }
 
 // this mitigates the -Wignored-attributes caused by decltype(&fclose)
@@ -160,8 +196,14 @@ auto open_lib(const fs::path &path) -> std::expected<Handle, std::string>
 	// map handles to their pointers
 	const auto dep_ptrs{dep_handles | std::views::transform(&Handle::get) | std::ranges::to<std::vector>()};
 
+	// TODO: move this to an "init" function
+	dsl_set_symbol_resolver(dep_symbol_resolver);
+
+	// give the deps to our symbol resolver
+	deps = dep_ptrs;
+
 	// actual library opening
-	const auto handle{dlopen_FILE_with_deps(file.get(), RTLD_NOW | RTLD_LOCAL, dep_ptrs)};
+	const auto handle{dlopen_FILE(file.get(), RTLD_NOW | RTLD_LOCAL)};
 	if (!handle)
 		return std::unexpected{dlerror()};
 

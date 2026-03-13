@@ -23,42 +23,48 @@ function(ndsh_configure_blocksds_dylib_demo)
 		return()
 	endif()
 
-	add_library(A STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp)
-	add_library(B STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp)
-	add_library(C STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp)
+	# add_library(A STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libA.cpp)
+	# add_library(B STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libB.cpp)
+	# add_library(C STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/libC.cpp)
 	add_library(demo STATIC ${CMAKE_SOURCE_DIR}/src/dylib_demo/demo.cpp)
-
-	blocksds_create_dsl(demo MAIN_TARGET ${NDD_MAIN_TARGET})
-
-	blocksds_create_dsl(
-		B
-		MAIN_TARGET ${NDD_MAIN_TARGET}
-	)
+	target_compile_options(demo PRIVATE -fno-builtin)
 
 	blocksds_create_dsl(
-		C
+		demo
 		MAIN_TARGET ${NDD_MAIN_TARGET}
+		IGNORE_UNRESOLVED_SYMBOLS
+		VERBOSE_OUTPUT
 	)
 
-	blocksds_create_dsl(
-		A
-		MAIN_TARGET ${NDD_MAIN_TARGET}
-		# IGNORE_UNRESOLVED_SYMBOLS
-		DEPENDENCY_ELFS ${B_ELF} ${C_ELF}
-	)
+	# blocksds_create_dsl(
+	# 	B
+	# 	MAIN_TARGET ${NDD_MAIN_TARGET}
+	# )
 
-	add_custom_target(
-		ndsh-dylib-demo
-		ALL
-		DEPENDS A_dsl B_dsl C_dsl
-	)
+	# blocksds_create_dsl(
+	# 	C
+	# 	MAIN_TARGET ${NDD_MAIN_TARGET}
+	# )
 
-	message(STATUS "BlocksDS dynamic library interdependency demo enabled:")
-	message(STATUS "  A: ${A_DSL}")
-	message(STATUS "  B: ${B_DSL}")
-	message(STATUS "  C: ${C_DSL}")
+	# blocksds_create_dsl(
+	# 	A
+	# 	MAIN_TARGET ${NDD_MAIN_TARGET}
+	# 	# IGNORE_UNRESOLVED_SYMBOLS
+	# 	DEPENDENCY_ELFS ${B_ELF} ${C_ELF}
+	# )
 
-	foreach(_demo_dsl IN ITEMS A B C demo)
+	# add_custom_target(
+	# 	ndsh-dylib-demo
+	# 	ALL
+	# 	DEPENDS A_dsl B_dsl C_dsl
+	# )
+
+	# message(STATUS "BlocksDS dynamic library interdependency demo enabled:")
+	# message(STATUS "  A: ${A_DSL}")
+	# message(STATUS "  B: ${B_DSL}")
+	# message(STATUS "  C: ${C_DSL}")
+
+	foreach(_demo_dsl IN ITEMS demo)
 		execute_process(
 			COMMAND ${CMAKE_COMMAND} -E create_symlink
 				"${${_demo_dsl}_DSL}" # blocksds_create_dsl() returns ABSOLUTE paths to the generated DSLs!
