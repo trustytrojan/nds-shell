@@ -55,7 +55,7 @@ static void my_other_func(int x)
 
 constexpr auto lib_func = "exit"sv;
 
-static void dep_symbol_resolver(const char *const name, uint32_t *const value, const uint32_t attributes)
+static bool dep_symbol_resolver(const char *const name, uint32_t *const value, const uint32_t attributes)
 {
 	// Override a symbol's value with our own function!
 	if (name == lib_func)
@@ -63,19 +63,22 @@ static void dep_symbol_resolver(const char *const name, uint32_t *const value, c
 		std::cerr << "current " << lib_func << " value: " << (void *)*value << '\n';
 		*value = (uint32_t)my_other_func;
 		std::cerr << "set " << lib_func << " value to " << (void *)my_other_func << '\n';
-		return;
+		return true;
 	}
 
 	// Only resolve symbols marked unresolved by dsltool.
 	// This means already-resolved main binary symbols won't pass this.
 	if (!(attributes & DSL_SYMBOL_UNRESOLVED))
-		return;
+		return true;
 
 	// Search all dependencies for the symbol's name.
 	for (const auto dep : deps)
 		if ((*value = (uint32_t)dlsym(dep, name)))
-			// dlsym() did not return NULL, so this dependency had the symbol!
-			break;
+			// Symbol resolved!
+			return true;
+
+	// Failed to resolve the symbol. Return false to stop relocation.
+	return false;
 }
 
 // this mitigates the -Wignored-attributes caused by decltype(&fclose)
