@@ -59,8 +59,13 @@ void Commands::tcp(const Context &ctx)
 
 	while (pmMainLoop() && !shouldExit)
 	{
-		switch (const auto bytesRead = sock.recv(buf, sizeof(buf) - 1))
-		{
+#ifdef NDSH_THREADING
+	    threadYield();
+#else
+	    swiWaitForVBlank();
+#endif
+	    switch (const auto bytesRead = sock.recv(buf, sizeof(buf) - 1))
+	    {
 		case -1:
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 				// nothing came in

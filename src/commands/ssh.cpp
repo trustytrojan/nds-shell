@@ -108,6 +108,7 @@ void Commands::ssh(const Context &ctx)
 #else
 					swiWaitForVBlank();
 #endif
+					scanKeys();
 					int key = keyboardUpdate();
 					if (key > 0)
 					{
